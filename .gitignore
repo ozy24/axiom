@@ -1,0 +1,9 @@
+# Reference checkouts (Q2REX, MuffMode, id DLL) - never committed; CI checks this
+/repos/
+
+# Build output
+/build/
+/out/
+*.user
+.vs/
+compile_commands.json
