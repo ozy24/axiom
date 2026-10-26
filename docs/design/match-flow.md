@@ -33,6 +33,11 @@ turns it on.
   player toggles `ready` (console command). The countdown starts when every
   required player is ready, and there are at least `match_minplayers`. If
   `match_warmup_time` > 0 it also starts when that runs out.
+- **Free play until LIVE:** in WARMUP and COUNTDOWN nothing scores. Frags,
+  suicides and captures are undone in the frame they happen, before any client
+  sees them, and the scoreboard shows no clock. From LIVE the clock runs to the
+  timelimit (then timed overtime); sudden death has no clock. `sv match`
+  prints the state, every client's score and the team scores.
 - **COUNTDOWN:** `match_countdown` seconds, announced by centre-print each
   second. If a required player un-readies or leaves, back to WARMUP.
 - **LIVE:** on entry, the **arena reset** (below) runs and scores are zeroed.

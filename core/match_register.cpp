@@ -198,6 +198,20 @@ void ResetArena(bool players)
 	}
 }
 
+// Warmup and the countdown are free play: every frag, suicide and capture is
+// undone in the frame it happens, before any client sees it.
+void ZeroScores()
+{
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *ent = ClientEdict(i);
+		if (ent->inuse && ent->client)
+			ent->client->resp.score = 0;
+	}
+	if (G_TeamplayEnabled())
+		G_ResetTeamScores();
+}
+
 // Between rounds: every playing client out of play, unseen, unable to respawn
 // until RoundStart. The same hold CTF's match start uses (CTFStartMatch).
 void RoundHold()
@@ -379,11 +393,46 @@ void Core_Match_Frame()
 	if (match.State() != before)
 		gi.Com_PrintFmt("Match: {} -> {}\n", MatchStateName(before), MatchStateName(match.State()));
 	Act(actions);
+	if (!match.ScoresCount())
+		ZeroScores();
 }
 
 bool Core_Match_OwnsRules()
 {
 	return begun && match.OwnsRules();
+}
+
+bool Core_Match_ServerCommand(const char *cmd)
+{
+	if (Q_strcasecmp(cmd, "match"))
+		return false;
+	gi.Com_PrintFmt("Match: {}\n", Core_Match_OwnsRules() ? MatchStateName(match.State()) : "off (stock rules)");
+	if (G_TeamplayEnabled())
+	{
+		const std::array<int, 2> scores = ctf->integer ? G_TeamCaptures() : G_TeamFrags();
+		gi.Com_PrintFmt("  teams: red {}, blue {}\n", scores[0], scores[1]);
+	}
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		const edict_t *ent = ClientEdict(i);
+		if (!ent->inuse || !ent->client || !ent->client->pers.connected)
+			continue;
+		gi.Com_PrintFmt("  {:4} {}{}\n", ent->client->resp.score, ent->client->pers.netname,
+		                Playing(ent) ? "" : " (not playing)");
+	}
+	return true;
+}
+
+bool Core_Match_ClockEnd(gtime_t &end)
+{
+	if (!Core_Match_OwnsRules())
+	{
+		end = gtime_t::from_min(timelimit->value);
+		return timelimit->value != 0;
+	}
+	const int64_t ms = match.ClockEndMs();
+	end = gtime_t::from_ms(ms);
+	return ms != 0;
 }
 
 bool Core_Match_ClientCommand(edict_t *ent, const char *cmd)

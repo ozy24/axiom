@@ -88,6 +88,12 @@ Playtest is the open human gate for it.
 - Harness: tier 4 boots tdm and ctf (ctf on q2ctf1); new tier 8 plays a TDM
   and a CTF match on both engines.
 
+## Playtest fixes (2026-10-26)
+- Warmup and countdown are free play: scores held at 0 (frags, suicides,
+  captures), and the scoreboard clock shows nothing until LIVE, then counts
+  the timelimit from LIVE (was: from map load). Found in Chris's playtest.
+  New `sv match` status command; harness tier 9 reproduces the scoring bug.
+
 **M3b reached** (TDM and CTF with a harness bot match on both engines, once
 CI is green). Playtest rows 14-18 are the open human gate.
 

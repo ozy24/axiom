@@ -26,6 +26,8 @@ Tiers (plan Phase 1b):
                  (Q2RED only: needs bots that fight).
   8. teams       TDM and CTF with the match flow: four bots on two teams, a
                  timelimit end, and a record with both teams.
+  9. warmup      Bots fight in an endless warmup; every score stays 0
+                 (Q2RED only).
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -604,6 +606,35 @@ def tier_teams(args, results):
         results.append((f"8 teams {gt}", not detail, detail))
 
 
+def tier_warmup(args, results):
+    """Warmup is free play: six bots fight in a warmup that never ends
+    (match_minplayers 99), and `sv match` must show every score still 0 -
+    frags and suicides alike. Q2RED only: needs bots that fight."""
+    rig = RIGS[args.engine_kind](args, args.candidate, "t9-warmup")
+    if not rig.expects_frags:
+        results.append(("9 warmup", True, ["skipped: bots don't fight in a bot-only match on this engine"]))
+        return
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1",
+                "+set", "match_minplayers", "99", "+set", "timelimit", "10"] + rig.bot_args() + ["+map", "q2dm1"])
+    log = rig.run(startup, [rig.wait_ready(), ("sleep", args.dm_seconds), ("cmd", "sv match"),
+                            ("sleep", 2), ("cmd", "quit")],
+                  timeout=args.boot_timeout + args.dm_seconds + 60)
+    frags = [l for l in log.splitlines() if re.search(r"\b(killed|was |by |fragged)\b", l) and "Nav" not in l]
+    report = log.split("Match: warmup\n", 2)[-1] if "Match: warmup" in log else ""
+    scores = [int(m) for m in re.findall(r"^\S*\s+(-?\d+) \S", report, re.M)]
+    detail = []
+    if not frags:
+        detail.append("no frags in warmup, so nothing was tested")
+    if not scores:
+        detail.append("no scores in the `sv match` report")
+    elif any(scores):
+        detail.append(f"scores {scores} in warmup, expected all 0")
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append(("9 warmup", not detail, detail + [f"({len(frags)} obituary lines)"]))
+
+
 def tier_rounds(args, results):
     """match_rounds on (HoonyMode's mechanics): a frag ends the round, players
     are held, the next round starts and the bots fight on. Needs bots that
@@ -632,7 +663,7 @@ def tier_rounds(args, results):
 def cmd_test(args):
     results = []
     for tier in (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
-                 tier_rounds, tier_teams):
+                 tier_rounds, tier_teams, tier_warmup):
         if args.only and tier.__name__ != f"tier_{args.only}":
             continue
         try:
@@ -708,7 +739,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

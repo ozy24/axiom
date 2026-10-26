@@ -3,6 +3,7 @@
 
 #include "g_local.h"
 #include "core/rulesets.h" // [mod]
+#include "core/match_hooks.h" // [mod]
 
 void Svcmd_Test_f()
 {
@@ -286,7 +287,7 @@ void ServerCommand()
 	const char *cmd;
 
 	cmd = gi.argv(1);
-	if (Core_Rulesets_ServerCommand(cmd)) // [mod] sv ruleset / sv rulesets
+	if (Core_Rulesets_ServerCommand(cmd) || Core_Match_ServerCommand(cmd)) // [mod] sv ruleset(s), sv match
 		return;
 	if (Q_strcasecmp(cmd, "test") == 0)
 		Svcmd_Test_f();

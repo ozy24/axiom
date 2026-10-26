@@ -2,6 +2,7 @@
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
 #include "g_statusbar.h"
+#include "core/match_hooks.h" // [mod]
 
 /*
 ======================================================================
@@ -515,9 +516,10 @@ void DeathmatchScoreboardMessage(edict_t *ent, edict_t *killer)
 	{
 		fmt::format_to(std::back_inserter(string), FMT_STRING("xv -20 yv -10 loc_string2 1 $g_score_frags \"{}\" "), fraglimit->integer);
 	}
-	if (timelimit->value && !level.intermissiontime)
+	gtime_t clock_end; // [mod]
+	if (Core_Match_ClockEnd(clock_end) && !level.intermissiontime) // [mod] none in warmup
 	{
-		fmt::format_to(std::back_inserter(string), FMT_STRING("xv 340 yv -10 time_limit {} "), gi.ServerFrame() + ((gtime_t::from_min(timelimit->value) - level.time)).milliseconds() / gi.frame_time_ms);
+		fmt::format_to(std::back_inserter(string), FMT_STRING("xv 340 yv -10 time_limit {} "), gi.ServerFrame() + ((clock_end - level.time)).milliseconds() / gi.frame_time_ms); // [mod]
 	}
 
 	if (level.intermissiontime)
