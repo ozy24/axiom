@@ -32,6 +32,8 @@ Tiers (plan Phase 1b):
                  bot plays (Q2RED only).
  11. human-duel  Simulated players through the human path: the playtest's
                  match-flow and Duel rows, checked from the game tap (Q2RED).
+ 12. human-teams TDM and CTF: simulated players pick teams; no start with one
+                 team; the record has everyone on their team (Q2RED).
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -780,6 +782,69 @@ at 30 0 cmd score
     results.append(("11 human-duel", not detail, detail))
 
 
+def tier_human_teams(args, results):
+    """TDM and CTF through the human path: four simulated players pick teams
+    with `team red` / `team blue`; the match must not start while only one
+    team is staffed; then it runs to its timelimit, and the record has each
+    player on the team they chose. Q2RED only."""
+    for gt in ("tdm", "ctf"):
+        label = f"12 human-teams {gt}"
+        rig, why = scenario_rig(args, f"t12-{gt}")
+        if not rig:
+            results.append((label, True, [f"skipped: {why}"]))
+            continue
+        script = """seconds 75
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Carol social=sim-carol puppet
+client 3 name=Dave social=sim-dave puppet
+at 6 0 cmd team red
+at 6 1 cmd team red
+at 8 0 cmd ready
+at 8 1 cmd ready
+at 14 2 cmd team blue
+at 14 3 cmd team blue
+at 16 2 cmd ready
+at 16 3 cmd ready
+"""
+        startup = scenario_startup(rig, ["+set", "g_gametype", gt, "+set", "match_warmup", "1",
+                                         "+set", "timelimit", "0.5", "+set", "g_matchlog_dir", "matches",
+                                         "+map", GAMETYPE_MAP.get(gt, "q2dm1")])
+        log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 160)
+        tap = read_jsonl(rig.dir / "tap.jsonl")
+        detail = []
+        if not re.search(rf"Gametype: .+ \({gt}\)", log):
+            detail.append(f"gametype {gt} not selected")
+        locs = [r for r in tap if r.get("type") == "locprint"]
+        joins = [r for r in locs if r["base"] == "$g_joined_team"]
+        starting = next((r["t"] for r in locs if r["args"] == ["Match starting"]), None)
+        if len(joins) < 4:
+            detail.append(f"{len(joins)} team joins, expected 4")
+        elif starting is None:
+            detail.append("the match never started")
+        elif starting < joins[2]["t"]:
+            detail.append("the countdown started with only one team staffed")
+        seen = ["Match: " + l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
+        if seen != MATCH_SEQUENCE:
+            detail.append(f"transitions {seen}, expected {MATCH_SEQUENCE}")
+        detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
+        records = sorted(rig.dir.rglob("matches/*.json"))
+        if len(records) != 1:
+            detail.append(f"{len(records)} match records, expected 1")
+        else:
+            rec = json.loads(records[0].read_text())
+            teams = {p["name"]: p.get("team") for p in rec.get("players", [])}
+            want = {"Alice": "red", "Bob": "red", "Carol": "blue", "Dave": "blue"}
+            if teams != want:
+                detail.append(f"record teams {teams}, expected {want}")
+            if [t.get("name") for t in rec.get("teams", [])] != ["red", "blue"]:
+                detail.append(f"record team scores {rec.get('teams')}")
+        if rig.returncode != 0:
+            detail.append(f"server exited with code {rig.returncode}")
+        detail += error_lines(log, rig)[:20]
+        results.append((label, not detail, detail))
+
+
 def tier_teams(args, results):
     """TDM and CTF with the match flow: four bots on two teams play warmup ->
     live -> timelimit, and the record has both teams and every player on one."""
@@ -877,7 +942,7 @@ def cmd_test(args):
     results = []
     for tier in (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
                  tier_rounds, tier_teams, tier_warmup,
-                 tier_duel_rotation, tier_human_duel):
+                 tier_duel_rotation, tier_human_duel, tier_human_teams):
         if args.only and tier.__name__ != f"tier_{args.only}":
             continue
         try:
@@ -953,7 +1018,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")
