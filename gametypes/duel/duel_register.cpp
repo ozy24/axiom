@@ -18,21 +18,54 @@ edict_t *Slot(int i)
 	return g_edicts + 1 + i;
 }
 
-std::vector<int> Present()
+bool IsPresent(const edict_t *ent)
 {
-	std::vector<int> ids;
+	return ent->inuse && ent->client && ent->client->pers.connected && ent->client->pers.spawned;
+}
+
+// The queue's key for a client: a human's social ID, which survives a
+// reconnect into another slot, or the slot for a bot (or a human without one).
+std::string Key(const edict_t *ent)
+{
+	const int slot = (int)(ent - g_edicts) - 1;
+	if (!(ent->svflags & SVF_BOT) && ent->client->pers.social_id[0])
+		return std::string("id:") + ent->client->pers.social_id;
+	return "slot:" + std::to_string(slot);
+}
+
+std::vector<std::string> Present()
+{
+	std::vector<std::string> keys;
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		const edict_t *ent = Slot((int)i);
-		if (ent->inuse && ent->client && ent->client->pers.connected && ent->client->pers.spawned)
-			ids.push_back((int)i);
+		if (IsPresent(ent))
+			keys.push_back(Key(ent));
 	}
-	return ids;
+	return keys;
 }
 
-// At a level change every client is marked gone and re-enters one by one;
-// for this long into a level, absent clients keep their place in the queue.
-constexpr gtime_t kReturnGrace = 15_sec;
+// The client a key belongs to: the present one if any (a human may have come
+// back in a new slot), else the slot that last held it, for its name.
+edict_t *Find(const std::string &key)
+{
+	edict_t *last = nullptr;
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *ent = Slot((int)i);
+		if (!ent->client || Key(ent) != key)
+			continue;
+		if (IsPresent(ent))
+			return ent;
+		last = ent;
+	}
+	return last;
+}
+
+// At a level change every client is marked gone and re-enters one by one (a
+// human as a new connection, which can take seconds); for this long into a
+// level, absent clients keep their place in the queue.
+constexpr gtime_t kReturnGrace = 30_sec;
 
 void Sync()
 {
@@ -81,8 +114,7 @@ void SetPlaying(edict_t *ent, bool playing)
 static void Duel_ClientBegin(edict_t *ent)
 {
 	Sync();
-	const int slot = (int)(ent - g_edicts) - 1;
-	const bool playing = queue.IsPlayer(slot);
+	const bool playing = queue.IsPlayer(Key(ent));
 	SetSpectatorInfo(ent, !playing);
 	ent->client->pers.spectator = !playing;
 	ent->client->resp.spectator = !playing;
@@ -98,14 +130,13 @@ bool Duel_ClientCommand(edict_t *ent, const char *cmd)
 	// One line each, with the name as its own argument: the client decodes a
 	// lobby player's name token only then (core/player_name.h).
 	int place = 0;
-	for (int id : queue.Order())
+	for (const std::string &key : queue.Order())
 	{
-		const edict_t *who = Slot(id);
-		const char *role = place < 2 ? "duelling" : "waiting";
-		if (!who->client->pers.connected)
-			role = "rejoining";
-		gi.LocClient_Print(ent, PRINT_HIGH, "{}. {} ({})\n", G_Fmt("{}", place + 1).data(), who->client->pers.netname,
-		                   role);
+		const edict_t *who = Find(key);
+		const bool here = who && IsPresent(who);
+		const char *role = !here ? "rejoining" : place < 2 ? "duelling" : "waiting";
+		gi.LocClient_Print(ent, PRINT_HIGH, "{}. {} ({})\n", G_Fmt("{}", place + 1).data(),
+		                   who ? who->client->pers.netname : "?", role);
 		++place;
 	}
 	if (!place)
@@ -123,10 +154,12 @@ void Duel_Frame()
 	Sync();
 	if (level.intermissiontime)
 		return;
-	for (int id : Present())
+	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
-		edict_t *ent = Slot(id);
-		const bool should = queue.IsPlayer(id);
+		edict_t *ent = Slot((int)i);
+		if (!IsPresent(ent))
+			continue;
+		const bool should = queue.IsPlayer(Key(ent));
 		if (IsPlaying(ent) != should)
 			SetPlaying(ent, should);
 	}
@@ -136,21 +169,26 @@ const char *Duel_MatchOver()
 {
 	// A duellist left mid-match: it's a forfeit.
 	int playing = 0;
-	for (int id : Present())
-		playing += IsPlaying(Slot(id));
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		const edict_t *ent = Slot((int)i);
+		playing += IsPresent(ent) && IsPlaying(ent);
+	}
 	return playing < 2 ? "forfeit" : nullptr;
 }
 
 void Duel_MatchEnded()
 {
-	const std::vector<int> players = queue.Players();
+	const std::vector<std::string> players = queue.Players();
 	if (players.size() < 2)
 		return;
-	edict_t *a = Slot(players[0]), *b = Slot(players[1]);
+	edict_t *a = Find(players[0]), *b = Find(players[1]);
+	if (!a || !b)
+		return;
 	// The lower score loses; on a tie the challenger (second in line) does,
 	// so the champion keeps the spot.
-	const int loser = a->client->resp.score < b->client->resp.score ? players[0] : players[1];
-	queue.Rotate(loser);
+	const bool first_lost = a->client->resp.score < b->client->resp.score;
+	queue.Rotate(first_lost ? players[0] : players[1]);
 	gi.Com_PrintFmt("Duel: {} {} - {} {}; next: {}\n", Core_PlayerName(a).c_str(), a->client->resp.score,
-	                b->client->resp.score, Core_PlayerName(b).c_str(), Core_PlayerName(Slot(loser)).c_str());
+	                b->client->resp.score, Core_PlayerName(b).c_str(), Core_PlayerName(first_lost ? a : b).c_str());
 }

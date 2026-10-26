@@ -97,8 +97,10 @@ Playtest is the open human gate for it.
   countdown now 10 s; `queue` showed lobby names as `##P<n>` (the KEX name
   token is decoded only as a whole argument; records and console now use the
   real name, `core/player_name.h`); the queue lost the rotation at a level
-  change (every client re-enters one by one) - now kept for 15 s into a
-  level, harness tier 10. HoonyMode, TDM, CTF rows still to test.
+  change (every client re-enters one by one) - now kept for 30 s into a
+  level, keyed by social ID so a human reconnecting into another slot keeps
+  their place (as MMREX does), harness tier 10 (bots only: the human
+  reconnect path is checked in the row 9 retest). HoonyMode, TDM, CTF rows still to test.
 
 **M3b reached** (TDM and CTF with a harness bot match on both engines, once
 CI is green). Playtest rows 14-18 are the open human gate.
