@@ -50,6 +50,8 @@ jobs:
         run: cmake --preset linux-release -DCMAKE_CXX_COMPILER=g++-12 -DGAME_STATIC_RUNTIME=ON
       - name: Build
         run: cmake --build --preset linux-release
+      - name: Unit tests
+        run: ctest --test-dir build/linux-release --output-on-failure
       - name: Check exports and runtime dependencies
         run: |
           so=build/linux-release/game_x64.so
@@ -83,6 +85,8 @@ jobs:
         run: cmake --preset windows-msvc-release
       - name: Build
         run: cmake --build --preset windows-msvc-release
+      - name: Unit tests
+        run: ctest --test-dir build/windows-msvc-release -C Release --output-on-failure
       - name: Check exports
         shell: pwsh
         run: |

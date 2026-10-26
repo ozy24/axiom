@@ -59,6 +59,7 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     # depend on is unchanged (AGENTS.md hard rule 2).
     "${CMAKE_SOURCE_DIR}/checks/stock_client_contract.cpp"
     # The mod's own code (AGENTS.md: small focused files, not id's).
+    "${CMAKE_SOURCE_DIR}/core/host_gi.cpp"
     "${CMAKE_SOURCE_DIR}/core/identity.cpp"
     "${CMAKE_SOURCE_DIR}/core/identity_register.cpp")
 
@@ -119,4 +120,30 @@ else()
     if(GAME_STATIC_RUNTIME)
         target_link_options(game_x64 PRIVATE -static-libstdc++ -static-libgcc)
     endif()
+endif()
+
+# --- Unit tests --------------------------------------------------------------
+
+# The mod's own logic, without the engine (AGENTS.md: the Host seam). Adapters
+# (*_register.cpp, *_gi.cpp) are deliberately left out: they need gi.
+option(GAME_BUILD_TESTS "Build the unit tests (game_tests)" ON)
+if(GAME_BUILD_TESTS)
+    enable_testing()
+    add_executable(game_tests
+        tests/test_main.cpp
+        tests/test_identity.cpp
+        core/identity.cpp)
+    target_include_directories(game_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}"
+        "${CMAKE_SOURCE_DIR}/tests"
+        "${MOD_GENERATED_DIR}"
+        "${CMAKE_SOURCE_DIR}/third_party/doctest-2.4.11")
+    set_target_properties(game_tests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    if(MSVC)
+        target_compile_options(game_tests PRIVATE /W4 /WX /permissive-)
+        set_property(TARGET game_tests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    else()
+        target_compile_options(game_tests PRIVATE -Wall -Wextra -Werror)
+    endif()
+    add_test(NAME game_tests COMMAND game_tests)
 endif()
