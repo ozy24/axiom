@@ -2,49 +2,25 @@
 
 _Updated at the end of every session. Last update: 2026-10-26._
 
-## Current phase: 1c (first id edits, under tests)
+## Current phase: 2a (seams and the gametype API)
 
-M1a reached 2026-10-26: hosted CI green (checks, Linux, Windows/MSVC).
+M1c reached 2026-10-26: Chris ran the single-player checklist on retail with
+the MSVC DLL from `8627ce73`; all eight steps passed.
 
-1b done:
-- Jumpbox runner `jumpbox` (label `q2-game-tests`) online, running as the
-  unprivileged `q2ci` user from `/srv/q2ci/runner`
-  (`scripts/jumpbox/setup-ci-runner.sh`). Retail data in `/srv/q2ci/retail`.
-- Harness `scripts/harness/q2harness.py`, tiers 1-3, all passing locally with
-  stock as candidate; each tier proven to fail on a deliberately broken build.
-- Calibration: 14 timing-volatile save fields, keyed by entity classname.
-- `stock-reference` tag at `a44e2d63` (pinned in `scripts/harness/pins.env`).
-- `.github/workflows/game-tests.yml` for the runner.
+2a, part 1 (gametype registry) done:
+- `docs/design/gametype-api.md`: Rogue's `DMGame` is the one dispatch table;
+  an Axiom registry (`core/gametype.h`, `gametypes/<id>/`, CMake
+  `GAME_GAMETYPES`) selects by `g_gametype` (stock `gamerules` still works).
+- ffa (stock DM, no hooks), tag and ball (Rogue's, decision 0010). One `[mod]`
+  line in `g_main.cpp` replaces the `InitGameRules` call.
+- Known id bug #1 fixed: stock Tag crashed on every map (`droptofloor`).
+- Harness tier 4: every gametype boots q2dm1 with bots.
 
-- Game tests green on the runner (Q2RED, tiers 1-3).
-- Windows layer: Q2REX 0.15.1 under Wine runs the MSVC DLL, tiers 1-3 green
-  locally; `windows-game-tests` job added to `ci.yml`. Stock DLL published as
-  the `stock-reference` release asset (sha256 pinned).
-- Calibration per engine: Q2RED and Q2REX both give the same 14 fields.
-
-- **M1b reached** (pending merge of PR #2): every PR runs both builds, the
-  static checks, and tiers 1-3 on Q2RED (`.so`) and on Q2REX under Wine (the
-  MSVC `.dll`), all green on the runner.
-
-1c, part 1 (identity) done:
-- `mod.json` + `cmake/identity.cmake` -> generated `mod_identity.h`; build id
-  from git. serverinfo `gamename` = id, `g_version`, banner, `mod-identity:`
-  stamp. The one id edit: `g_main.cpp`, marked `[mod]`. `gamename` isn't in
-  saves, so no allowed-differences entry; all tiers still pass.
-- `scripts/check_name_leak.py` (in check.sh) and `scripts/rename_drill.sh`
-  (CI job `rename-drill`). Decision 0008.
-
-1c, part 2 done (PR "unit tests"):
-- doctest unit tests (`game_tests`, run in both CI builds) over the `Host`
-  seam (`core/host.h`, adapter `core/host_gi.cpp`, `tests/fake_host.h`);
-  `scripts/check_core_seam.py`. Decision 0009.
-- `docs/architecture.md`; `docs/checklists/single-player.md`.
-
-**M1c needs one human gate:** Chris runs `docs/checklists/single-player.md`
-on retail with the MSVC DLL from CI. Everything else for M1c is in place.
-
-Next: Phase 2a (seams and the gametype API), which can start once M1c's
-checklist passes.
+Next in 2a:
+- HUD stat-slot allocator; team service (needed by TDM/CTF in 3b).
+- Relax `gamerules->integer && DMGame.X` gates as gametypes need hooks.
+- M2a: FFA through the API (done in effect), CI green, single-player
+  checklist again (human gate).
 
 ## Known issues
 - Q2RED crashes at startup if a dedicated server is started without `+map`
@@ -59,7 +35,7 @@ checklist passes.
   saves can never contain them. Harmless; the check just errs on the safe side.
 
 ## Open human gates
-- **Single-player checklist** (`docs/checklists/single-player.md`) for M1c.
+- None right now. The single-player checklist comes back at M2a.
 
 ## Local setup notes
 - Format tools: `python3 -m venv ~/.local/share/q2game-tools &&

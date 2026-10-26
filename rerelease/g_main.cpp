@@ -4,6 +4,7 @@
 #include "g_local.h"
 #include "bots/bot_includes.h"
 #include "core/identity.h" // [mod]
+#include "core/gametype.h" // [mod]
 
 CHECK_GCLIENT_INTEGRITY;
 CHECK_EDICT_INTEGRITY;
@@ -371,8 +372,7 @@ void InitGame()
 
 	//======
 	// ROGUE
-	if (gamerules->integer)
-		InitGameRules(); // if there are game rules to set up, do so now.
+	Core_Gametype_Start(); // [mod] selects the gametype; runs InitGameRules as stock did
 	// ROGUE
 	//======
 	
