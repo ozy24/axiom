@@ -1,0 +1,3 @@
+# Intentional differences from the stock reference that tier 1 accepts.
+# Format: <save file>:<field>   # docs/known-id-bugs.md entry or decision it comes from
+# Every line needs a reason. Empty while Axiom changes nothing in saved state.
