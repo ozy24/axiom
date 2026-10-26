@@ -60,7 +60,7 @@ edict_t *ClientEdict(uint32_t i)
 bool Playing(const edict_t *ent)
 {
 	return ent->inuse && ent->client && ent->client->pers.connected && ent->client->pers.spawned &&
-		   !ent->client->resp.spectator;
+	       !ent->client->resp.spectator;
 }
 
 MatchInput Snapshot()
