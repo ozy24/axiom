@@ -1,0 +1,9 @@
+/* Only the engine entry points leave the module. Everything else stays local,
+   so nothing can clash with the engine's own copies of shared helpers. */
+{
+    global:
+        GetGameAPI;
+        GetCGameAPI;
+    local:
+        *;
+};

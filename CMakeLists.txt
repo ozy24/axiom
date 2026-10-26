@@ -1,0 +1,112 @@
+cmake_minimum_required(VERSION 3.20)
+
+# The project name is deliberately generic: the mod's identity comes from
+# mod.json (Phase 1c), never from build-system names.
+project(q2game LANGUAGES CXX)
+
+set(GAME_SOURCE_DIR "${CMAKE_SOURCE_DIR}/rerelease")
+
+# The engine loads the client game (GetCGameAPI) from the same module as the
+# server game. Retail clients need it, so Windows builds always include it.
+# Linux builds feed the Q2RED dedicated server, which never loads it; it is off
+# there until cgame code first changes.
+if(WIN32)
+    set(GAME_BUILD_CGAME_DEFAULT ON)
+else()
+    set(GAME_BUILD_CGAME_DEFAULT OFF)
+endif()
+option(GAME_BUILD_CGAME "Compile the client game (cg_*.cpp) into the module"
+    ${GAME_BUILD_CGAME_DEFAULT})
+
+# id's game.vcxproj compiles every .cpp under rerelease/ (checked: the
+# project's ClCompile list and the files on disk are the same 92 files).
+file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS "${GAME_SOURCE_DIR}/*.cpp")
+if(NOT GAME_BUILD_CGAME)
+    list(FILTER GAME_SOURCES EXCLUDE REGEX "/cg_[^/]*\\.cpp$")
+endif()
+
+# --- Third-party -------------------------------------------------------------
+
+# fmt 10.2.1 is vendored because id's fmt::formatter<edict_t> (g_local.h) has a
+# non-const format(), which fmt 11+ rejects. q_std.cpp compiles fmt's
+# src/format.cc itself unless NO_FMT_SOURCE is defined, so fmt needs only its
+# include path here.
+set(GAME_FMT_DIR "${CMAKE_SOURCE_DIR}/third_party/fmt-10.2.1")
+
+# jsoncpp 1.9.6 is vendored and linked statically, so the module carries no
+# runtime dependency on a distro's libjsoncpp.
+set(GAME_JSONCPP_DIR "${CMAKE_SOURCE_DIR}/third_party/jsoncpp-1.9.6")
+add_library(game_jsoncpp STATIC
+    "${GAME_JSONCPP_DIR}/src/lib_json/json_reader.cpp"
+    "${GAME_JSONCPP_DIR}/src/lib_json/json_value.cpp"
+    "${GAME_JSONCPP_DIR}/src/lib_json/json_writer.cpp")
+target_include_directories(game_jsoncpp
+    PUBLIC "${GAME_JSONCPP_DIR}/include"
+    PRIVATE "${GAME_JSONCPP_DIR}/src/lib_json")
+set_target_properties(game_jsoncpp PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+    POSITION_INDEPENDENT_CODE ON
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN ON)
+
+# --- The game module ---------------------------------------------------------
+
+add_library(game_x64 SHARED ${GAME_SOURCES})
+
+set_target_properties(game_x64 PROPERTIES
+    # id's project uses C++17 (game.vcxproj LanguageStandard stdcpp17).
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+    # The engine asks for exactly game_x64.dll / game_x64.so: no "lib" prefix.
+    PREFIX ""
+    OUTPUT_NAME "game_x64")
+
+target_include_directories(game_x64 PRIVATE
+    "${GAME_SOURCE_DIR}"
+    "${GAME_FMT_DIR}/include")
+target_link_libraries(game_x64 PRIVATE game_jsoncpp)
+
+# KEX_Q2_GAME and KEX_Q2GAME_DYNAMIC match id's game.vcxproj and are both
+# required: without KEX_Q2_GAME, unknown client commands are echoed as chat
+# (g_cmds.cpp:1745) instead of being refused.
+target_compile_definitions(game_x64 PRIVATE KEX_Q2_GAME KEX_Q2GAME_DYNAMIC)
+
+if(MSVC)
+    # As game.vcxproj, except NO_FMT_SOURCE: fmt is vendored, not from vcpkg.
+    target_compile_definitions(game_x64 PRIVATE
+        KEX_Q2GAME_EXPORTS _CRT_SECURE_NO_WARNINGS)
+    target_compile_options(game_x64 PRIVATE /permissive- /MP /W3)
+    # Static CRT, as game.vcxproj (MultiThreaded / MultiThreadedDebug).
+    set_property(TARGET game_x64 game_jsoncpp PROPERTY
+        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+else()
+    target_sources(game_x64 PRIVATE
+        "${CMAKE_SOURCE_DIR}/platform/posix/game_exports_posix.cpp")
+    set_target_properties(game_x64 PROPERTIES
+        CXX_VISIBILITY_PRESET hidden
+        VISIBILITY_INLINES_HIDDEN ON)
+    # id's code is written for MSVC; GCC's warnings on it are not ours to fix.
+    # New code (Phase 2) gets its own targets with warnings as errors.
+    target_compile_options(game_x64 PRIVATE -w
+        -include "${CMAKE_SOURCE_DIR}/platform/posix/compat.h")
+    # GCC 12 (Ubuntu 22.04) rejects id's compile-time format strings in
+    # q_std.h; GCC 13+ accepts them. Empty FMT_CONSTEVAL makes the check
+    # run-time instead, with identical output.
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+            AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
+        target_compile_definitions(game_x64 PRIVATE "FMT_CONSTEVAL=")
+    endif()
+    target_link_options(game_x64 PRIVATE -Wl,--no-undefined
+        "-Wl,--version-script=${CMAKE_SOURCE_DIR}/platform/posix/exports.map")
+    set_property(TARGET game_x64 APPEND PROPERTY LINK_DEPENDS
+        "${CMAKE_SOURCE_DIR}/platform/posix/exports.map")
+    # Release builds keep libstdc++ and libgcc out of the module's runtime
+    # dependencies so it loads on any distro the server binary does. Off by
+    # default because Fedora needs the libstdc++-static package for it.
+    option(GAME_STATIC_RUNTIME "Link libstdc++ and libgcc statically" OFF)
+    if(GAME_STATIC_RUNTIME)
+        target_link_options(game_x64 PRIVATE -static-libstdc++ -static-libgcc)
+    endif()
+endif()
