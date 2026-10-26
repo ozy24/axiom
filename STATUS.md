@@ -2,7 +2,7 @@
 
 _Updated at the end of every session. Last update: 2026-10-26._
 
-## Current phase: 1b (test runner and harness)
+## Current phase: 1b done, 1c next
 
 M1a reached 2026-10-26: hosted CI green (checks, Linux, Windows/MSVC).
 
@@ -22,10 +22,17 @@ M1a reached 2026-10-26: hosted CI green (checks, Linux, Windows/MSVC).
   the `stock-reference` release asset (sha256 pinned).
 - Calibration per engine: Q2RED and Q2REX both give the same 14 fields.
 
-Next in 1b:
-- First green `windows-game-tests` run on the runner (needs `unshare -rn` and
-  Wine to work for the `q2ci` user).
-- Then M1b. Phase 1c: identity (`mod.json`), name-leak check, unit tests.
+- **M1b reached** (pending merge of PR #2): every PR runs both builds, the
+  static checks, and tiers 1-3 on Q2RED (`.so`) and on Q2REX under Wine (the
+  MSVC `.dll`), all green on the runner.
+
+Next: Phase 1c (first id edits, under tests):
+- `mod.json` identity and generated header; change `GAMEVERSION`/`gamename`
+  and split the `listip.cfg` path; `gamename` onto the allowed-differences
+  list if it shows up in saves.
+- Name-leak check, version from git, rename drill.
+- Unit-test framework with the `Host` seam.
+- Manual single-player checklist written for Chris (human gate).
 
 ## Known issues
 - Q2RED segfaults inside its own error handler after a fatal game error
