@@ -31,7 +31,18 @@ M2a status: the code side is done (FFA through the API, Rogue modes decided,
 CI green). The single-player checklist for M2a is the remaining gate; it can
 be run on any later build, so 2b continues meanwhile.
 
-Next: Phase 2b (match state machine, arena reset, rulesets as .cfg).
+## Phase 2b, part 1 (match flow) done
+- `core/match.*` state machine (24 unit-test cases) and adapter: warmup,
+  ready/notready, countdown, live (timelimit from LIVE), overtime (sudden
+  death or N min), intermission. Off by default: `match_warmup 0` is stock,
+  so tiers 1-3 keep proving stock behaviour.
+- Arena reset at LIVE: projectiles and dropped items removed, map items
+  respawned, scores zeroed, players respawned. Doors/plats not reset yet.
+- Harness tier 5. Bots keep fighting after the reset (7 kills in the minute
+  after LIVE vs 10 in a stock minute, checked by hand).
+
+Next, 2b part 2: rulesets as `.cfg` (built-in defaults, `ruleset <name>`),
+then Phase 3a Duel.
 
 ## Known issues
 - Q2RED crashes at startup if a dedicated server is started without `+map`

@@ -1,6 +1,7 @@
 // Copyright (c) ZeniMax Media Inc.
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
+#include "core/match_hooks.h" // [mod]
 #include "m_player.h"
 
 void SelectNextItem(edict_t *ent, item_flags_t itflags, bool menu = true)
@@ -1602,6 +1603,9 @@ void ClientCommand(edict_t *ent)
 		return; // not fully in game yet
 
 	cmd = gi.argv(0);
+
+	if (Core_Match_ClientCommand(ent, cmd)) // [mod] ready / notready
+		return;
 
 	if (Q_strcasecmp(cmd, "players") == 0)
 	{

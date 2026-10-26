@@ -31,6 +31,7 @@ checks/           compile-time checks built into the module.
 |---|---|---|
 | Identity | `mod.json`, `cmake/identity.cmake`, `core/identity*.cpp` | Name, id, version and build id from one file; `gamename`, `g_version`, banner, `mod-identity:` stamp |
 | Gametype registry | `core/gametype*.cpp`, `gametypes/<id>/gametype.cpp`, generated `gametype_registry.cpp` | `g_gametype` selects a registry gametype (today `ffa`) and fills Rogue's `DMGame`; stock `gamerules` still runs Rogue's modes (`docs/design/gametype-api.md`) |
+| Match flow | `core/match.cpp` (state machine), `core/match_register.cpp` (adapter, arena reset, `ready`/`notready`) | Warmup → countdown → live → overtime → intermission, off by default (`match_warmup 0` = stock) (`docs/design/match-flow.md`) |
 | HUD stat slots | `core/stat_slots*.cpp` | Hands out stat indices 54..63 (stock's free range) by owner, idempotently; the CTF block stays stock's |
 | Host seam | `core/host.h`, `core/host_gi.cpp`, `tests/fake_host.h` | The engine interface logic uses: `Print`, `TimeMs`. Grow it only when a module needs more |
 | Stock-client contract | `checks/stock_client_contract.cpp` | Pins stat, ammo and powerup indices to stock |

@@ -133,6 +133,10 @@ python3 -I scripts/harness/q2harness.py test --stock STOCK.so --candidate build/
   `ffa`; keep it in step with `GAME_GAMETYPES`) and Rogue's stock `gamerules`
   2 and 3 (`--stock-gamerules`) boot q2dm1 with bots for 20 s, log their
   `Gametype:` line and shut down cleanly.
+- **Tier 5 match-flow:** `match_warmup 1` with bots: the `Match:` lines must
+  run warmup → countdown → live → intermission, ended by the timelimit counted
+  from LIVE, on both engines (Q2REX's bots begin as clients even though they
+  don't fight in a bot-only match).
 
 Each tier has been checked on Q2RED against a deliberately broken build (a soldier with
 one extra health point, a renamed think function) and fails as it should.
