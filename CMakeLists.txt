@@ -116,7 +116,12 @@ if(MSVC)
     # As game.vcxproj, except NO_FMT_SOURCE: fmt is vendored, not from vcpkg.
     target_compile_definitions(game_x64 PRIVATE
         KEX_Q2GAME_EXPORTS _CRT_SECURE_NO_WARNINGS)
-    target_compile_options(game_x64 PRIVATE /permissive- /MP /W3)
+    target_compile_options(game_x64 PRIVATE /permissive- /W3)
+    # /MP parallelises MSBuild; Ninja already runs compiles in parallel, and
+    # sccache won't cache a /MP compile.
+    if(CMAKE_GENERATOR MATCHES "Visual Studio")
+        target_compile_options(game_x64 PRIVATE /MP)
+    endif()
     # Static CRT, as game.vcxproj (MultiThreaded / MultiThreadedDebug).
     set_property(TARGET game_x64 game_jsoncpp PROPERTY
         MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

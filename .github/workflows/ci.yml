@@ -46,9 +46,18 @@ jobs:
       - uses: actions/checkout@v4
       - name: Let git read the checkout (owned by another user in the container)
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: mozilla-actions/sccache-action@v0.0.11
+        with:
+          version: v0.18.0
       - name: Configure
-        run: cmake --preset linux-release -DCMAKE_CXX_COMPILER=g++-12 -DGAME_STATIC_RUNTIME=ON
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+        run: >-
+          cmake --preset linux-release -DCMAKE_CXX_COMPILER=g++-12 -DGAME_STATIC_RUNTIME=ON
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
       - name: Build
+        env:
+          SCCACHE_GHA_ENABLED: "true"
         run: cmake --build --preset linux-release
       - name: Unit tests
         run: ctest --test-dir build/linux-release --output-on-failure
@@ -78,19 +87,29 @@ jobs:
 
   windows:
     # The only build that ships to players: MSVC, the compiler family retail uses.
+    # Ninja + cl.exe rather than MSBuild, so sccache can cache compiles; Release
+    # builds carry no PDB debug info, which sccache cannot cache.
     runs-on: windows-2022
+    env:
+      SCCACHE_GHA_ENABLED: "true"
     steps:
       - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: x64
+      - uses: mozilla-actions/sccache-action@v0.0.11
+        with:
+          version: v0.18.0
       - name: Configure
-        run: cmake --preset windows-msvc-release
+        run: cmake --preset windows-msvc-release -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache
       - name: Build
         run: cmake --build --preset windows-msvc-release
       - name: Unit tests
-        run: ctest --test-dir build/windows-msvc-release -C Release --output-on-failure
+        run: ctest --test-dir build/windows-msvc-release --output-on-failure
       - name: Check exports
         shell: pwsh
         run: |
-          $dll = "build/windows-msvc-release/Release/game_x64.dll"
+          $dll = "build/windows-msvc-release/game_x64.dll"
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
           $vs = & $vswhere -latest -property installationPath
           $dumpbin = Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe |
@@ -103,7 +122,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: game-module-windows-x64
-          path: build/windows-msvc-release/Release/game_x64.dll
+          path: build/windows-msvc-release/game_x64.dll
           if-no-files-found: error
 
   windows-game-tests:
