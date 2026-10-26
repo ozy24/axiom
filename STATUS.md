@@ -34,9 +34,17 @@ M1a reached 2026-10-26: hosted CI green (checks, Linux, Windows/MSVC).
 - `scripts/check_name_leak.py` (in check.sh) and `scripts/rename_drill.sh`
   (CI job `rename-drill`). Decision 0008.
 
-Next, 1c part 2:
-- Unit-test framework with the `Host` seam.
-- `docs/architecture.md`; manual single-player checklist for Chris (human gate).
+1c, part 2 done (PR "unit tests"):
+- doctest unit tests (`game_tests`, run in both CI builds) over the `Host`
+  seam (`core/host.h`, adapter `core/host_gi.cpp`, `tests/fake_host.h`);
+  `scripts/check_core_seam.py`. Decision 0009.
+- `docs/architecture.md`; `docs/checklists/single-player.md`.
+
+**M1c needs one human gate:** Chris runs `docs/checklists/single-player.md`
+on retail with the MSVC DLL from CI. Everything else for M1c is in place.
+
+Next: Phase 2a (seams and the gametype API), which can start once M1c's
+checklist passes.
 
 ## Known issues
 - Q2RED crashes at startup if a dedicated server is started without `+map`
@@ -51,7 +59,7 @@ Next, 1c part 2:
   saves can never contain them. Harmless; the check just errs on the safe side.
 
 ## Open human gates
-- None right now. The manual single-player checklist arrives with M1c.
+- **Single-player checklist** (`docs/checklists/single-player.md`) for M1c.
 
 ## Local setup notes
 - Format tools: `python3 -m venv ~/.local/share/q2game-tools &&

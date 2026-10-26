@@ -76,7 +76,20 @@ Windows release builds come only from MSVC on GitHub's Windows runner
 scripts/check.sh          # everything hosted CI runs that needs no game data
 ```
 
-Hosted CI (`.github/workflows/ci.yml`) runs the same script plus both builds.
+Hosted CI (`.github/workflows/ci.yml`) runs the same script plus both builds,
+the unit tests and the rename drill.
+
+**Unit tests** (`tests/`, doctest, target `game_tests`) cover the mod's own
+logic without the engine:
+
+```bash
+ctest --test-dir build/linux-release --output-on-failure
+```
+
+Logic takes a `Host&` (`core/host.h`) and never includes `g_local.h`; tests pass
+`tests/fake_host.h`. Only adapters (`*_register.cpp`, `*_gi.cpp`) touch gi or
+level, and they stay out of `game_tests`. `scripts/check_core_seam.py`
+enforces this. New logic comes with tests. See `docs/architecture.md`.
 
 Game tests run on the self-hosted jumpbox runner, because they need retail
 data that exists only there. The same tiers run on two engines:

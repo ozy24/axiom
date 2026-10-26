@@ -1,6 +1,7 @@
 // Pure part of the identity: no engine access, so it is unit-testable.
 #include "core/identity.h"
 
+#include "core/host.h"
 #include "mod_identity.h"
 
 // A plain, greppable identity stamp in the module's read-only data, so a built
@@ -19,4 +20,9 @@ std::string Core_VersionString()
 	volatile char keep = core_identity_stamp[0];
 	(void)keep;
 	return std::string(MOD_NAME) + " " + MOD_VERSION + " (" + MOD_BUILD + ")";
+}
+
+void Core_Identity_PrintBanner(Host &host)
+{
+	host.Print(Core_VersionString() + "\n");
 }

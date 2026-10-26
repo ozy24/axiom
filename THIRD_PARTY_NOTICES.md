@@ -8,6 +8,7 @@ version 2 (see `LICENSE`).
 | Quake II Rerelease game source | `rerelease/` | GPL-2.0, Copyright (c) ZeniMax Media Inc. | github.com/id-Software/quake2-rerelease-dll @ `8dc1fc9` |
 | {fmt} 10.2.1 | `third_party/fmt-10.2.1/` | MIT (see its `LICENSE`) | github.com/fmtlib/fmt, tag `10.2.1` |
 | JsonCpp 1.9.6 | `third_party/jsoncpp-1.9.6/` | MIT or public domain (see its `LICENSE`) | github.com/open-source-parsers/jsoncpp, tag `1.9.6` (`89e2973`) |
+| doctest 2.4.11 | `third_party/doctest-2.4.11/` (tests only, not in the module) | MIT (see its `LICENSE.txt`) | github.com/doctest/doctest, tag `v2.4.11` (`ae7a135`) |
 | POSIX entry-point shim and compat header | `platform/posix/` | GPL-2.0 | Adapted from Q2RED `game-rerelease/` (same author) |
 
 Vendored components are unmodified except that their own build files were

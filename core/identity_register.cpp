@@ -1,6 +1,7 @@
 // Engine-facing part of the identity.
 #include "g_local.h"
 
+#include "core/host.h"
 #include "core/identity.h"
 #include "mod_identity.h"
 
@@ -12,7 +13,6 @@ void Core_Identity_Register()
 	// also the base game folder (g_svcmds.cpp listip.cfg fallback).
 	gi.cvar("gamename", MOD_ID, CVAR_SERVERINFO | CVAR_LATCH);
 
-	const std::string version = Core_VersionString();
-	gi.cvar("g_version", version.c_str(), CVAR_SERVERINFO | CVAR_NOSET);
-	gi.Com_PrintFmt("{}\n", version);
+	gi.cvar("g_version", Core_VersionString().c_str(), CVAR_SERVERINFO | CVAR_NOSET);
+	Core_Identity_PrintBanner(Core_GameHost());
 }
