@@ -130,8 +130,9 @@ python3 -I scripts/harness/q2harness.py test --stock STOCK.so --candidate build/
   bot-only match, so there it only checks that deathmatch boots with bots
   connected.
 - **Tier 4 gametype-boot:** every registered gametype (`--gametypes`, default
-  `ffa,duel`; keep it in step with `GAME_GAMETYPES`) and Rogue's stock `gamerules`
-  2 and 3 (`--stock-gamerules`) boot q2dm1 with bots for 20 s, log their
+  `ffa,duel,tdm,ctf`; keep it in step with `GAME_GAMETYPES`) and Rogue's stock
+  `gamerules` 2 and 3 (`--stock-gamerules`) boot q2dm1 (ctf: q2ctf1) with bots
+  for 20 s, check the Q2REX lobby cvars, log their
   `Gametype:` line and shut down cleanly.
 - **Tier 5 match-flow:** `match_warmup 1` with bots: the `Match:` lines must
   run warmup → countdown → live → intermission, ended by the timelimit counted
@@ -141,6 +142,9 @@ python3 -I scripts/harness/q2harness.py test --stock STOCK.so --candidate build/
   its timelimit, and a `Duel: … next: …` line shows the rotation.
 - **Tier 7 rounds:** `match_rounds 1` with six bots: a frag must end a round
   and the next round start (Q2RED only; Q2REX's bots don't fight).
+- **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
+  match flow: warmup → live → timelimit, and a match record with both teams
+  and every playing client on one.
 
 Each tier has been checked on Q2RED against a deliberately broken build (a soldier with
 one extra health point, a renamed think function) and fails as it should.
@@ -148,8 +152,8 @@ The stock reference is the `stock-reference` tag (pinned in
 `scripts/harness/pins.env`), never a fresh build of `main`.
 
 Harness gotchas: coop save slots must be named `coop_*` or Q2RED reloads a
-fresh map instead of the save; rig paths must stay under 56 characters
-(Q2RED's 128-byte map path buffer); the engine binary is copied into each rig
+fresh map instead of the save; rig paths must stay under 900 characters
+(Q2RED's `MAX_OSPATH`, 1024 since its A61); the engine binary is copied into each rig
 so its crash logs land there. Locally, pass `--engine ~/q2ra2 --retail
 "~/.local/share/Steam/steamapps/common/Quake 2/rerelease" --bots <dir>`.
 
@@ -172,7 +176,10 @@ These come from id's code and the engine; each was verified in source.
    ammo and powerup index to its stock value; never regenerate them to make a
    failure go away.
 3. **No filesystem API** in `game_import_t`. Rulesets are `.cfg` files run with
-   `exec`; written output goes to a cvar-configured path.
+   `exec`; written output goes to a cvar-configured path. Q2RED offers optional
+   file access through `GetExtension` (`core/host_files*`, decision 0011): use
+   it when present, never require it, and check `gi.GetExtension` isn't null
+   (retail leaves it null).
 4. **Public names are neutral.** Cvars and commands use `g_*`, `match_*`,
    `sv_*`, never the mod's name or a mod prefix (`docs/decisions/0004`).
 5. **Portability.** Use fixed-width integer types where size matters; never
