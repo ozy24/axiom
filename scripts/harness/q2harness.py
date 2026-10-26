@@ -20,8 +20,8 @@ Tiers (plan Phase 1b):
                  shut down cleanly.
   5. match-flow  match_warmup on: warmup -> countdown -> live -> intermission
                  on the timelimit, counted from LIVE.
-  6. duel        Three bots: two duel, one queues; the match ends and the loser
-                 rotates to the back.
+  6. duel        Three bots: two duel, one queues; the match ends, the loser
+                 rotates to the back and a match record is written.
   7. rounds      match_rounds on: a frag ends the round, the next one starts
                  (Q2RED only: needs bots that fight).
 
@@ -498,8 +498,8 @@ def tier_duel(args, results):
     bots = (["+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "3", "+set", "bot_skill", "3"]
             if rig.kind == "q2red" else ["+set", "bot_minPlayers", "3"])
     startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", "duel",
-                "+set", "match_warmup", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25"]
-               + bots + ["+map", "q2dm1"])
+                "+set", "match_warmup", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
+                "+set", "g_matchlog_dir", "matches"] + bots + ["+map", "q2dm1"])
     log = rig.run(startup, [rig.wait_ready(), ("wait", r"Duel: .* next: ", 90), ("sleep", 2), ("cmd", "quit")],
                   timeout=args.boot_timeout + 150)
     detail = []
@@ -509,7 +509,10 @@ def tier_duel(args, results):
     waiting = set(re.findall(r"(\S.*?) waits in the duel queue", log))
     if rig.expects_frags and len(waiting) != 1:
         detail.append(f"{len(waiting)} clients queued ({sorted(waiting)}), expected 1 (three bots, two duel)")
-    elif not rig.expects_frags:
+    flaps = len(re.findall(r"waits in the duel queue", log))
+    if flaps > 3:
+        detail.append(f"{flaps} queue messages: a client is being moved in and out every frame")
+    if not rig.expects_frags:
         # Q2REX: in a bot-only match only two of the three bots ever begin as
         # clients (seen in CI: the third connects and never begins), so there is
         # no third client to queue. Flow and rotation are still checked.
@@ -519,6 +522,22 @@ def tier_duel(args, results):
         detail.append(f"transitions {seen}, expected {MATCH_SEQUENCE}")
     if not re.search(r"Duel: .+ \d+ - \d+ .+; next: ", log):
         detail.append("no Duel result line")
+    # The match record (g_matchlog_dir, relative to the server's working dir).
+    records = sorted(rig.dir.rglob("matches/*.json"))
+    if len(records) != 1:
+        detail.append(f"{len(records)} match records, expected 1")
+    else:
+        try:
+            rec = json.loads(records[0].read_text())
+            if rec.get("gametype") != "duel" or rec.get("reason") != "timelimit":
+                detail.append(f"record gametype/reason {rec.get('gametype')}/{rec.get('reason')}")
+            if len(rec.get("players", [])) < 2 or rec.get("map") != "q2dm1":
+                detail.append(f"record players/map {len(rec.get('players', []))}/{rec.get('map')}")
+            waiting_in_record = [p["name"] for p in rec.get("players", []) if not p.get("playing")]
+            if rig.expects_frags and len(waiting_in_record) != 1:
+                detail.append(f"record lists {len(waiting_in_record)} non-playing clients, expected 1")
+        except ValueError as e:
+            detail.append(f"match record is not JSON: {e}")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]

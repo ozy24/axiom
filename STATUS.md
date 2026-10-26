@@ -40,7 +40,17 @@ _Updated at the end of every session. Last update: 2026-10-26._
 - Every built-in ruleset now sets every match cvar (a unit test checks), so
   switching rulesets never leaves one behind.
 
-Next in 3a: minimal match JSON for the ladder; Duel lobby metadata on Q2REX.
+## Phase 3a, part 3 (match records) done
+- `g_matchlog_dir`: at intermission, one JSON record per match
+  (`<UTC>-<map>.json`, schema `q2game-match/0`): mod, gametype, ruleset,
+  map, reason, live seconds, players (best first, spectators last), winner.
+  Pure builder unit-tested (escaping, ties, file names can't be steered).
+- Fixed: Duel's queued clients were flipping in and out every frame
+  (`PutClientInServer` re-reads the `spectator` userinfo key). Tier 6 now
+  catches flapping and checks the record.
+
+Next in 3a: Duel lobby metadata on Q2REX, then M3a. Then 3b (TDM, CTF, team
+service).
 
 ## Known issues
 - Q2RED crashes at startup if a dedicated server is started without `+map`

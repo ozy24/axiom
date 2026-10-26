@@ -97,6 +97,7 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/core/identity.cpp"
     "${CMAKE_SOURCE_DIR}/core/identity_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/match.cpp"
+    "${CMAKE_SOURCE_DIR}/core/match_record.cpp"
     "${CMAKE_SOURCE_DIR}/core/match_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/rulesets.cpp"
     "${CMAKE_SOURCE_DIR}/core/rulesets_register.cpp"
@@ -181,7 +182,9 @@ if(GAME_BUILD_TESTS)
         tests/test_stat_slots.cpp
         tests/test_match.cpp
         tests/test_rulesets.cpp
+        tests/test_match_record.cpp
         core/identity.cpp
+        core/match_record.cpp
         core/rulesets.cpp
         core/match.cpp
         core/stat_slots.cpp
@@ -201,5 +204,6 @@ if(GAME_BUILD_TESTS)
     else()
         target_compile_options(game_tests PRIVATE -Wall -Wextra -Werror)
     endif()
+    target_link_libraries(game_tests PRIVATE game_jsoncpp)
     add_test(NAME game_tests COMMAND game_tests)
 endif()
