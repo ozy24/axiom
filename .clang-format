@@ -1,0 +1,12 @@
+# Axiom's own code only (see scripts/check_format.sh). Chosen to sit close to
+# id's style in rerelease/: tabs, braces on their own lines.
+BasedOnStyle: LLVM
+UseTab: ForIndentation
+IndentWidth: 4
+TabWidth: 4
+BreakBeforeBraces: Allman
+ColumnLimit: 120
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+PointerAlignment: Right
+SortIncludes: Never

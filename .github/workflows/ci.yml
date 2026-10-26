@@ -1,0 +1,88 @@
+# Hosted CI: everything that needs no game data. Game tests (Q2RED harness,
+# comparisons against stock) run on the self-hosted jumpbox runner from
+# Phase 1b, in a separate workflow.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned tools
+        run: pip install -r scripts/requirements-dev.txt
+      - name: Run checks
+        env:
+          CI: "1"
+          CLANG_FORMAT: clang-format
+        run: scripts/check.sh
+
+  linux:
+    # Built on Ubuntu 22.04 with GCC 12 and a static C++ runtime, so the module
+    # loads on any distro with glibc 2.35 or later.
+    runs-on: ubuntu-24.04
+    container: ubuntu:22.04
+    steps:
+      - name: Install toolchain
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq g++-12 cmake ninja-build git
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake --preset linux-release -DCMAKE_CXX_COMPILER=g++-12 -DGAME_STATIC_RUNTIME=ON
+      - name: Build
+        run: cmake --build --preset linux-release
+      - name: Check exports and runtime dependencies
+        run: |
+          so=build/linux-release/game_x64.so
+          exports=$(nm -D --defined-only "$so" | awk '{print $3}')
+          echo "exports: $exports"
+          [ "$exports" = "GetGameAPI" ] || { echo "unexpected exports"; exit 1; }
+          if ldd "$so" | grep -E 'libstdc\+\+|libgcc_s'; then echo "C++ runtime not static"; exit 1; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: game-module-linux-x64
+          path: build/linux-release/game_x64.so
+          if-no-files-found: error
+
+  windows:
+    # The only build that ships to players: MSVC, the compiler family retail uses.
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake --preset windows-msvc-release
+      - name: Build
+        run: cmake --build --preset windows-msvc-release
+      - name: Check exports
+        shell: pwsh
+        run: |
+          $dll = "build/windows-msvc-release/Release/game_x64.dll"
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -property installationPath
+          $dumpbin = Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe |
+            Where-Object { $_.FullName -match 'Hostx64\\x64' } | Select-Object -First 1
+          $out = & $dumpbin.FullName /exports $dll
+          $out | Select-String -Pattern 'Get(C)?GameAPI'
+          if (-not ($out -match '\bGetGameAPI\b') -or -not ($out -match '\bGetCGameAPI\b')) {
+            Write-Error "GetGameAPI and GetCGameAPI must both be exported"; exit 1
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: game-module-windows-x64
+          path: build/windows-msvc-release/Release/game_x64.dll
+          if-no-files-found: error

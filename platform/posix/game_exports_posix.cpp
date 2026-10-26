@@ -22,11 +22,9 @@
  * g_main.cpp's definition exactly. */
 game_export_t *GetGameAPI(game_import_t *import);
 
-extern "C" game_export_t *posix_game_get_game_api(
-    game_import_t *import) asm("GetGameAPI");
+extern "C" game_export_t *posix_game_get_game_api(game_import_t *import) asm("GetGameAPI");
 
-extern "C" __attribute__((visibility("default")))
-game_export_t *posix_game_get_game_api(game_import_t *import)
+extern "C" __attribute__((visibility("default"))) game_export_t *posix_game_get_game_api(game_import_t *import)
 {
-    return GetGameAPI(import);
+	return GetGameAPI(import);
 }

@@ -1,0 +1,117 @@
+# Working on this repo
+
+Read this first, then `STATUS.md` (where things stand) and `docs/decisions/`
+(what is already settled). The full phased plan lives outside the repo at
+`~/.claude/plans/crispy-brewing-hartmanis.md` on Chris's desktop; `STATUS.md`
+carries the parts that matter for the next step.
+
+This mod is maintained mainly by AI sessions that share no memory. So: **every
+rule that matters is enforced by a check, not remembered.** If you find a rule
+that is only written down, add the check.
+
+## What this is
+
+A Quake II Rerelease game module (`game_x64.dll` / `game_x64.so`) built on id
+Software's GPL `quake2-rerelease-dll`. The working name is Axiom; the name lives
+in one place (`mod.json`, from Phase 1c) and must never be hard-coded.
+
+Principles:
+- Core gametypes: FFA, TDM, CTF, Duel. Variants (HoonyMode, Clan Arena) are
+  rulesets, not code.
+- Streamlined: no over-complicated systems such as voting factories. Every
+  feature earns its place.
+- A base for downstream mods (Jump, Rocket Arena, Freeze Tag, Horde) to build on
+  without forking.
+- **A safe drop-in:** players install by overwriting `baseq2/game_x64.dll`, so
+  single player, coop and the mission packs must keep working exactly as stock.
+- Stock-client compatible; faithful to stock gameplay by default; the server
+  never trusts the client.
+- Developed on Linux, played mostly on Windows: both builds are run, not just
+  compiled.
+
+## Layout
+
+| Path | What |
+|---|---|
+| `rerelease/` | id's game source. **Edited in place, never moved** (see `docs/decisions/0002`). |
+| `platform/posix/` | Linux entry-point shim, compat header, export map |
+| `third_party/` | Vendored fmt 10.2.1 and jsoncpp 1.9.6 (`docs/decisions/0006`) |
+| `checks/` | Compile-time checks built into the module |
+| `scripts/` | Checks and tooling. Each script says what it enforces. |
+| `tools/` | One-off generators (each says how and when to run it) |
+| `docs/baselines/` | Generated baselines the checks compare against |
+| `docs/decisions/` | One file per settled question. Add one when you settle something. |
+| `repos/` | Local reference checkouts (Q2REX, MuffMode, id). **Git-ignored; never commit.** |
+
+New code (from Phase 2) goes in small, focused files under `core/` and
+`gametypes/<name>/`, never into id's large files beyond hook calls.
+
+## Build
+
+```bash
+cmake --preset linux-release && cmake --build --preset linux-release
+# output: build/linux-release/game_x64.so
+```
+
+Windows release builds come only from MSVC on GitHub's Windows runner
+(`windows-msvc-release` preset). A locally cross-compiled DLL is never shipped.
+
+## Checks
+
+```bash
+scripts/check.sh          # everything hosted CI runs that needs no game data
+```
+
+Hosted CI (`.github/workflows/ci.yml`) runs the same script plus both builds.
+Game tests (Q2RED harness, comparisons against stock) run on the jumpbox runner
+from Phase 1b; until then they don't exist, so don't claim them.
+
+## Hard rules
+
+These come from id's code and the engine; each was verified in source.
+
+1. **Saves.** Saved keys are struct member names (`FIELD`/`FIELD_AUTO` in
+   `g_save.cpp`) and registered function/MMOVE names (the macros in
+   `g_local.h`). With `g_strict_saves 1` (the default) an unknown one is fatal.
+   **Never rename or remove a saved field or registered name in id's code.**
+   `scripts/check_save_baseline.py` enforces this against
+   `docs/baselines/save-names.txt`. Adding names is fine; regenerate the
+   baseline with `--update` and commit it with the change.
+2. **Stock clients run their own cgame.** Movement is predicted client-side, so
+   no movement changes. About 10 stat slots are free (`bg_local.h`). Ammo and
+   powerup stats are bit-packed by enum index, so no new ammo or powerup types.
+   New `$loc` keys show raw on stock clients, so ship no loc file. The
+   `static_assert`s in `checks/stock_client_contract.cpp` pin every stat,
+   ammo and powerup index to its stock value; never regenerate them to make a
+   failure go away.
+3. **No filesystem API** in `game_import_t`. Rulesets are `.cfg` files run with
+   `exec`; written output goes to a cvar-configured path.
+4. **Public names are neutral.** Cvars and commands use `g_*`, `match_*`,
+   `sv_*`, never the mod's name or a mod prefix (`docs/decisions/0004`).
+5. **Portability.** Use fixed-width integer types where size matters; never
+   assume file-name case; both platforms build on every PR.
+6. **Chat is not a command channel.** Under `KEX_Q2_GAME`, `say` goes through
+   the lobby; commands are console commands.
+7. **Never commit `repos/`.** `scripts/check_repo_hygiene.sh` enforces it.
+
+## Workflow
+
+- One branch and PR per change. CI must be green.
+- Every change to id's code is small and reviewable on its own.
+- Every bug fix comes with a test that reproduces it (once the harness exists).
+- **Merge policy:** not decided yet. Until Chris decides, Claude opens PRs and
+  Chris merges.
+- End every session by updating `STATUS.md`.
+
+## Glossary
+
+- **Q2RED:** native Linux reconstruction of the rerelease dedicated server
+  (`quake2ex_dedicated`, `~/Code/Projects/q2red`). Loads `game_x64.so`.
+- **Q2REX:** Windows sourceport and dedicated server; runs under Wine on Linux.
+  Loads `game_x64.dll`.
+- **ozbot:** bot brain for Q2RED (`~/Code/Projects/ozbot-re`), loaded with
+  `sv_bot_brain`. Needs per-map nav files.
+- **Jumpbox:** `jumpbox.lan`, the headless box that will host the self-hosted CI
+  runner.
+- **Stock reference:** this repo's build of unmodified id code at `8dc1fc9`, the
+  baseline Axiom is compared against.

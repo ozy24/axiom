@@ -15,5 +15,5 @@
 
 /* g_phys.cpp and g_save.cpp call isnan() unqualified. <math.h> makes that work
  * on MSVC; in C++ libstdc++ puts it in namespace std and defines no macro. */
-using std::isnan;
 using std::isinf;
+using std::isnan;

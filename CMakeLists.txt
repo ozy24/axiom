@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 
 # The project name is deliberately generic: the mod's identity comes from
 # mod.json (Phase 1c), never from build-system names.
@@ -52,7 +52,10 @@ set_target_properties(game_jsoncpp PROPERTIES
 
 # --- The game module ---------------------------------------------------------
 
-add_library(game_x64 SHARED ${GAME_SOURCES})
+add_library(game_x64 SHARED ${GAME_SOURCES}
+    # Compile-time checks that the stat and ammo/powerup layout stock clients
+    # depend on is unchanged (AGENTS.md hard rule 2).
+    "${CMAKE_SOURCE_DIR}/checks/stock_client_contract.cpp")
 
 set_target_properties(game_x64 PROPERTIES
     # id's project uses C++17 (game.vcxproj LanguageStandard stdcpp17).
