@@ -5,6 +5,7 @@
 
 #include "core/gametype.h"
 #include "core/match.h"
+#include "core/host_files.h"
 #include "core/match_record.h"
 #include "mod_identity.h"
 #include "core/match_hooks.h"
@@ -253,12 +254,26 @@ void WriteMatchRecord()
 		r.players.push_back(
 		    {ent->client->pers.netname, ent->client->resp.score, Playing(ent), (ent->svflags & SVF_BOT) != 0});
 	}
-	std::error_code ec;
+	const std::string name = Core_MatchRecord_FileName(r.ended_at_utc, r.map);
+	const std::string json = Core_MatchRecord_ToJson(r);
+	// A relative directory is a game path: with the engine's file access it
+	// goes under the game directory, beside the saves (decision 0011).
 	const std::filesystem::path dir(g_matchlog_dir->string);
+	const std::string game_path = Core_GamePath(g_matchlog_dir->string, name);
+	if (!dir.has_root_path() && !game_path.empty() && Core_HostFiles_Available())
+	{
+		if (Core_HostFiles_Write(game_path, json))
+			gi.Com_PrintFmt("Match record: {} (game directory)\n", game_path.c_str());
+		else
+			gi.Com_PrintFmt("Match record: couldn't write {} (game directory)\n", game_path.c_str());
+		return;
+	}
+	// Otherwise a plain path, relative to the server's working directory.
+	std::error_code ec;
 	std::filesystem::create_directories(dir, ec);
-	const std::filesystem::path file = dir / Core_MatchRecord_FileName(r.ended_at_utc, r.map);
+	const std::filesystem::path file = dir / name;
 	std::ofstream out(file, std::ios::binary);
-	out << Core_MatchRecord_ToJson(r);
+	out << json;
 	if (out)
 		gi.Com_PrintFmt("Match record: {}\n", file.generic_string().c_str());
 	else

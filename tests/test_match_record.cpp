@@ -1,5 +1,6 @@
 #include "doctest.h"
 
+#include "core/host_files.h"
 #include "core/match_record.h"
 
 #include <json/json.h>
@@ -72,4 +73,18 @@ TEST_CASE("the file name is the UTC stamp and a sanitised map")
 	CHECK(Core_MatchRecord_FileName("2026-10-26T19:30:05Z", "q2dm1") == "20261026-193005-q2dm1.json");
 	CHECK(Core_MatchRecord_FileName("2026-10-26T19:30:05Z", "../../etc/x") == "20261026-193005-______etc_x.json");
 	CHECK(Core_MatchRecord_FileName("2026-10-26T19:30:05Z", "") == "20261026-193005-unknown.json");
+}
+
+TEST_CASE("a match log directory becomes a game path the engine accepts")
+{
+	CHECK(Core_GamePath("matches", "20261026-195500-q2dm1.json") == "matches/20261026-195500-q2dm1.json");
+	CHECK(Core_GamePath("logs/duel/", "a.json") == "logs/duel/a.json");
+	CHECK(Core_GamePath("", "a.json").empty());
+	CHECK(Core_GamePath("/srv/q2/matches", "a.json").empty()); // absolute: written directly
+	CHECK(Core_GamePath("C:\\q2\\matches", "a.json").empty());
+	CHECK(Core_GamePath("../matches", "a.json").empty());
+	CHECK(Core_GamePath("a/./b", "a.json").empty());
+	CHECK(Core_GamePath(".hidden", "a.json").empty());
+	CHECK(Core_GamePath("my matches", "a.json").empty());
+	CHECK(Core_GamePath(std::string(50, 'm'), "20261026-195500-q2dm1.json").empty()); // 64 bytes or more
 }
