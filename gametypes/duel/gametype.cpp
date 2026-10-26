@@ -6,7 +6,7 @@ struct dm_game_rt;
 struct edict_t;
 void Duel_Install(dm_game_rt &hooks);
 void Duel_Frame();
-bool Duel_MatchOver();
+const char *Duel_MatchOver();
 void Duel_MatchEnded();
 bool Duel_ClientCommand(edict_t *ent, const char *cmd);
 

@@ -2,7 +2,7 @@
 
 _Updated at the end of every session. Last update: 2026-10-26._
 
-## Current phase: 3a done (M3a); 3b next
+## Current phase: 3b done (M3b); Phase 4 next
 
 ## Phase 2b, part 1 (match flow) done
 - `core/match.*` state machine (24 unit-test cases) and adapter: warmup,
@@ -70,8 +70,29 @@ _Updated at the end of every session. Last update: 2026-10-26._
 **M3a reached** (Duel with a bot match on both engines, match JSON written).
 Playtest is the open human gate for it.
 
-Next: Phase 3b - TDM and CTF on the API, the team service (out of
-`g_ctf.cpp`), CTF's match/election code replaced by the match flow.
+## Phase 3b (TDM and CTF) done
+- `tdm` and `ctf` registry gametypes on stock's team code (decision 0012:
+  no team-service extraction). `Core_Gametype_PreInit` sets stock's
+  `teamplay` / `ctf` from the gametype; `ctf 1` / `teamplay 1` with
+  `g_gametype ffa` still selects them (stock configs keep working), so every
+  built-in ruleset sets both. Rulesets `tdm` and `ctf`.
+- The match flow is team-aware: start needs both teams staffed; the lead,
+  ties and sudden death go by team score (TDM frags, CTF captures); TDM's
+  fraglimit is on team totals; CTF ends at `capturelimit` (`match_over` now
+  returns its reason). Going LIVE zeroes team scores and sends flags home.
+  Match records list the teams; the winner is a team.
+- Fixed: with the match flow off, `ready` / `notready` were swallowed
+  ("There is no match warmup"), so stock CTF competition mode's ready-up
+  couldn't work. Not reproducible in the harness (no human client); playtest
+  row 18.
+- Harness: tier 4 boots tdm and ctf (ctf on q2ctf1); new tier 8 plays a TDM
+  and a CTF match on both engines.
+
+**M3b reached** (TDM and CTF with a harness bot match on both engines, once
+CI is green). Playtest rows 14-18 are the open human gate.
+
+Next: Phase 4 - competitive essentials (spectating, timeouts, admin,
+scoreboards, simple voting).
 
 ## Known issues
 - Q2REX's built-in bots never enter a bot-only match (retail admits bots

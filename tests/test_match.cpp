@@ -331,3 +331,107 @@ TEST_CASE("timed overtime keeps its rounds and returns to overtime")
 	m.Update(At(live + 63000, {P(1, true, 2), P(2, true, 1)}));
 	CHECK(m.State() == MatchState::Overtime);
 }
+
+// --- Teams (TDM, CTF) ----------------------------------------------------------
+
+namespace
+{
+MatchPlayer T(int id, int team, int score = 0)
+{
+	MatchPlayer p = P(id, true, score);
+	p.team = team;
+	return p;
+}
+
+MatchInput Teams(int64_t now_ms, std::vector<MatchPlayer> players, int score1, int score2)
+{
+	MatchInput in = At(now_ms, std::move(players));
+	in.team_scores = {score1, score2};
+	return in;
+}
+
+MatchConfig TeamConfig()
+{
+	MatchConfig c = Enabled();
+	c.teams = true;
+	return c;
+}
+
+int64_t TeamsToLive(Match &m)
+{
+	m.Begin(0);
+	m.Update(Teams(1000, {T(1, 1), T(2, 2)}, 0, 0));
+	const int64_t live = 1000 + m.Config().countdown_ms;
+	m.Update(Teams(live, {T(1, 1), T(2, 2)}, 0, 0));
+	REQUIRE(m.State() == MatchState::Live);
+	return live;
+}
+} // namespace
+
+TEST_CASE("teams: the match waits for someone on each team")
+{
+	Match m(TeamConfig());
+	m.Begin(0);
+	m.Update(Teams(1000, {T(1, 1), T(2, 1)}, 0, 0));
+	CHECK(m.State() == MatchState::Warmup); // two players, one team
+	m.Update(Teams(2000, {T(1, 1), T(2, 1), T(3, 0)}, 0, 0));
+	CHECK(m.State() == MatchState::Warmup); // on no team doesn't count
+	m.Update(Teams(3000, {T(1, 1), T(2, 2)}, 0, 0));
+	CHECK(m.State() == MatchState::Countdown);
+	m.Update(Teams(3500, {T(1, 1)}, 0, 0));
+	CHECK(m.State() == MatchState::Warmup); // a team emptied: cancelled
+}
+
+TEST_CASE("teams: a tie is between team scores, not players")
+{
+	MatchConfig c = TeamConfig();
+	c.overtime = -1;
+	Match m(c);
+	const int64_t live = TeamsToLive(m);
+	// players tied 3-3, but team 1 leads
+	m.Update(Teams(live + 60000, {T(1, 1, 3), T(2, 2, 3)}, 2, 1));
+	CHECK(m.State() == MatchState::Intermission);
+
+	Match tied(c);
+	const int64_t live2 = TeamsToLive(tied);
+	// players apart, teams level: overtime, then the team that scores wins
+	tied.Update(Teams(live2 + 60000, {T(1, 1, 5), T(2, 2, 1)}, 3, 3));
+	REQUIRE(tied.State() == MatchState::Overtime);
+	tied.Update(Teams(live2 + 61000, {T(1, 1, 6), T(2, 2, 1)}, 3, 3));
+	CHECK(tied.State() == MatchState::Overtime); // a frag that doesn't change the team score
+	tied.Update(Teams(live2 + 62000, {T(1, 1, 6), T(2, 2, 1)}, 4, 3));
+	CHECK(tied.State() == MatchState::Intermission);
+}
+
+TEST_CASE("teams: fraglimit is per player unless it applies to teams (TDM)")
+{
+	MatchConfig c = TeamConfig();
+	c.fraglimit = 10;
+	Match ctf(c);
+	const int64_t live = TeamsToLive(ctf);
+	ctf.Update(Teams(live + 100, {T(1, 1, 6), T(2, 1, 6)}, 12, 0)); // team 12, nobody 10
+	CHECK(ctf.State() == MatchState::Live);
+	ctf.Update(Teams(live + 200, {T(1, 1, 10), T(2, 1, 6)}, 16, 0));
+	CHECK(ctf.State() == MatchState::Intermission);
+
+	c.fraglimit_on_teams = true;
+	Match tdm(c);
+	const int64_t live2 = TeamsToLive(tdm);
+	tdm.Update(Teams(live2 + 100, {T(1, 1, 6), T(2, 1, 3), T(3, 2, 1)}, 9, 1));
+	CHECK(tdm.State() == MatchState::Live);
+	tdm.Update(Teams(live2 + 200, {T(1, 1, 6), T(2, 1, 4), T(3, 2, 1)}, 10, 1));
+	CHECK(tdm.State() == MatchState::Intermission);
+}
+
+TEST_CASE("the gametype's end condition carries its reason (capturelimit)")
+{
+	Match m(TeamConfig());
+	const int64_t live = TeamsToLive(m);
+	MatchInput in = Teams(live + 100, {T(1, 1), T(2, 2)}, 8, 2);
+	in.gametype_over = true;
+	in.gametype_over_reason = "capturelimit";
+	auto out = m.Update(in);
+	REQUIRE(m.State() == MatchState::Intermission);
+	CHECK(std::any_of(out.begin(), out.end(), [](const MatchAction &a)
+	                  { return a.kind == MatchActionKind::EndMatch && a.text == "capturelimit"; }));
+}

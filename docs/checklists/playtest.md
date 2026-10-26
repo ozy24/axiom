@@ -3,7 +3,7 @@
 The game tests prove the logic; this is for what only a person can judge:
 how it feels, whether messages are readable, and that a real retail client
 sees everything properly. Run it at each gameplay milestone (now: match flow,
-Duel, HoonyMode). About 20 minutes; better with a second human, fine with a bot.
+Duel, HoonyMode, TDM, CTF). About 20 minutes; better with a second human, fine with a bot.
 
 ## Set up (once)
 
@@ -38,6 +38,18 @@ Change modes from a terminal: `~/q2playtest/cmd.sh "sv ruleset hoony"` then
 | 11 | Next round starts | Both respawn together, items reset, scores kept | |
 | 12 | Play to 7 | The deciding frag ends the match (no extra round) | |
 | 13 | Overall | Is the round pause too long / too short? Does it feel like HoonyMode? | |
+
+## TDM and CTF (`sv ruleset tdm` / `sv ruleset ctf`, then `map q2dm1` / `map q2ctf1`)
+
+Add bots for the other team: `cmd.sh "bot_count 3"`.
+
+| # | Try | Expect | Note |
+|---|---|---|---|
+| 14 | Join, pick a team (menu or `team red`) | Stock team menu and HUD; warmup until both teams have someone | |
+| 15 | `ready` | Countdown, then FIGHT!: team scores zero, everyone respawns (CTF: both flags at base) | |
+| 16 | CTF: take the enemy flag during warmup, then go live | The flag goes home at FIGHT!, you respawn without it | |
+| 17 | CTF: capture | Capture counts on the HUD; at `capturelimit` (8) the match ends | |
+| 18 | `sv ruleset stock`, `set ctf 1`, `set competition 1`, `map q2ctf1`; then `ready` | Stock CTF's own match ready-up answers (not "There is no match warmup") | |
 
 ## Report
 

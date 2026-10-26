@@ -6,6 +6,7 @@
 // stock rules run the level, exactly as stock.
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -35,6 +36,8 @@ struct MatchConfig
 	int fraglimit = 0;                 // 0 = none
 	bool rounds_on_frag = false;       // match_rounds 1: every score change ends a round (HoonyMode)
 	int64_t round_countdown_ms = 3000; // match_round_countdown
+	bool teams = false;                // TDM, CTF: the lead and ties go by MatchInput::team_scores
+	bool fraglimit_on_teams = false;   // TDM: fraglimit applies to team totals (stock CheckEndTDMLevel)
 };
 
 struct MatchPlayer
@@ -43,13 +46,16 @@ struct MatchPlayer
 	bool playing = false; // false: spectator / not joined
 	bool ready = false;
 	int score = 0;
+	int team = 0; // with MatchConfig::teams: 1 or 2 (0 = on no team)
 };
 
 struct MatchInput
 {
 	int64_t now_ms = 0;
 	std::vector<MatchPlayer> players;
-	bool gametype_over = false; // the gametype's own end condition (rounds, captures)
+	bool gametype_over = false;       // the gametype's own end condition (rounds, captures)
+	std::string gametype_over_reason; // for the record; empty = "gametype"
+	std::array<int, 2> team_scores{}; // with MatchConfig::teams: team 1, team 2 (frags or captures)
 };
 
 enum class MatchActionKind

@@ -35,7 +35,8 @@ checks/           compile-time checks built into the module.
 | Match records | `core/match_record.cpp` (JSON, pure), `WriteMatchRecord` in `core/match_register.cpp` | `g_matchlog_dir`: one JSON file per finished match; a relative directory goes under the game directory when the engine offers file access |
 | Host file access | `core/host_files.cpp` (game-path rule, pure), `core/host_files_gi.cpp`, `core/host_files_ext.h` | Q2RED's optional `GetExtension` file access, asked for once per load; callers always have a fallback (decision 0011) |
 | Duel | `gametypes/duel/` (`duel_queue.cpp` pure, `duel_register.cpp` adapter) | 1v1 play queue, forfeit, winner stays on; `queue` command |
-| Rulesets | `core/rulesets*.cpp` | `sv ruleset <name>`: built-ins `stock`, `match`, else `exec rulesets/<name>.cfg` |
+| TDM, CTF | `gametypes/tdm/`, `gametypes/ctf/` (capturelimit), `Core_Gametype_PreInit` in `core/gametype_register.cpp` | Registry gametypes on stock's team code: `g_gametype` sets the stock `teamplay` / `ctf` cvars (decision 0012); the match flow scores by team |
+| Rulesets | `core/rulesets*.cpp` | `sv ruleset <name>`: built-ins `stock`, `match`, `duel`, `hoony`, `tdm`, `ctf`, else `exec rulesets/<name>.cfg` |
 | HUD stat slots | `core/stat_slots*.cpp` | Hands out stat indices 54..63 (stock's free range) by owner, idempotently; the CTF block stays stock's |
 | Host seam | `core/host.h`, `core/host_gi.cpp`, `tests/fake_host.h` | The engine interface logic uses: `Print`, `TimeMs`. Grow it only when a module needs more |
 | Stock-client contract | `checks/stock_client_contract.cpp` | Pins stat, ammo and powerup indices to stock |

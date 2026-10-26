@@ -65,6 +65,10 @@ MatchConfig ReadConfig()
 	c.round_countdown_ms = (int64_t)(match_round_countdown->value * 1000);
 	c.timelimit_ms = (int64_t)(timelimit->value * 60000);
 	c.fraglimit = fraglimit->integer;
+	// TDM and CTF run on stock's team code (Core_Gametype_PreInit): the lead
+	// is the team score, and in TDM the fraglimit is too (CheckEndTDMLevel).
+	c.teams = G_TeamplayEnabled();
+	c.fraglimit_on_teams = teamplay->integer != 0;
 	return c;
 }
 
@@ -73,13 +77,14 @@ edict_t *ClientEdict(uint32_t i)
 	return g_edicts + 1 + i;
 }
 
-// In the game as a player: begun (pers.spawned, set by ClientBegin) and not a
-// spectator. A client that connected but never began - Q2REX's bots in a
-// bot-only match - is not, so the arena reset never puts it in the world.
+// In the game as a player: begun (pers.spawned, set by ClientBegin), not a
+// spectator, and in team modes on a team. A client that connected but never
+// began - Q2REX's bots in a bot-only match - is not, so the arena reset never
+// puts it in the world.
 bool Playing(const edict_t *ent)
 {
 	return ent->inuse && ent->client && ent->client->pers.connected && ent->client->pers.spawned &&
-	       !ent->client->resp.spectator;
+	       !ent->client->resp.spectator && (!G_TeamplayEnabled() || ent->client->resp.ctf_team != CTF_NOTEAM);
 }
 
 MatchInput Snapshot()
@@ -87,7 +92,11 @@ MatchInput Snapshot()
 	MatchInput in;
 	in.now_ms = level.time.milliseconds();
 	const GametypeDef *gt = Core_Gametype_Active();
-	in.gametype_over = gt && gt->match_over && gt->match_over();
+	if (const char *reason = gt && gt->match_over ? gt->match_over() : nullptr)
+	{
+		in.gametype_over = true;
+		in.gametype_over_reason = reason;
+	}
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		const edict_t *ent = ClientEdict(i);
@@ -99,8 +108,11 @@ MatchInput Snapshot()
 		// Bots can't type `ready`; they never hold a match up.
 		p.ready = ready[i] || (ent->svflags & SVF_BOT);
 		p.score = ent->client->resp.score;
+		p.team = ent->client->resp.ctf_team == CTF_TEAM1 ? 1 : ent->client->resp.ctf_team == CTF_TEAM2 ? 2 : 0;
 		in.players.push_back(p);
 	}
+	if (G_TeamplayEnabled())
+		in.team_scores = ctf->integer ? G_TeamCaptures() : G_TeamFrags();
 	return in;
 }
 
@@ -137,6 +149,12 @@ bool Transient(const edict_t *ent)
 // rounds, where RoundHold / RoundStart handle the players).
 void ResetArena(bool players)
 {
+	if (ctf->integer)
+	{
+		// Flags home first: a dropped flag is freed, a taken one shown again.
+		CTFResetFlag(CTF_TEAM1);
+		CTFResetFlag(CTF_TEAM2);
+	}
 	for (uint32_t i = game.maxclients + 1; i < globals.num_edicts; ++i)
 	{
 		edict_t *ent = g_edicts + i;
@@ -167,6 +185,8 @@ void ResetArena(bool players)
 	}
 	if (!players)
 		return;
+	if (G_TeamplayEnabled())
+		G_ResetTeamScores();
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		edict_t *ent = ClientEdict(i);
@@ -251,8 +271,18 @@ void WriteMatchRecord()
 		const edict_t *ent = ClientEdict(i);
 		if (!ent->inuse || !ent->client || !ent->client->pers.connected)
 			continue;
-		r.players.push_back(
-		    {ent->client->pers.netname, ent->client->resp.score, Playing(ent), (ent->svflags & SVF_BOT) != 0});
+		const ctfteam_t team = ent->client->resp.ctf_team;
+		r.players.push_back({ent->client->pers.netname, ent->client->resp.score, Playing(ent),
+		                     (ent->svflags & SVF_BOT) != 0,
+		                     !G_TeamplayEnabled() ? ""
+		                     : team == CTF_TEAM1  ? "red"
+		                     : team == CTF_TEAM2  ? "blue"
+		                                          : ""});
+	}
+	if (G_TeamplayEnabled())
+	{
+		const std::array<int, 2> scores = ctf->integer ? G_TeamCaptures() : G_TeamFrags();
+		r.teams = {{"red", scores[0]}, {"blue", scores[1]}};
 	}
 	const std::string name = Core_MatchRecord_FileName(r.ended_at_utc, r.map);
 	const std::string json = Core_MatchRecord_ToJson(r);
@@ -368,7 +398,10 @@ bool Core_Match_ClientCommand(edict_t *ent, const char *cmd)
 	const bool want_ready = !Q_strcasecmp(cmd, "ready");
 	if (!want_ready && Q_strcasecmp(cmd, "notready"))
 		return false;
-	if (!Core_Match_OwnsRules() || (match.State() != MatchState::Warmup && match.State() != MatchState::Countdown))
+	// Match flow off: stock's commands (CTF competition mode's own ready-up).
+	if (!Core_Match_OwnsRules())
+		return false;
+	if (match.State() != MatchState::Warmup && match.State() != MatchState::Countdown)
 	{
 		gi.LocClient_Print(ent, PRINT_HIGH, "There is no match warmup.\n");
 		return true;

@@ -67,6 +67,23 @@ void G_AdjustTeamScore(ctfteam_t team, int32_t offset)
 		ctfgame.total2 += offset;
 }
 
+// [mod] for the match flow (core/match_register.cpp)
+std::array<int, 2> G_TeamCaptures()
+{
+	return {ctfgame.team1, ctfgame.team2};
+}
+
+std::array<int, 2> G_TeamFrags() // [mod]
+{
+	return {ctfgame.total1, ctfgame.total2};
+}
+
+void G_ResetTeamScores() // [mod]
+{
+	ctfgame.team1 = ctfgame.team2 = 0;
+	ctfgame.total1 = ctfgame.total2 = 0;
+}
+
 cvar_t *competition;
 cvar_t *matchlock;
 cvar_t *electpercentage;

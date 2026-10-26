@@ -77,6 +77,9 @@ void CTFSpawn();
 void CTFPrecache();
 bool G_TeamplayEnabled();
 void G_AdjustTeamScore(ctfteam_t team, int32_t offset);
+std::array<int, 2> G_TeamCaptures(); // [mod] the match flow's view of the team
+std::array<int, 2> G_TeamFrags();    // [mod] scores (frags are live in teamplay)
+void G_ResetTeamScores();            // [mod] going LIVE
 
 void SP_info_player_team1(edict_t *self);
 void SP_info_player_team2(edict_t *self);

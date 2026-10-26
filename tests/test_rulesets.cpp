@@ -9,8 +9,9 @@
 // Every cvar a built-in ruleset may set. A typo, or a mod-prefixed name
 // (decision 0004), fails here instead of silently doing nothing.
 static const std::set<std::string> kKnownCvars = {
-    "g_gametype",     "match_warmup", "match_ready", "match_minplayers", "match_warmup_time",    "match_countdown",
-    "match_overtime", "timelimit",    "fraglimit",   "match_rounds",     "match_round_countdown"};
+    "g_gametype",     "match_warmup", "match_ready", "match_minplayers", "match_warmup_time",     "match_countdown",
+    "match_overtime", "timelimit",    "fraglimit",   "match_rounds",     "match_round_countdown", "ctf",
+    "teamplay",       "capturelimit"};
 
 TEST_CASE("built-in rulesets only set known cvars, one `set` per line")
 {
@@ -70,6 +71,7 @@ TEST_CASE("every built-in is a complete profile: it sets the same cvars")
 		// stock leaves the server's own limits alone; the others set them
 		these.erase("timelimit");
 		these.erase("fraglimit");
+		these.erase("capturelimit"); // only CTF has one
 		CHECK(these == first);
 	}
 }
@@ -109,4 +111,19 @@ TEST_CASE("commands: a built-in's cfg, else exec from rulesets/, then g_ruleset"
 	CHECK(match.substr(match.size() - std::string("set g_ruleset match\n").size()) == "set g_ruleset match\n");
 	CHECK(Core_Ruleset_Commands("clan") == "exec rulesets/clan.cfg\nset g_ruleset clan\n");
 	CHECK(Core_Ruleset_Commands("../x").empty());
+}
+
+TEST_CASE("every built-in sets ctf and teamplay to match its gametype")
+{
+	// Core_Gametype_PreInit lets `ctf 1` / `teamplay 1` pick CTF / TDM when
+	// g_gametype is ffa (stock configs), so a ruleset must never leave one on.
+	for (size_t i = 0; i < core_ruleset_count; ++i)
+	{
+		const std::string cfg = core_rulesets[i].cfg;
+		CAPTURE(core_rulesets[i].name);
+		const bool is_ctf = cfg.find("set g_gametype ctf\n") != std::string::npos;
+		const bool is_tdm = cfg.find("set g_gametype tdm\n") != std::string::npos;
+		CHECK(cfg.find(is_ctf ? "set ctf 1\n" : "set ctf 0\n") != std::string::npos);
+		CHECK(cfg.find(is_tdm ? "set teamplay 1\n" : "set teamplay 0\n") != std::string::npos);
+	}
 }
