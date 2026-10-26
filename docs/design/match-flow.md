@@ -1,8 +1,8 @@
 # Match flow
 
 Status: **implemented (Phase 2b, part 1)**: states, cvars, arena reset steps 1-3,
-harness tier 5. Not yet: rounds (with Duel, 3a), door/plat reset (step 4),
-rulesets as `.cfg` (2b part 2). One state machine shared by every gametype.
+harness tier 5, rulesets. Not yet: rounds (with Duel, 3a), door/plat reset
+(step 4). One state machine shared by every gametype.
 Change this page in the same PR as the code.
 
 ## Principle: off means stock
@@ -76,6 +76,12 @@ isn't a spectator. Every transition prints a `Match:` console line.
 | `match_overtime` | `0` | 0 none, -1 sudden death, N minutes |
 
 Rulesets (`.cfg`, decision 0003) set these; built-in defaults are stock.
+`sv ruleset <name>` applies one (`core/rulesets.h`): the built-ins `stock`
+and `match` are compiled in, any other name runs `exec rulesets/<name>.cfg`.
+Names are `[a-z0-9_-]` so an exec can't leave `rulesets/`. `g_ruleset`
+(serverinfo) records the last ruleset applied; the module can't see whether
+an exec found its file, so a missing file shows only the engine's
+`couldn't exec` warning.
 
 ## Implementation split
 

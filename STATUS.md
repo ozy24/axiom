@@ -41,8 +41,13 @@ be run on any later build, so 2b continues meanwhile.
 - Harness tier 5. Bots keep fighting after the reset (7 kills in the minute
   after LIVE vs 10 in a stock minute, checked by hand).
 
-Next, 2b part 2: rulesets as `.cfg` (built-in defaults, `ruleset <name>`),
-then Phase 3a Duel.
+## Phase 2b, part 2 (rulesets) done
+- `sv ruleset <name>` / `sv rulesets` (`core/rulesets.h`): built-ins `stock`
+  and `match` compiled in; other names exec `rulesets/<name>.cfg`. Safe names
+  only. Unit tests check every built-in sets only known cvars.
+
+Next: Phase 3a, Duel (1v1 queue, spectators, overtime, HoonyMode ruleset,
+minimal match JSON for the ladder).
 
 ## Known issues
 - Q2RED crashes at startup if a dedicated server is started without `+map`

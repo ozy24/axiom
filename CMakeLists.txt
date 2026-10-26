@@ -96,6 +96,8 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/core/identity_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/match.cpp"
     "${CMAKE_SOURCE_DIR}/core/match_register.cpp"
+    "${CMAKE_SOURCE_DIR}/core/rulesets.cpp"
+    "${CMAKE_SOURCE_DIR}/core/rulesets_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/stat_slots.cpp"
     "${CMAKE_SOURCE_DIR}/core/stat_slots_register.cpp")
 
@@ -176,7 +178,9 @@ if(GAME_BUILD_TESTS)
         tests/test_gametype.cpp
         tests/test_stat_slots.cpp
         tests/test_match.cpp
+        tests/test_rulesets.cpp
         core/identity.cpp
+        core/rulesets.cpp
         core/match.cpp
         core/stat_slots.cpp
         core/gametype.cpp

@@ -2,6 +2,7 @@
 // Licensed under the GNU General Public License 2.0.
 
 #include "g_local.h"
+#include "core/rulesets.h" // [mod]
 
 void Svcmd_Test_f()
 {
@@ -285,6 +286,8 @@ void ServerCommand()
 	const char *cmd;
 
 	cmd = gi.argv(1);
+	if (Core_Rulesets_ServerCommand(cmd)) // [mod] sv ruleset / sv rulesets
+		return;
 	if (Q_strcasecmp(cmd, "test") == 0)
 		Svcmd_Test_f();
 	else if (Q_strcasecmp(cmd, "addip") == 0)
