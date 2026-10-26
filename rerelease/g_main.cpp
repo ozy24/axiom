@@ -5,6 +5,7 @@
 #include "bots/bot_includes.h"
 #include "core/identity.h" // [mod]
 #include "core/gametype.h" // [mod]
+#include "core/match_hooks.h" // [mod]
 
 CHECK_GCLIENT_INTEGRITY;
 CHECK_EDICT_INTEGRITY;
@@ -950,7 +951,9 @@ inline void G_RunFrame_(bool main_loop)
 	}
 
 	// see if it is time to end a deathmatch
-	CheckDMRules();
+	Core_Match_Frame(); // [mod] match flow; stock rules unless it owns them
+	if (!Core_Match_OwnsRules()) // [mod]
+		CheckDMRules();
 
 	// see if needpass needs updated
 	CheckNeedPass();
