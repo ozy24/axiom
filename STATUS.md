@@ -17,15 +17,22 @@ Done:
 - Day-1 question answered: the retail DLL matches the source's save surface
   (decision 0001).
 
-In progress:
-- Hosted CI (`.github/workflows/ci.yml`) on the private GitHub remote.
+- **M1a reached.** Private remote `ozy24/axiom`; hosted CI green on the first
+  run: checks, Linux (Ubuntu 22.04, GCC 12, static runtime, exports only
+  `GetGameAPI`) and Windows (MSVC, exports `GetGameAPI` and `GetCGameAPI`).
 
-Next:
-- M1a: hosted CI green on Windows and Linux.
-- Then Phase 1b: the isolated jumpbox runner and the Q2RED harness.
+Next: Phase 1b, the isolated jumpbox runner and the Q2RED harness.
+
+Blocked on:
+- **The jumpbox is unreachable** (2026-10-26 ~13:00: no ping reply from
+  192.168.16.191). Also, DNS returns a bogus AAAA record `::` for
+  `jumpbox.lan`, so plain `ssh jumpbox.lan` connects to OZY1's own sshd and
+  fails host-key verification. That is not an attack; use `ssh -4` or fix the
+  DNS record. Never accept the changed key.
 
 ## Known issues
-- The Windows build has not run yet; first CI run will tell.
+- MSVC prints conversion warnings (C4244/C4267) in id's code at /W3. Expected;
+  id's code is not ours to clean up.
 - The save-name baseline includes 49 names the compiler drops as unused, so
   saves can never contain them. Harmless; the check just errs on the safe side.
 
