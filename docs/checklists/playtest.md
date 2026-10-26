@@ -22,7 +22,7 @@ Change modes from a terminal: `~/q2playtest/cmd.sh "sv ruleset hoony"` then
 |---|---|---|---|
 | 1 | Join | You're in warmup: free play, nothing counts | |
 | 2 | Type `ready` in the console | "<your name> is ready." broadcast; countdown starts (the bot is always ready) | |
-| 3 | Watch the countdown | "Match starts in 5…1", then "FIGHT!" — readable, sensible length? | |
+| 3 | Watch the countdown | "Match starts in 10…1", then "FIGHT!" — readable, sensible length? | |
 | 4 | At FIGHT | Everyone respawned, items back where they were, score 0 | |
 | 5 | `notready` during the countdown | Countdown cancelled, back to warmup | |
 | 6 | Have a third client join (second retail instance or `cmd.sh "bot_count 2"`) | They wait as a spectator; "waits in the duel queue" | |
@@ -52,6 +52,9 @@ Add bots for the other team: `cmd.sh "bot_count 3"`.
 | 18 | `sv ruleset stock`, `set ctf 1`, `set competition 1`, `map q2ctf1`; then `ready` | Stock CTF's own match ready-up answers (not "There is no match warmup") | |
 
 ## Report
+
+Results go in `docs/checklists/results/<date>-playtest.md` (a copy of the
+rows tested, with notes), so this file stays a clean template.
 
 Tell Claude: the build (`strings ~/q2playtest/baseq2/game_x64.so | grep mod-identity`),
 pass/fail per row and anything that felt wrong. Those become changes or new

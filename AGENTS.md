@@ -145,6 +145,8 @@ python3 -I scripts/harness/q2harness.py test --stock STOCK.so --candidate build/
 - **Tier 9 warmup:** six bots fight in a warmup that never starts
   (`match_minplayers 99`); `sv match` must show every score still 0 (Q2RED
   only).
+- **Tier 10 duel-rotation:** after a Duel ends the level changes
+  (`gamemap`); the loser must wait and the queued bot play (Q2RED only).
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

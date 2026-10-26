@@ -90,7 +90,7 @@ isn't a spectator. Every transition prints a `Match:` console line.
 | `match_ready` | `1` | in warmup, require every player to `ready` |
 | `match_minplayers` | `2` | players needed before the countdown can start |
 | `match_warmup_time` | `0` | seconds of warmup before starting anyway (0 = wait for ready) |
-| `match_countdown` | `5` | seconds |
+| `match_countdown` | `10` | seconds (10 since the 2026-10-26 playtest) |
 | `match_overtime` | `0` | 0 none, -1 sudden death, N minutes |
 | `match_rounds` | `0` | 1: every score change ends a round (HoonyMode) |
 | `match_round_countdown` | `3` | seconds between rounds |

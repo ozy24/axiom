@@ -28,6 +28,8 @@ Tiers (plan Phase 1b):
                  timelimit end, and a record with both teams.
   9. warmup      Bots fight in an endless warmup; every score stays 0
                  (Q2RED only).
+ 10. duel-rotation  After a level change the Duel loser waits and the queued
+                 bot plays (Q2RED only).
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -567,6 +569,43 @@ def tier_duel(args, results):
     results.append(("6 duel", not detail, detail + ([detail_note] if not rig.expects_frags else [])))
 
 
+def tier_duel_rotation(args, results):
+    """The rotation survives the level change: three bots duel to the
+    timelimit, the level changes (`gamemap`, as intermission exit does), and
+    on the new level the loser waits while the bot that was queued steps in.
+    At a level change every client re-enters one by one, which used to rebuild
+    the queue in join order. Q2RED only: three bots must begin."""
+    rig = RIGS[args.engine_kind](args, args.candidate, "t10-rotation")
+    if not rig.expects_frags:
+        results.append(("10 duel-rotation", True, ["skipped: only two bots begin on this engine"]))
+        return
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", "duel",
+                "+set", "match_warmup", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
+                "+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "3", "+set", "bot_skill", "3",
+                "+map", "q2dm1"])
+    log = rig.run(startup, [rig.wait_ready(), ("wait", r"Duel: .* next: ", 90), ("sleep", 2),
+                            ("cmd", "gamemap q2dm1"), ("sleep", 20), ("cmd", "quit")],
+                  timeout=args.boot_timeout + 180)
+    detail = []
+    m = re.search(r"Duel: .+ \d+ - \d+ .+; next: (.+)", log)
+    if not m:
+        results.append(("10 duel-rotation", False, ["no Duel result line"] + error_lines(log, rig)[:20]))
+        return
+    loser = m.group(1).strip()
+    before, after = log[:m.start()], log[m.end():]
+    queued = r"^(?:<\d+>)?(\S.*?) waits in the duel queue"  # without the console's <level> tag
+    queued_before = set(re.findall(queued, before, re.M))
+    queued_after = set(re.findall(queued, after, re.M))
+    if len(queued_before) != 1:
+        detail.append(f"{sorted(queued_before)} queued in the first match, expected one bot")
+    if queued_after != {loser}:
+        detail.append(f"{sorted(queued_after)} waiting after the level change, expected the loser {loser!r}")
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append(("10 duel-rotation", not detail, detail))
+
+
 def tier_teams(args, results):
     """TDM and CTF with the match flow: four bots on two teams play warmup ->
     live -> timelimit, and the record has both teams and every player on one."""
@@ -663,7 +702,8 @@ def tier_rounds(args, results):
 def cmd_test(args):
     results = []
     for tier in (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
-                 tier_rounds, tier_teams, tier_warmup):
+                 tier_rounds, tier_teams, tier_warmup,
+                 tier_duel_rotation):
         if args.only and tier.__name__ != f"tier_{args.only}":
             continue
         try:
@@ -739,7 +779,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

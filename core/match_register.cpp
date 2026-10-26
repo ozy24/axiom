@@ -7,6 +7,7 @@
 #include "core/match.h"
 #include "core/host_files.h"
 #include "core/match_record.h"
+#include "core/player_name.h"
 #include "mod_identity.h"
 #include "core/match_hooks.h"
 
@@ -42,7 +43,7 @@ void RegisterCvars()
 	match_ready = gi.cvar("match_ready", "1", CVAR_NOFLAGS);
 	match_minplayers = gi.cvar("match_minplayers", "2", CVAR_NOFLAGS);
 	match_warmup_time = gi.cvar("match_warmup_time", "0", CVAR_NOFLAGS);
-	match_countdown = gi.cvar("match_countdown", "5", CVAR_NOFLAGS);
+	match_countdown = gi.cvar("match_countdown", "10", CVAR_NOFLAGS);
 	match_overtime = gi.cvar("match_overtime", "0", CVAR_NOFLAGS);
 	match_rounds = gi.cvar("match_rounds", "0", CVAR_NOFLAGS);
 	match_round_countdown = gi.cvar("match_round_countdown", "3", CVAR_NOFLAGS);
@@ -286,8 +287,7 @@ void WriteMatchRecord()
 		if (!ent->inuse || !ent->client || !ent->client->pers.connected)
 			continue;
 		const ctfteam_t team = ent->client->resp.ctf_team;
-		r.players.push_back({ent->client->pers.netname, ent->client->resp.score, Playing(ent),
-		                     (ent->svflags & SVF_BOT) != 0,
+		r.players.push_back({Core_PlayerName(ent), ent->client->resp.score, Playing(ent), (ent->svflags & SVF_BOT) != 0,
 		                     !G_TeamplayEnabled() ? ""
 		                     : team == CTF_TEAM1  ? "red"
 		                     : team == CTF_TEAM2  ? "blue"
@@ -417,7 +417,7 @@ bool Core_Match_ServerCommand(const char *cmd)
 		const edict_t *ent = ClientEdict(i);
 		if (!ent->inuse || !ent->client || !ent->client->pers.connected)
 			continue;
-		gi.Com_PrintFmt("  {:4} {}{}\n", ent->client->resp.score, ent->client->pers.netname,
+		gi.Com_PrintFmt("  {:4} {}{}\n", ent->client->resp.score, Core_PlayerName(ent).c_str(),
 		                Playing(ent) ? "" : " (not playing)");
 	}
 	return true;
