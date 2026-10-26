@@ -229,6 +229,8 @@ class Q2RexRig(Rig):
 
     def setup(self, module):
         a = self.args
+        # Wine creates the prefix itself, but only if its parent exists.
+        pathlib.Path(a.wineprefix).parent.mkdir(parents=True, exist_ok=True)
         engine, retail = pathlib.Path(a.rex_engine), pathlib.Path(a.retail)
         self.server, self.base, self.home = self.dir / "server", self.dir / "base", self.dir / "home"
         for d in (self.server, self.base / "baseq2", self.home):
