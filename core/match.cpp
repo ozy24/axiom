@@ -31,19 +31,44 @@ int PlayingCount(const MatchInput &in)
 	return (int)std::count_if(in.players.begin(), in.players.end(), [](const MatchPlayer &p) { return p.playing; });
 }
 
-// Highest and second-highest score among playing clients.
-void TopTwo(const MatchInput &in, int &top, int &second, int &count)
+// Enough players, and with teams someone playing on each.
+bool Staffed(const MatchConfig &config, const MatchInput &in)
+{
+	if (PlayingCount(in) < std::max(1, config.min_players))
+		return false;
+	if (!config.teams)
+		return true;
+	const auto on = [&](int team)
+	{
+		return std::any_of(in.players.begin(), in.players.end(),
+		                   [&](const MatchPlayer &p) { return p.playing && p.team == team; });
+	};
+	return on(1) && on(2);
+}
+
+// Highest and second-highest score among playing clients, or between the two
+// teams when `teams`.
+void TopTwo(const MatchInput &in, bool teams, int &top, int &second, int &count)
 {
 	std::vector<int> scores;
-	for (const MatchPlayer &p : in.players)
+	if (teams)
+		scores.assign(in.team_scores.begin(), in.team_scores.end());
+	else
 	{
-		if (p.playing)
-			scores.push_back(p.score);
+		for (const MatchPlayer &p : in.players)
+		{
+			if (p.playing)
+				scores.push_back(p.score);
+		}
 	}
 	std::sort(scores.begin(), scores.end(), std::greater<int>());
 	count = (int)scores.size();
 	top = count > 0 ? scores[0] : 0;
 	second = count > 1 ? scores[1] : 0;
+}
+const char *GametypeReason(const MatchInput &in)
+{
+	return in.gametype_over_reason.empty() ? "gametype" : in.gametype_over_reason.c_str();
 }
 } // namespace
 
@@ -67,7 +92,7 @@ void Match::Begin(int64_t now_ms)
 
 bool Match::CanStart(const MatchInput &in) const
 {
-	if (PlayingCount(in) < std::max(1, config_.min_players))
+	if (!Staffed(config_, in))
 		return false;
 	if (config_.warmup_time_ms > 0 && in.now_ms - state_since_ms_ >= config_.warmup_time_ms &&
 	    state_ == MatchState::Warmup)
@@ -164,10 +189,10 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 		// Cancel if the start condition no longer holds (someone un-readied or
 		// left). A warmup-timer start isn't re-checked against ready.
 		const bool timer_start = config_.warmup_time_ms > 0;
-		const bool still_ok = PlayingCount(in) >= std::max(1, config_.min_players) &&
-		                      (timer_start || !config_.ready_required ||
-		                       std::all_of(in.players.begin(), in.players.end(),
-		                                   [](const MatchPlayer &p) { return !p.playing || p.ready; }));
+		const bool still_ok =
+		    Staffed(config_, in) && (timer_start || !config_.ready_required ||
+		                             std::all_of(in.players.begin(), in.players.end(),
+		                                         [](const MatchPlayer &p) { return !p.playing || p.ready; }));
 		if (!still_ok)
 		{
 			state_ = MatchState::Warmup;
@@ -193,15 +218,20 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 	{
 		if (in.gametype_over)
 		{
-			End("gametype", out);
+			End(GametypeReason(in), out);
 			break;
 		}
 		int top, second, count;
-		TopTwo(in, top, second, count);
-		if (config_.fraglimit > 0 && count > 0 && top >= config_.fraglimit)
+		TopTwo(in, config_.teams, top, second, count);
+		if (config_.fraglimit > 0)
 		{
-			End("fraglimit", out);
-			break;
+			int frag_top, frag_second, frag_count;
+			TopTwo(in, config_.teams && config_.fraglimit_on_teams, frag_top, frag_second, frag_count);
+			if (frag_count > 0 && frag_top >= config_.fraglimit)
+			{
+				End("fraglimit", out);
+				break;
+			}
 		}
 		if (time_end_ms_ && in.now_ms >= time_end_ms_)
 		{
@@ -227,11 +257,11 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 	{
 		if (in.gametype_over)
 		{
-			End("gametype", out);
+			End(GametypeReason(in), out);
 			break;
 		}
 		int top, second, count;
-		TopTwo(in, top, second, count);
+		TopTwo(in, config_.teams, top, second, count);
 		if (config_.overtime < 0)
 		{
 			// Sudden death: the first score that breaks the tie ends it.
@@ -259,7 +289,7 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 	{
 		if (in.gametype_over)
 		{
-			End("gametype", out);
+			End(GametypeReason(in), out);
 			break;
 		}
 		if (round_return_ == MatchState::Live && time_end_ms_ && in.now_ms >= time_end_ms_)

@@ -39,6 +39,12 @@ turns it on.
   The end conditions are stock's (`timelimit`, `fraglimit`) plus the
   gametype's (`CheckDMRules` hook), so a gametype that ends on something else
   (rounds, captures) uses its hook.
+- **Teams** (TDM, CTF): the match needs someone playing on each team to start
+  (a client on no team isn't playing), and the lead, ties and sudden death go
+  by **team score**: frags in TDM, captures in CTF. TDM's `fraglimit` applies
+  to team totals and CTF's to players, both as stock; CTF ends at
+  `capturelimit` through its `match_over` hook. Going LIVE also zeroes the
+  team scores and sends the flags home.
 - **OVERTIME:** when time runs out with the lead tied. `match_overtime 0`: no
   overtime (stock: ends tied). `-1`: sudden death (the next score wins).
   `N` > 0: N more minutes, repeated while tied.

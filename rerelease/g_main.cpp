@@ -179,6 +179,7 @@ void PreInitGame()
 	// ZOID
 	CTFInit();
 	// ZOID
+	Core_Gametype_PreInit(); // [mod] g_gametype sets ctf / teamplay
 
 	// ZOID
 	// This gamemode only supports deathmatch

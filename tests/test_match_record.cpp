@@ -30,7 +30,7 @@ MatchRecord Sample()
 	r.ended_at_utc = "2026-10-26T19:30:05Z";
 	r.reason = "timelimit";
 	r.live_ms = 600500;
-	r.players = {{"Spec", 0, false, false}, {"Bob", 3, true, true}, {"Ann", 7, true, false}};
+	r.players = {{"Spec", 0, false, false, ""}, {"Bob", 3, true, true, ""}, {"Ann", 7, true, false, ""}};
 	return r;
 }
 } // namespace
@@ -56,14 +56,14 @@ TEST_CASE("the record carries the mod, the match and the players, best first")
 TEST_CASE("a tie at the top has no winner")
 {
 	MatchRecord r = Sample();
-	r.players = {{"A", 4, true, false}, {"B", 4, true, false}};
+	r.players = {{"A", 4, true, false, ""}, {"B", 4, true, false, ""}};
 	CHECK(Parse(Core_MatchRecord_ToJson(r))["winner"].isNull());
 }
 
 TEST_CASE("names with quotes and unicode stay valid JSON")
 {
 	MatchRecord r = Sample();
-	r.players = {{"\"Q\\uote\" \xc3\xa9", 1, true, false}, {"x", 0, true, false}};
+	r.players = {{"\"Q\\uote\" \xc3\xa9", 1, true, false, ""}, {"x", 0, true, false, ""}};
 	const Json::Value v = Parse(Core_MatchRecord_ToJson(r));
 	CHECK(v["players"][0]["name"].asString() == "\"Q\\uote\" \xc3\xa9");
 }
@@ -87,4 +87,24 @@ TEST_CASE("a match log directory becomes a game path the engine accepts")
 	CHECK(Core_GamePath(".hidden", "a.json").empty());
 	CHECK(Core_GamePath("my matches", "a.json").empty());
 	CHECK(Core_GamePath(std::string(50, 'm'), "20261026-195500-q2dm1.json").empty()); // 64 bytes or more
+}
+
+TEST_CASE("team modes: the record lists the teams and the winner is a team")
+{
+	MatchRecord r = Sample();
+	r.gametype = "ctf";
+	r.players = {{"Ann", 9, true, false, "red"}, {"Bob", 2, true, false, "blue"}, {"Spec", 0, false, false, ""}};
+	r.teams = {{"red", 1}, {"blue", 3}};
+	const Json::Value v = Parse(Core_MatchRecord_ToJson(r));
+	REQUIRE(v["teams"].size() == 2);
+	CHECK(v["teams"][1]["name"] == "blue");
+	CHECK(v["teams"][1]["score"] == 3);
+	CHECK(v["winner"] == "blue"); // the team, not the top player
+	CHECK(v["players"][0]["team"] == "red");
+	CHECK_FALSE(v["players"][2].isMember("team"));
+
+	r.teams = {{"red", 2}, {"blue", 2}};
+	CHECK(Parse(Core_MatchRecord_ToJson(r))["winner"].isNull());
+	r.teams = {{"red", 5}, {"blue", 5}, {"green", 1}};
+	CHECK(Parse(Core_MatchRecord_ToJson(r))["winner"].isNull()); // a tie at the top, lower teams don't break it
 }

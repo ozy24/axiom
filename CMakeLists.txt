@@ -60,7 +60,7 @@ set_target_properties(game_jsoncpp PROPERTIES
 # A plain default rather than a cache entry, so a change to the list here
 # reaches existing build trees; a downstream mod passes -DGAME_GAMETYPES=...
 if(NOT DEFINED GAME_GAMETYPES)
-    set(GAME_GAMETYPES "ffa;duel")
+    set(GAME_GAMETYPES "ffa;duel;tdm;ctf")
 endif()
 if(NOT "ffa" IN_LIST GAME_GAMETYPES)
     message(FATAL_ERROR "GAME_GAMETYPES must include ffa (the fallback)")

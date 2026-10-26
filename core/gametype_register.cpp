@@ -33,6 +33,40 @@ void PublishLobbyMode(const GametypeDef &def)
 }
 } // namespace
 
+void Core_Gametype_PreInit()
+{
+	// Single player and coop never select a gametype, nor do Rogue's stock
+	// modes. ctf or teamplay without deathmatch is still a match: stock forces
+	// deathmatch on for them, right after this.
+	if (!deathmatch->integer && !ctf->integer && !teamplay->integer)
+		return;
+	if (gi.cvar("gamerules", "0", CVAR_LATCH)->integer)
+		return;
+	cvar_t *g_gametype = gi.cvar("g_gametype", "ffa", CVAR_SERVERINFO | CVAR_LATCH);
+	const GametypeDef *def = Core_Gametype_Find(core_gametypes, core_gametype_count, g_gametype->string);
+	if (!def || !strcmp(def->id, "ffa"))
+	{
+		// A stock config: ctf / teamplay pick the gametype built on them.
+		const char *stock = ctf->integer ? "ctf" : teamplay->integer ? "teamplay" : nullptr;
+		for (size_t i = 0; stock && i < core_gametype_count; ++i)
+		{
+			if (!strcmp(core_gametypes[i]->retail_mode, stock))
+			{
+				gi.Com_PrintFmt("{} 1 selects g_gametype {}\n", stock, core_gametypes[i]->id);
+				gi.cvar_forceset("g_gametype", core_gametypes[i]->id);
+				def = core_gametypes[i];
+				break;
+			}
+		}
+		if (!def)
+			return; // unknown: Core_Gametype_Start reports it and uses ffa
+	}
+	else if (!deathmatch->integer)
+		return; // an explicit gametype only applies to deathmatch
+	gi.cvar_forceset("ctf", strcmp(def->retail_mode, "ctf") ? "0" : "1");
+	gi.cvar_forceset("teamplay", strcmp(def->retail_mode, "teamplay") ? "0" : "1");
+}
+
 const GametypeDef *Core_Gametype_Active()
 {
 	return active;

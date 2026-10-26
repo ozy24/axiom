@@ -116,13 +116,13 @@ void Duel_Frame()
 	}
 }
 
-bool Duel_MatchOver()
+const char *Duel_MatchOver()
 {
 	// A duellist left mid-match: it's a forfeit.
 	int playing = 0;
 	for (int id : Present())
 		playing += IsPlaying(Slot(id));
-	return playing < 2;
+	return playing < 2 ? "forfeit" : nullptr;
 }
 
 void Duel_MatchEnded()

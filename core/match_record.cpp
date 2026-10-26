@@ -35,19 +35,42 @@ std::string Core_MatchRecord_ToJson(const MatchRecord &r)
 		v["score"] = p.score;
 		v["playing"] = p.playing;
 		v["bot"] = p.bot;
+		if (!p.team.empty())
+			v["team"] = p.team;
 		list.append(v);
 	}
 	root["players"] = list;
 
-	int playing = 0;
-	for (const MatchRecordPlayer &p : players)
-		playing += p.playing;
-	if (playing >= 2 && players[0].playing && players[0].score > players[1].score)
-		root["winner"] = players[0].name;
-	else if (playing == 1)
-		root["winner"] = players[0].name;
+	root["winner"] = Json::nullValue;
+	if (!r.teams.empty())
+	{
+		// Team modes: the team with the highest score, none on a tie.
+		Json::Value teams(Json::arrayValue);
+		const MatchRecordTeam *best = nullptr;
+		bool tied = false;
+		for (const MatchRecordTeam &t : r.teams)
+		{
+			Json::Value v;
+			v["name"] = t.name;
+			v["score"] = t.score;
+			teams.append(v);
+			if (!best || t.score > best->score)
+				best = &t, tied = false;
+			else if (t.score == best->score)
+				tied = true;
+		}
+		root["teams"] = teams;
+		if (!tied)
+			root["winner"] = best->name;
+	}
 	else
-		root["winner"] = Json::nullValue;
+	{
+		int playing = 0;
+		for (const MatchRecordPlayer &p : players)
+			playing += p.playing;
+		if ((playing >= 2 && players[0].playing && players[0].score > players[1].score) || playing == 1)
+			root["winner"] = players[0].name;
+	}
 
 	Json::StreamWriterBuilder w;
 	w["indentation"] = "  ";

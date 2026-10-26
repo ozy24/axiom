@@ -24,6 +24,8 @@ Tiers (plan Phase 1b):
                  rotates to the back and a match record is written.
   7. rounds      match_rounds on: a frag ends the round, the next one starts
                  (Q2RED only: needs bots that fight).
+  8. teams       TDM and CTF with the match flow: four bots on two teams, a
+                 timelimit end, and a record with both teams.
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -450,7 +452,7 @@ def tier_gametype_boot(args, results):
     for label, select, expect in cases:
         rig = RIGS[args.engine_kind](args, args.candidate, f"t4-{label}")
         startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8"] + select
-                   + rig.bot_args() + ["+map", "q2dm1"])
+                   + rig.bot_args() + ["+map", GAMETYPE_MAP.get(label, "q2dm1")])
         log = rig.run(startup, [rig.wait_ready(), ("sleep", args.boot_seconds), ("cmd", "q2rex_lobby_mode"),
                                 ("cmd", "q2rex_lobby_retail_mode"), ("sleep", 1), ("cmd", "quit")],
                       timeout=args.boot_timeout + args.boot_seconds + 60)
@@ -461,8 +463,9 @@ def tier_gametype_boot(args, results):
             # Q2REX's lobby contract: the module publishes its mode.
             if not re.search(rf'"q2rex_lobby_mode" is "{re.escape(label)}"', log):
                 detail.append(f"q2rex_lobby_mode is not {label}")
-            if not re.search(r'"q2rex_lobby_retail_mode" is "deathmatch"', log):
-                detail.append("q2rex_lobby_retail_mode is not deathmatch")
+            retail = RETAIL_MODE.get(label, "deathmatch")
+            if not re.search(rf'"q2rex_lobby_retail_mode" is "{retail}"', log):
+                detail.append(f"q2rex_lobby_retail_mode is not {retail}")
         if rig.returncode != 0:
             detail.append(f"server exited with code {rig.returncode}")
         if "==== ShutdownGame ====" not in log:
@@ -470,6 +473,10 @@ def tier_gametype_boot(args, results):
         detail += error_lines(log, rig)[:20]
         results.append((f"4 gametype-boot {label}", not detail, detail))
 
+
+# The stock mode each team gametype runs on, and the map it's tested on.
+RETAIL_MODE = {"tdm": "teamplay", "ctf": "ctf"}
+GAMETYPE_MAP = {"ctf": "q2ctf1"}
 
 MATCH_SEQUENCE = ["Match: warmup", "Match: warmup -> countdown", "Match: countdown -> live",
                   "Match: live -> intermission", "Match: ended (timelimit)"]
@@ -558,6 +565,45 @@ def tier_duel(args, results):
     results.append(("6 duel", not detail, detail + ([detail_note] if not rig.expects_frags else [])))
 
 
+def tier_teams(args, results):
+    """TDM and CTF with the match flow: four bots on two teams play warmup ->
+    live -> timelimit, and the record has both teams and every player on one."""
+    for gt in ("tdm", "ctf"):
+        rig = RIGS[args.engine_kind](args, args.candidate, f"t8-{gt}")
+        bots = (["+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "4", "+set", "bot_skill", "3"]
+                if rig.kind == "q2red" else ["+set", "bot_minPlayers", "4"])
+        startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", gt,
+                    "+set", "match_warmup", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
+                    "+set", "g_matchlog_dir", "matches"] + bots + ["+map", GAMETYPE_MAP.get(gt, "q2dm1")])
+        log = rig.run(startup, [rig.wait_ready(), ("wait", r"Match: ended", 90), ("sleep", 2), ("cmd", "quit")],
+                      timeout=args.boot_timeout + 150)
+        detail = []
+        if not re.search(rf"Gametype: .+ \({gt}\)", log):
+            detail.append(f"gametype {gt} not selected")
+        seen = ["Match: " + l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
+        if seen != MATCH_SEQUENCE:
+            detail.append(f"transitions {seen}, expected {MATCH_SEQUENCE}")
+        records = sorted(rig.dir.rglob("matches/*.json"))
+        if len(records) != 1:
+            detail.append(f"{len(records)} match records, expected 1")
+        else:
+            try:
+                rec = json.loads(records[0].read_text())
+                if rec.get("gametype") != gt or rec.get("reason") != "timelimit":
+                    detail.append(f"record gametype/reason {rec.get('gametype')}/{rec.get('reason')}")
+                if [t.get("name") for t in rec.get("teams", [])] != ["red", "blue"]:
+                    detail.append(f"record teams {rec.get('teams')}")
+                playing = [p for p in rec.get("players", []) if p.get("playing")]
+                if {p.get("team") for p in playing} != {"red", "blue"}:
+                    detail.append(f"playing clients' teams {[p.get('team') for p in playing]}, expected red and blue")
+            except ValueError as e:
+                detail.append(f"match record is not JSON: {e}")
+        if rig.returncode != 0:
+            detail.append(f"server exited with code {rig.returncode}")
+        detail += error_lines(log, rig)[:20]
+        results.append((f"8 teams {gt}", not detail, detail))
+
+
 def tier_rounds(args, results):
     """match_rounds on (HoonyMode's mechanics): a frag ends the round, players
     are held, the next round starts and the bots fight on. Needs bots that
@@ -586,7 +632,7 @@ def tier_rounds(args, results):
 def cmd_test(args):
     results = []
     for tier in (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
-                 tier_rounds):
+                 tier_rounds, tier_teams):
         if args.only and tier.__name__ != f"tier_{args.only}":
             continue
         try:
@@ -657,12 +703,12 @@ def main():
     ap.add_argument("--settle", type=float, default=6, help="seconds after the map loads before saving")
     ap.add_argument("--dm-seconds", type=float, default=60)
     ap.add_argument("--runs", type=int, default=6, help="calibration runs")
-    ap.add_argument("--gametypes", default="ffa,duel",
+    ap.add_argument("--gametypes", default="ffa,duel,tdm,ctf",
                     help="gametype ids tier 4 boots (the registry's, GAME_GAMETYPES)")
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

@@ -15,6 +15,13 @@ struct MatchRecordPlayer
 	int score = 0;
 	bool playing = true; // false: spectator or queued
 	bool bot = false;
+	std::string team; // team modes: "red" or "blue"; empty otherwise
+};
+
+struct MatchRecordTeam
+{
+	std::string name; // "red", "blue"
+	int score = 0;    // TDM: frags; CTF: captures
 };
 
 struct MatchRecord
@@ -27,6 +34,7 @@ struct MatchRecord
 	std::string reason;       // timelimit, fraglimit, sudden death, gametype, rules...
 	int64_t live_ms = 0;      // time from LIVE to the end
 	std::vector<MatchRecordPlayer> players;
+	std::vector<MatchRecordTeam> teams; // empty outside team modes; then the winner is a team
 };
 
 // The record as JSON: players sorted by score (highest first), and "winner"
