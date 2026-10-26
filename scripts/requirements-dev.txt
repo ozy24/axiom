@@ -1,3 +1,3 @@
 # Developer tools, pinned so local and CI results match.
-# Install: python3 -m venv ~/.local/share/axiom-tools && ~/.local/share/axiom-tools/bin/pip install -r scripts/requirements-dev.txt
+# Install: python3 -m venv ~/.local/share/q2game-tools && ~/.local/share/q2game-tools/bin/pip install -r scripts/requirements-dev.txt
 clang-format==19.1.7

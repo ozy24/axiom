@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Formatting check for Axiom's own code (.clang-format). id's code under
+# Formatting check for the mod's own code (.clang-format). id's code under
 # rerelease/ and vendored code under third_party/ are excluded: they keep their
 # upstream formatting so diffs against upstream stay readable.
 #
@@ -8,7 +8,7 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-TOOLS_VENV=${AXIOM_TOOLS_VENV:-$HOME/.local/share/axiom-tools}
+TOOLS_VENV=${Q2_TOOLS_VENV:-$HOME/.local/share/q2game-tools}
 if [[ -z "${CLANG_FORMAT:-}" && -x "$TOOLS_VENV/bin/clang-format" ]]; then
     CLANG_FORMAT="$TOOLS_VENV/bin/clang-format"
 fi

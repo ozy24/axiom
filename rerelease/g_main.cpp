@@ -3,6 +3,7 @@
 
 #include "g_local.h"
 #include "bots/bot_includes.h"
+#include "core/identity.h" // [mod]
 
 CHECK_GCLIENT_INTEGRITY;
 CHECK_EDICT_INTEGRITY;
@@ -274,7 +275,7 @@ void InitGame()
         "0"
 #endif
 		, CVAR_SERVERINFO | CVAR_LATCH);
-	gi.cvar("gamename", GAMEVERSION, CVAR_SERVERINFO | CVAR_LATCH);
+	Core_Identity_Register(); // [mod] gamename, g_version, banner
 
 	maxspectators = gi.cvar("maxspectators", "4", CVAR_SERVERINFO);
 	skill = gi.cvar("skill", "1", CVAR_LATCH);

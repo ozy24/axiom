@@ -2,7 +2,7 @@
 
 _Updated at the end of every session. Last update: 2026-10-26._
 
-## Current phase: 1b done, 1c next
+## Current phase: 1c (first id edits, under tests)
 
 M1a reached 2026-10-26: hosted CI green (checks, Linux, Windows/MSVC).
 
@@ -26,13 +26,17 @@ M1a reached 2026-10-26: hosted CI green (checks, Linux, Windows/MSVC).
   static checks, and tiers 1-3 on Q2RED (`.so`) and on Q2REX under Wine (the
   MSVC `.dll`), all green on the runner.
 
-Next: Phase 1c (first id edits, under tests):
-- `mod.json` identity and generated header; change `GAMEVERSION`/`gamename`
-  and split the `listip.cfg` path; `gamename` onto the allowed-differences
-  list if it shows up in saves.
-- Name-leak check, version from git, rename drill.
+1c, part 1 (identity) done:
+- `mod.json` + `cmake/identity.cmake` -> generated `mod_identity.h`; build id
+  from git. serverinfo `gamename` = id, `g_version`, banner, `mod-identity:`
+  stamp. The one id edit: `g_main.cpp`, marked `[mod]`. `gamename` isn't in
+  saves, so no allowed-differences entry; all tiers still pass.
+- `scripts/check_name_leak.py` (in check.sh) and `scripts/rename_drill.sh`
+  (CI job `rename-drill`). Decision 0008.
+
+Next, 1c part 2:
 - Unit-test framework with the `Host` seam.
-- Manual single-player checklist written for Chris (human gate).
+- `docs/architecture.md`; manual single-player checklist for Chris (human gate).
 
 ## Known issues
 - Q2RED crashes at startup if a dedicated server is started without `+map`
@@ -50,6 +54,6 @@ Next: Phase 1c (first id edits, under tests):
 - None right now. The manual single-player checklist arrives with M1c.
 
 ## Local setup notes
-- Format tools: `python3 -m venv ~/.local/share/axiom-tools &&
-  ~/.local/share/axiom-tools/bin/pip install -r scripts/requirements-dev.txt`
+- Format tools: `python3 -m venv ~/.local/share/q2game-tools &&
+  ~/.local/share/q2game-tools/bin/pip install -r scripts/requirements-dev.txt`
   (`scripts/check_format.sh` finds it automatically).

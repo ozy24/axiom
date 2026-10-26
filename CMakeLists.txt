@@ -6,6 +6,8 @@ project(q2game LANGUAGES CXX)
 
 set(GAME_SOURCE_DIR "${CMAKE_SOURCE_DIR}/rerelease")
 
+include(cmake/identity.cmake)
+
 # The engine loads the client game (GetCGameAPI) from the same module as the
 # server game. Retail clients need it, so Windows builds always include it.
 # Linux builds feed the Q2RED dedicated server, which never loads it; it is off
@@ -55,7 +57,10 @@ set_target_properties(game_jsoncpp PROPERTIES
 add_library(game_x64 SHARED ${GAME_SOURCES}
     # Compile-time checks that the stat and ammo/powerup layout stock clients
     # depend on is unchanged (AGENTS.md hard rule 2).
-    "${CMAKE_SOURCE_DIR}/checks/stock_client_contract.cpp")
+    "${CMAKE_SOURCE_DIR}/checks/stock_client_contract.cpp"
+    # The mod's own code (AGENTS.md: small focused files, not id's).
+    "${CMAKE_SOURCE_DIR}/core/identity.cpp"
+    "${CMAKE_SOURCE_DIR}/core/identity_register.cpp")
 
 set_target_properties(game_x64 PROPERTIES
     # id's project uses C++17 (game.vcxproj LanguageStandard stdcpp17).
@@ -68,6 +73,8 @@ set_target_properties(game_x64 PROPERTIES
 
 target_include_directories(game_x64 PRIVATE
     "${GAME_SOURCE_DIR}"
+    "${CMAKE_SOURCE_DIR}"
+    "${MOD_GENERATED_DIR}"
     "${GAME_FMT_DIR}/include")
 target_link_libraries(game_x64 PRIVATE game_jsoncpp)
 
