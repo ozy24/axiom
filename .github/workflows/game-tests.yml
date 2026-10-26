@@ -1,0 +1,91 @@
+# Game tests on the self-hosted jumpbox runner (scripts/jumpbox/). They need
+# retail game data, which lives only on that box, so they can't run on hosted
+# runners. Nothing that contains game data is ever uploaded: artifacts are text
+# logs and save JSON only.
+name: game-tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One game-test run at a time on the box; a newer push supersedes an older one.
+  group: game-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  q2red:
+    # Never run code from a fork on the self-hosted runner. Same-repo PRs and
+    # pushes only. Revisit before the repo goes public (plan Phase 7).
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, q2-game-tests]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the stock-reference tag must be reachable
+
+      - name: Build candidate
+        run: |
+          cmake --preset linux-release >/dev/null
+          nice cmake --build --preset linux-release
+
+      - name: Build stock reference
+        # Unmodified id code with this repo's build system, tagged once and
+        # never moved. Cached on the runner by commit.
+        run: |
+          . scripts/harness/pins.env
+          [ "$(git rev-parse stock-reference^{commit})" = "$STOCK_REFERENCE_COMMIT" ] ||
+            { echo "stock-reference tag moved; it must point at $STOCK_REFERENCE_COMMIT"; exit 1; }
+          ref=$(git rev-parse --short stock-reference^{commit})
+          out="$RUNNER_TOOL_CACHE/stock-reference/$ref"
+          if [ ! -f "$out/game_x64.so" ]; then
+            rm -rf "$out.src" && mkdir -p "$out.src"
+            git archive stock-reference | tar -x -C "$out.src"
+            cmake -S "$out.src" -B "$out.src/build" -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo >/dev/null
+            nice cmake --build "$out.src/build"
+            mkdir -p "$out" && cp "$out.src/build/game_x64.so" "$out/"
+            rm -rf "$out.src"
+          fi
+          echo "STOCK_SO=$out/game_x64.so" >> "$GITHUB_ENV"
+
+      - name: Run tiers 1-3
+        run: |
+          mkdir -p harness-logs
+          nice python3 -I scripts/harness/q2harness.py test \
+            --stock "$STOCK_SO" --candidate build/linux-release/game_x64.so \
+            --workdir "$(mktemp -d /tmp/q2h-XXXX)" --keep 2>&1 | tee harness-logs/summary.txt
+          exit "${PIPESTATUS[0]}"
+
+      - name: Collect logs
+        if: always()
+        run: |
+          # Text only: console logs and the module's save JSON. Never paks.
+          for d in /tmp/q2h-*/*/; do
+            [ -d "$d" ] || continue
+            n=$(basename "$d")
+            mkdir -p "harness-logs/$n"
+            cp "$d/console.log" "harness-logs/$n/" 2>/dev/null || true
+            # The module's own JSON only (game.ssv, <map>.sav); the engine's
+            # binary .sv2 and server.ssv stay behind.
+            for s in "$d"/baseq2/save/coop_harness "$d"/baseq2/save/coop_reloaded; do
+              [ -d "$s" ] || continue
+              mkdir -p "harness-logs/$n/$(basename "$s")"
+              cp "$s"/game.ssv "$s"/*.sav "harness-logs/$n/$(basename "$s")/" 2>/dev/null || true
+            done
+          done
+          rm -rf /tmp/q2h-*
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: game-test-logs
+          path: harness-logs/
+          retention-days: 14
