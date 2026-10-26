@@ -11,10 +11,13 @@ the MSVC DLL from `8627ce73`; all eight steps passed.
 - `docs/design/gametype-api.md`: Rogue's `DMGame` is the one dispatch table;
   an Axiom registry (`core/gametype.h`, `gametypes/<id>/`, CMake
   `GAME_GAMETYPES`) selects by `g_gametype` (stock `gamerules` still works).
-- ffa (stock DM, no hooks), tag and ball (Rogue's, decision 0010). One `[mod]`
-  line in `g_main.cpp` replaces the `InitGameRules` call.
+- ffa (stock DM, no hooks) is the only registry gametype. Rogue's Tag and
+  DeathBall stay reachable only through stock `gamerules`, untouched (Chris,
+  decision 0010). One `[mod]` line in `g_main.cpp` replaces the
+  `InitGameRules` call.
 - Known id bug #1 fixed: stock Tag crashed on every map (`droptofloor`).
-- Harness tier 4: every gametype boots q2dm1 with bots.
+- Harness tier 4: every registry gametype and stock gamerules 2/3 boot q2dm1
+  with bots.
 
 Next in 2a:
 - HUD stat-slot allocator; team service (needed by TDM/CTF in 3b).

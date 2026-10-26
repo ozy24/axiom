@@ -15,8 +15,9 @@ Tiers (plan Phase 1b):
                  (docs/decisions/0007), proven by the engine's SV_ReadLevelFile.
   3. dm-smoke    A deathmatch match with bots: no crash, frags happen, clean
                  shutdown, no new error lines.
-  4. gametype-boot  Every registered gametype boots q2dm1 with bots, logs its
-                 "Gametype:" line and shuts down cleanly.
+  4. gametype-boot  Every registered gametype, and Rogue's stock gamerules
+                 modes, boot q2dm1 with bots, log their "Gametype:" line and
+                 shut down cleanly.
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -433,22 +434,27 @@ def tier_dm_smoke(args, results):
 
 
 def tier_gametype_boot(args, results):
-    """Every registered gametype boots q2dm1 with bots and shuts down cleanly."""
-    for gt in [g for g in args.gametypes.split(",") if g]:
-        rig = RIGS[args.engine_kind](args, args.candidate, f"t4-{gt}")
-        startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", gt]
+    """Every registered gametype, and Rogue's stock gamerules modes (still run
+    as stock, decision 0010), boot q2dm1 with bots and shut down cleanly."""
+    cases = [(gt, ["+set", "g_gametype", gt], rf"Gametype: .+ \({re.escape(gt)}\)")
+             for gt in args.gametypes.split(",") if gt]
+    cases += [(f"gamerules{n}", ["+set", "gamerules", n], rf"Gametype: stock gamerules {re.escape(n)}\b")
+              for n in args.stock_gamerules.split(",") if n]
+    for label, select, expect in cases:
+        rig = RIGS[args.engine_kind](args, args.candidate, f"t4-{label}")
+        startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8"] + select
                    + rig.bot_args() + ["+map", "q2dm1"])
         log = rig.run(startup, [rig.wait_ready(), ("sleep", args.boot_seconds), ("cmd", "quit")],
                       timeout=args.boot_timeout + args.boot_seconds + 60)
         detail = []
-        if not re.search(rf"Gametype: .+ \({re.escape(gt)}\)", log):
-            detail.append(f"no \"Gametype: ... ({gt})\" line")
+        if not re.search(expect, log):
+            detail.append(f"no line matching /{expect}/")
         if rig.returncode != 0:
             detail.append(f"server exited with code {rig.returncode}")
         if "==== ShutdownGame ====" not in log:
             detail.append("no clean ShutdownGame")
         detail += error_lines(log, rig)[:20]
-        results.append((f"4 gametype-boot {gt}", not detail, detail))
+        results.append((f"4 gametype-boot {label}", not detail, detail))
 
 
 def cmd_test(args):
@@ -524,8 +530,10 @@ def main():
     ap.add_argument("--settle", type=float, default=6, help="seconds after the map loads before saving")
     ap.add_argument("--dm-seconds", type=float, default=60)
     ap.add_argument("--runs", type=int, default=6, help="calibration runs")
-    ap.add_argument("--gametypes", default="ffa,tag,ball",
+    ap.add_argument("--gametypes", default="ffa",
                     help="gametype ids tier 4 boots (the registry's, GAME_GAMETYPES)")
+    ap.add_argument("--stock-gamerules", default="2,3",
+                    help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
     ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot"])
     args = ap.parse_args()

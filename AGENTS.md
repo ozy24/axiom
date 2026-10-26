@@ -65,8 +65,9 @@ New code (from Phase 2) goes in small, focused files under `core/` and
 `docs/design/gametype-api.md` is the reference. In short: Rogue's
 `dm_game_rt DMGame` is the one dispatch table; `core/gametype.h` is a registry
 of `GametypeDef`s (one per `gametypes/<id>/gametype.cpp`, listed in CMake's
-`GAME_GAMETYPES`); `g_gametype` selects one (the stock `gamerules` cvar still
-works). Add hooks only when a gametype needs them, as marked one-line calls.
+`GAME_GAMETYPES`); `g_gametype` selects one. The stock `gamerules` cvar still
+runs Rogue's Tag/DeathBall exactly as stock; they are not in the registry
+(decision 0010). Add hooks only when a gametype needs them, as marked one-line calls.
 
 ## Build
 
@@ -129,8 +130,9 @@ python3 -I scripts/harness/q2harness.py test --stock STOCK.so --candidate build/
   bot-only match, so there it only checks that deathmatch boots with bots
   connected.
 - **Tier 4 gametype-boot:** every registered gametype (`--gametypes`, default
-  `ffa,tag,ball`; keep it in step with `GAME_GAMETYPES`) boots q2dm1 with bots
-  for 20 s, logs `Gametype: <title> (<id>)` and shuts down cleanly.
+  `ffa`; keep it in step with `GAME_GAMETYPES`) and Rogue's stock `gamerules`
+  2 and 3 (`--stock-gamerules`) boot q2dm1 with bots for 20 s, log their
+  `Gametype:` line and shut down cleanly.
 
 Each tier has been checked on Q2RED against a deliberately broken build (a soldier with
 one extra health point, a renamed think function) and fails as it should.

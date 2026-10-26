@@ -19,10 +19,9 @@ Without all three, the comparison tests report the fix as a regression.
   check then calls `strcmp(nullptr, "item_foodcube")`.
 - **Seen:** id's source at `8dc1fc9`, `gamerules 2` (Tag) on q2dm1, on Q2RED:
   SIGSEGV in `__strcmp_avx2` from `droptofloor` (g_items.cpp:1126), with the
-  stock module too. Found 2026-10-26 while making Tag selectable by
+  stock module too. Found 2026-10-26 while (briefly) making Tag selectable by
   `g_gametype`. Whether the 2025 retail DLL still has it is not checked.
 - **Fix:** null-check `ent->classname` before the comparison (`[mod]`).
-- **Test:** harness tier 4 (gametype-boot) boots every registered gametype,
-  Tag included.
+- **Test:** harness tier 4 (gametype-boot) boots stock `gamerules 2` (Tag).
 - **Saved state:** unchanged (no allowed-differences entry needed); the
   coop save comparison never reaches Tag.

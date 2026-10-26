@@ -30,7 +30,7 @@ checks/           compile-time checks built into the module.
 | Piece | Files | What it does |
 |---|---|---|
 | Identity | `mod.json`, `cmake/identity.cmake`, `core/identity*.cpp` | Name, id, version and build id from one file; `gamename`, `g_version`, banner, `mod-identity:` stamp |
-| Gametype registry | `core/gametype*.cpp`, `gametypes/<id>/gametype.cpp`, generated `gametype_registry.cpp` | `g_gametype` selects ffa / tag / ball; fills Rogue's `DMGame` (`docs/design/gametype-api.md`) |
+| Gametype registry | `core/gametype*.cpp`, `gametypes/<id>/gametype.cpp`, generated `gametype_registry.cpp` | `g_gametype` selects a registry gametype (today `ffa`) and fills Rogue's `DMGame`; stock `gamerules` still runs Rogue's modes (`docs/design/gametype-api.md`) |
 | Host seam | `core/host.h`, `core/host_gi.cpp`, `tests/fake_host.h` | The engine interface logic uses: `Print`, `TimeMs`. Grow it only when a module needs more |
 | Stock-client contract | `checks/stock_client_contract.cpp` | Pins stat, ammo and powerup indices to stock |
 
