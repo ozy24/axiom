@@ -71,7 +71,25 @@ else
 	mv "$tmp" "$ozbot_dest"
 fi
 
-chmod -R g+rX "$q2red_dest" "$ozbot_dest"
+q2rex_dest=$ENGINES/q2rex-$Q2REX_VERSION
+if [[ -f $q2rex_dest/quake2rex_server.exe ]]; then
+	echo "== q2rex $Q2REX_VERSION already installed"
+else
+	echo "== q2rex $Q2REX_VERSION"
+	RETAIL="$HOME/.local/share/Steam/steamapps/common/Quake 2/rerelease"
+	tmp=$q2rex_dest.tmp && rm -rf "$tmp" && mkdir -p "$tmp/retail-dlls"
+	gh release download "v$Q2REX_VERSION" -R DarkMatter-Productions/Q2REX \
+		-p "q2rex-server-$Q2REX_VERSION-win64-wine.zip" -D "$tmp"
+	(cd "$tmp" && unzip -q "q2rex-server-$Q2REX_VERSION-win64-wine.zip" && rm "q2rex-server-$Q2REX_VERSION-win64-wine.zip")
+	# Retail runtime libraries the Windows server loads from its basedir.
+	for f in PartyWin.dll PartyWin7.dll PlayFabMultiplayerWin.dll SDL2.dll steam_api64.dll xaudio2_9redist.dll; do
+		install -m 0644 "$RETAIL/$f" "$tmp/retail-dlls/$f"
+	done
+	echo "$Q2REX_VERSION" >"$tmp/VERSION"
+	mv "$tmp" "$q2rex_dest"
+fi
+
+chmod -R g+rX "$q2red_dest" "$ozbot_dest" "$q2rex_dest"
 echo
 echo "Installed:"
-ls -la "$q2red_dest" "$ozbot_dest" | sed 's/^/  /'
+ls -la "$q2red_dest" "$ozbot_dest" "$q2rex_dest" | sed 's/^/  /'

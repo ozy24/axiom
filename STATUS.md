@@ -16,20 +16,23 @@ M1a reached 2026-10-26: hosted CI green (checks, Linux, Windows/MSVC).
 - `stock-reference` tag at `a44e2d63` (pinned in `scripts/harness/pins.env`).
 - `.github/workflows/game-tests.yml` for the runner.
 
-Blocked on Chris:
-- `sudo chmod 0751 /srv/q2ci` on the jumpbox (the setup script's first run
-  made it 0750, so chris can't reach `engines/`; the script is fixed). Then
-  run `bash ~/q2ci-scripts/jumpbox/install-engines.sh` there, or ask Claude to.
-  Until then the game-tests workflow fails at the harness step.
+- Game tests green on the runner (Q2RED, tiers 1-3).
+- Windows layer: Q2REX 0.15.1 under Wine runs the MSVC DLL, tiers 1-3 green
+  locally; `windows-game-tests` job added to `ci.yml`. Stock DLL published as
+  the `stock-reference` release asset (sha256 pinned).
+- Calibration per engine: Q2RED and Q2REX both give the same 14 fields.
 
 Next in 1b:
-- First green game-tests run on the runner; Windows DLL under Q2REX/Wine
-  (Wine is not installed on the jumpbox yet).
+- First green `windows-game-tests` run on the runner (needs `unshare -rn` and
+  Wine to work for the `q2ci` user).
+- Then M1b. Phase 1c: identity (`mod.json`), name-leak check, unit tests.
 
 ## Known issues
 - Q2RED segfaults inside its own error handler after a fatal game error
   (seen when tier 2 loads a save with an unknown function name). The harness
   reports it correctly; it's a Q2RED bug, not ours.
+- Q2REX's built-in bots never enter a bot-only match (retail admits bots
+  only after a human spawns), so tier 3 can't check frags on Q2REX.
 - `jumpbox.lan` returns a bogus AAAA record (`::`); use `ssh -4`.
 - The Windows build has not run yet; first CI run will tell.
 - The save-name baseline includes 49 names the compiler drops as unused, so

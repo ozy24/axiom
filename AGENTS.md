@@ -64,24 +64,36 @@ scripts/check.sh          # everything hosted CI runs that needs no game data
 
 Hosted CI (`.github/workflows/ci.yml`) runs the same script plus both builds.
 
-Game tests (`.github/workflows/game-tests.yml`) run on the self-hosted jumpbox
-runner, because they need retail data that exists only there:
+Game tests run on the self-hosted jumpbox runner, because they need retail
+data that exists only there. The same tiers run on two engines:
+
+- **Q2RED + `game_x64.so`** (`.github/workflows/game-tests.yml`), the fast native
+  layer, against a stock `.so` built from the `stock-reference` tag.
+- **Q2REX under Wine + the MSVC `game_x64.dll`** (the `windows-game-tests` job
+  in `ci.yml`), so the binary players actually run is executed on every PR.
+  The stock DLL is the `stock-reference` release asset, hash-pinned in
+  `scripts/harness/pins.env`. Q2REX runs in an offline network namespace
+  (`unshare -rn`), because it signs in to PlayFab at startup even on LAN.
+
+
 
 ```bash
 python3 -I scripts/harness/q2harness.py test --stock STOCK.so --candidate build/linux-release/game_x64.so
 ```
 
 - **Tier 1 save-diff:** coop base1 saved by stock and by the candidate; the
-  save JSON must match except fields in `docs/baselines/volatile-save-fields.txt`
-  (timing noise, measured by `q2harness.py calibrate`) and intentional changes
+  save JSON must match except fields in `docs/baselines/volatile-save-fields.<engine>.txt`
+  (timing noise, measured per engine by `q2harness.py calibrate`) and intentional changes
   in `docs/baselines/allowed-differences.txt` (each linked to
   `docs/known-id-bugs.md`).
 - **Tier 2 load-stock:** a stock save must load in the candidate, proven by the
   engine's `SV_ReadLevelFile()` line.
-- **Tier 3 dm-smoke:** six ozbot bots on q2dm1 for 60 s; frags, no errors,
-  clean shutdown.
+- **Tier 3 dm-smoke:** six bots on q2dm1 for 60 s; no errors, clean
+  shutdown, and frags on Q2RED (ozbot). Q2REX's built-in bots never enter a
+  bot-only match, so there it only checks that deathmatch boots with bots
+  connected.
 
-Each tier has been checked against a deliberately broken build (a soldier with
+Each tier has been checked on Q2RED against a deliberately broken build (a soldier with
 one extra health point, a renamed think function) and fails as it should.
 The stock reference is the `stock-reference` tag (pinned in
 `scripts/harness/pins.env`), never a fresh build of `main`.
