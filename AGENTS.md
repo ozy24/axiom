@@ -137,8 +137,8 @@ These come from id's code and the engine; each was verified in source.
 - One branch and PR per change. CI must be green.
 - Every change to id's code is small and reviewable on its own.
 - Every bug fix comes with a test that reproduces it (once the harness exists).
-- **Merge policy:** not decided yet. Until Chris decides, Claude opens PRs and
-  Chris merges.
+- **Merge policy (Chris, 2026-10-26):** Claude merges its own PRs once every
+  check is green, hosted CI and the jumpbox game tests alike. Squash-merge.
 - End every session by updating `STATUS.md`.
 
 ## Glossary
