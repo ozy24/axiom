@@ -120,6 +120,16 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
 - Harness tier 11 human-duel: playtest rows 1-9 through the human path.
   Against the pre-playtest build it fails on every bug Chris found.
 
+## Simulated players (S1-S3 of `docs/design/simulated-clients.md`)
+- Q2RED #106: `q2red_sim_client` (scripted players through the LAN lobby) and
+  the game tap (`sv_game_tap`, A63: what the game sends each client). #107:
+  puppets (A64): ozbot plays a sim client; the game still sees a human.
+- ozbot-re PR #5 (adopt) is **open, waiting for Chris** (Claude's merge
+  policy covers Axiom and Q2RED, not ozbot-re). Until it's merged and the
+  pins move (Q2RED fa193230 + that ozbot), tier 11 is skipped in CI.
+- Harness tier 11 human-duel: playtest rows 1-9 through the human path.
+  Against the pre-playtest build it fails on every bug Chris found.
+
 ## Known issues
 - Q2REX's built-in bots never enter a bot-only match (retail admits bots
   only after a human spawns), so tier 3 can't check frags on Q2REX.
