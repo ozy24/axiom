@@ -450,11 +450,18 @@ def tier_gametype_boot(args, results):
         rig = RIGS[args.engine_kind](args, args.candidate, f"t4-{label}")
         startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8"] + select
                    + rig.bot_args() + ["+map", "q2dm1"])
-        log = rig.run(startup, [rig.wait_ready(), ("sleep", args.boot_seconds), ("cmd", "quit")],
+        log = rig.run(startup, [rig.wait_ready(), ("sleep", args.boot_seconds), ("cmd", "q2rex_lobby_mode"),
+                                ("cmd", "q2rex_lobby_retail_mode"), ("sleep", 1), ("cmd", "quit")],
                       timeout=args.boot_timeout + args.boot_seconds + 60)
         detail = []
         if not re.search(expect, log):
             detail.append(f"no line matching /{expect}/")
+        if not label.startswith("gamerules"):
+            # Q2REX's lobby contract: the module publishes its mode.
+            if not re.search(rf'"q2rex_lobby_mode" is "{re.escape(label)}"', log):
+                detail.append(f"q2rex_lobby_mode is not {label}")
+            if not re.search(r'"q2rex_lobby_retail_mode" is "deathmatch"', log):
+                detail.append("q2rex_lobby_retail_mode is not deathmatch")
         if rig.returncode != 0:
             detail.append(f"server exited with code {rig.returncode}")
         if "==== ShutdownGame ====" not in log:

@@ -17,6 +17,7 @@ struct GametypeDef
 {
 	const char *id;                     // g_gametype value, lowercase: "ffa"
 	const char *title;                  // shown to players: "Free For All"
+	const char *retail_mode;            // what retail browsers see: deathmatch, teamplay, ctf
 	void (*install)(dm_game_rt &hooks); // may be null: stock behaviour
 
 	// Optional (null = nothing), driven by the match flow's per-frame tick:

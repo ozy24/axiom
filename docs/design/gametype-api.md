@@ -78,7 +78,7 @@ grows in the right direction:
 | Per-frame think | Freeze Tag thaw | when needed |
 | Team assignment (CTF-compatible `ctf_team`) | TDM, CTF | Phase 3b team service |
 | Scoreboard / HUD stats via the stat allocator (`core/stat_slots.h`, exists: slots 54..63) | Duel, CTF | Phase 3 |
-| Lobby metadata (retail mode + display name) | Duel | Phase 3a / 4 |
+| Lobby metadata (retail mode + display name) — **done**: `GametypeDef::retail_mode`; `Core_Gametype_Start` publishes Q2REX's `q2rex_lobby_*` cvars each game load | Duel | Phase 3a |
 
 Rules for new hooks: plain function pointers and simple types (decision 0005
 keeps a plugin loader possible), null means stock, and each call site in id's

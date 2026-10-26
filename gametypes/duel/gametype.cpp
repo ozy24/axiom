@@ -10,5 +10,5 @@ bool Duel_MatchOver();
 void Duel_MatchEnded();
 bool Duel_ClientCommand(edict_t *ent, const char *cmd);
 
-extern const GametypeDef gametype_duel = {"duel",         "Duel",          Duel_Install,      Duel_Frame,
-                                          Duel_MatchOver, Duel_MatchEnded, Duel_ClientCommand};
+extern const GametypeDef gametype_duel = {"duel",     "Duel",         "deathmatch",    Duel_Install,
+                                          Duel_Frame, Duel_MatchOver, Duel_MatchEnded, Duel_ClientCommand};
