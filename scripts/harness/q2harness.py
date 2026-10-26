@@ -162,9 +162,10 @@ class Q2RedRig(Rig):
     kind = "q2red"
     module_name = "game_x64.so"
     ready_re = r"Nav Manager: Processing Nav Edicts"
-    # Q2RED builds map paths in a 128-byte buffer from its own directory
-    # ("Com_sprintf: overflow ... in 128", then "Can't find maps/x.bsp").
-    max_path = 56
+    # Q2RED builds map paths in a MAX_OSPATH buffer from its own directory:
+    # 1024 bytes since A61 (128 before: "Com_sprintf: overflow ... in 128",
+    # then "Can't find maps/x.bsp"). Leave room for the rest of the path.
+    max_path = 900
 
     def setup(self, module):
         if len(str(self.dir)) > self.max_path:
@@ -529,10 +530,16 @@ def tier_duel(args, results):
         detail.append(f"transitions {seen}, expected {MATCH_SEQUENCE}")
     if not re.search(r"Duel: .+ \d+ - \d+ .+; next: ", log):
         detail.append("no Duel result line")
-    # The match record (g_matchlog_dir, relative to the server's working dir).
+    # The match record (g_matchlog_dir "matches"). Q2RED gives the module file
+    # access (A62), so it lands in the game directory; elsewhere it's relative
+    # to the server's working directory (decision 0011).
     records = sorted(rig.dir.rglob("matches/*.json"))
+    expected_dir = rig.dir / "baseq2" / "matches" if rig.kind == "q2red" else rig.server / "matches"
     if len(records) != 1:
         detail.append(f"{len(records)} match records, expected 1")
+    elif records[0].parent != expected_dir:
+        detail.append(f"match record in {records[0].parent.relative_to(rig.dir)}, "
+                      f"expected {expected_dir.relative_to(rig.dir)}")
     else:
         try:
             rec = json.loads(records[0].read_text())

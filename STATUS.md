@@ -53,9 +53,19 @@ _Updated at the end of every session. Last update: 2026-10-26._
 - `GametypeDef::retail_mode`; each game load publishes Q2REX's lobby cvars
   (`q2rex_lobby_mode` = id, `_mode_name` = title, "(rounds)" with rounds on,
   `_retail_mode`, `_score_kind`). Retail browsers keep seeing deathmatch.
-  Q2RED doesn't read them yet (a possible Q2RED change, offered to Chris).
+  Q2RED publishes them too since its A60 (pinned from 13daec66), so Q2REX
+  browsers list an Axiom server on Q2RED as "Duel".
 - A ruleset's latched g_gametype applies at the next `map`: the engine
   restarts the game module (checked on Q2RED).
+
+## Phase 3a, part 5 (host file access) done
+- Three Q2RED changes, merged: lobby discovery (A60, #103), 1024-byte
+  paths on POSIX (A61, #104), file access for the game module through
+  `GetExtension` (A62, #105). Pin bumped to 13daec66.
+- `core/host_files*`: uses Q2RED's file access when offered (decision
+  0011). A relative `g_matchlog_dir` lands in the game directory on Q2RED;
+  elsewhere it's relative to the working directory, as before.
+- The harness rig-path limit is 900 (was 56, Q2RED's old 128-byte paths).
 
 **M3a reached** (Duel with a bot match on both engines, match JSON written).
 Playtest is the open human gate for it.
@@ -64,14 +74,9 @@ Next: Phase 3b - TDM and CTF on the API, the team service (out of
 `g_ctf.cpp`), CTF's match/election code replaced by the match flow.
 
 ## Known issues
-- Q2RED crashes at startup if a dedicated server is started without `+map`
-  (`q2ex_KexBotEntity_UnregisterEdict`, stock module too). The harness always
-  passes `+map`. Not fixed yet; described in Q2RED's
-  `game-error-unwind-after-unload-2026-10-26.md`.
 - Q2REX's built-in bots never enter a bot-only match (retail admits bots
   only after a human spawns), so tier 3 can't check frags on Q2REX.
 - `jumpbox.lan` returns a bogus AAAA record (`::`); use `ssh -4`.
-- The Windows build has not run yet; first CI run will tell.
 - The save-name baseline includes 49 names the compiler drops as unused, so
   saves can never contain them. Harmless; the check just errs on the safe side.
 

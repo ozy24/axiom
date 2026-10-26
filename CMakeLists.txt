@@ -93,6 +93,8 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/core/gametype_register.cpp"
     ${GAME_GAMETYPE_SOURCES}
     "${MOD_GENERATED_DIR}/gametype_registry.cpp"
+    "${CMAKE_SOURCE_DIR}/core/host_files.cpp"
+    "${CMAKE_SOURCE_DIR}/core/host_files_gi.cpp"
     "${CMAKE_SOURCE_DIR}/core/host_gi.cpp"
     "${CMAKE_SOURCE_DIR}/core/identity.cpp"
     "${CMAKE_SOURCE_DIR}/core/identity_register.cpp"
@@ -185,6 +187,7 @@ if(GAME_BUILD_TESTS)
         tests/test_match_record.cpp
         core/identity.cpp
         core/match_record.cpp
+        core/host_files.cpp
         core/rulesets.cpp
         core/match.cpp
         core/stat_slots.cpp

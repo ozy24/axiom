@@ -32,7 +32,8 @@ checks/           compile-time checks built into the module.
 | Identity | `mod.json`, `cmake/identity.cmake`, `core/identity*.cpp` | Name, id, version and build id from one file; `gamename`, `g_version`, banner, `mod-identity:` stamp |
 | Gametype registry | `core/gametype*.cpp`, `gametypes/<id>/gametype.cpp`, generated `gametype_registry.cpp` | `g_gametype` selects a registry gametype (today `ffa`) and fills Rogue's `DMGame`; stock `gamerules` still runs Rogue's modes (`docs/design/gametype-api.md`) |
 | Match flow | `core/match.cpp` (state machine), `core/match_register.cpp` (adapter, arena reset, `ready`/`notready`) | Warmup → countdown → live → overtime → intermission, off by default (`match_warmup 0` = stock) (`docs/design/match-flow.md`) |
-| Match records | `core/match_record.cpp` (JSON, pure), `WriteMatchRecord` in `core/match_register.cpp` | `g_matchlog_dir`: one JSON file per finished match |
+| Match records | `core/match_record.cpp` (JSON, pure), `WriteMatchRecord` in `core/match_register.cpp` | `g_matchlog_dir`: one JSON file per finished match; a relative directory goes under the game directory when the engine offers file access |
+| Host file access | `core/host_files.cpp` (game-path rule, pure), `core/host_files_gi.cpp`, `core/host_files_ext.h` | Q2RED's optional `GetExtension` file access, asked for once per load; callers always have a fallback (decision 0011) |
 | Duel | `gametypes/duel/` (`duel_queue.cpp` pure, `duel_register.cpp` adapter) | 1v1 play queue, forfeit, winner stays on; `queue` command |
 | Rulesets | `core/rulesets*.cpp` | `sv ruleset <name>`: built-ins `stock`, `match`, else `exec rulesets/<name>.cfg` |
 | HUD stat slots | `core/stat_slots*.cpp` | Hands out stat indices 54..63 (stock's free range) by owner, idempotently; the CTF block stays stock's |
