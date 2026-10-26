@@ -19,7 +19,7 @@ Tiers (plan Phase 1b):
                  modes, boot q2dm1 with bots, log their "Gametype:" line and
                  shut down cleanly.
   5. match-flow  match_warmup on: warmup -> countdown -> live -> intermission
-                 on the timelimit, counted from LIVE (Q2REX: warmup holds).
+                 on the timelimit, counted from LIVE.
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -469,15 +469,14 @@ def tier_match_flow(args, results):
     rig = RIGS[args.engine_kind](args, args.candidate, "t5-match")
     startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1",
                 "+set", "match_countdown", "3", "+set", "timelimit", "0.25"] + rig.bot_args() + ["+map", "q2dm1"])
-    if rig.expects_frags:  # bots enter the game: the whole match runs
-        steps = [rig.wait_ready(), ("wait", r"Match: ended", 90), ("sleep", 2), ("cmd", "quit")]
-    else:  # Q2REX: bots never begin, so the match must hold in warmup, safely
-        steps = [rig.wait_ready(), ("sleep", 20), ("cmd", "quit")]
+    # On both engines the bots count as playing clients (on Q2REX they begin
+    # but don't fight), so the whole match runs.
+    steps = [rig.wait_ready(), ("wait", r"Match: ended", 90), ("sleep", 2), ("cmd", "quit")]
     log = rig.run(startup, steps, timeout=args.boot_timeout + 150)
     lines = [l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
     seen = ["Match: " + l for l in lines]
     detail = []
-    want = MATCH_SEQUENCE if rig.expects_frags else MATCH_SEQUENCE[:1]
+    want = MATCH_SEQUENCE
     if seen != want:
         detail.append(f"transitions {seen}, expected {want}")
     if rig.returncode != 0:
