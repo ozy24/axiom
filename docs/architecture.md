@@ -32,6 +32,7 @@ checks/           compile-time checks built into the module.
 | Identity | `mod.json`, `cmake/identity.cmake`, `core/identity*.cpp` | Name, id, version and build id from one file; `gamename`, `g_version`, banner, `mod-identity:` stamp |
 | Gametype registry | `core/gametype*.cpp`, `gametypes/<id>/gametype.cpp`, generated `gametype_registry.cpp` | `g_gametype` selects a registry gametype (today `ffa`) and fills Rogue's `DMGame`; stock `gamerules` still runs Rogue's modes (`docs/design/gametype-api.md`) |
 | Match flow | `core/match.cpp` (state machine), `core/match_register.cpp` (adapter, arena reset, `ready`/`notready`) | Warmup → countdown → live → overtime → intermission, off by default (`match_warmup 0` = stock) (`docs/design/match-flow.md`) |
+| Match records | `core/match_record.cpp` (JSON, pure), `WriteMatchRecord` in `core/match_register.cpp` | `g_matchlog_dir`: one JSON file per finished match |
 | Duel | `gametypes/duel/` (`duel_queue.cpp` pure, `duel_register.cpp` adapter) | 1v1 play queue, forfeit, winner stays on; `queue` command |
 | Rulesets | `core/rulesets*.cpp` | `sv ruleset <name>`: built-ins `stock`, `match`, else `exec rulesets/<name>.cfg` |
 | HUD stat slots | `core/stat_slots*.cpp` | Hands out stat indices 54..63 (stock's free range) by owner, idempotently; the CTF block stays stock's |
@@ -53,7 +54,10 @@ checks/           compile-time checks built into the module.
    rename drill.
 2. The jumpbox runner runs the game tests against the stock reference: tiers
    1-3 on Q2RED with the `.so` and on Q2REX under Wine with the MSVC `.dll`.
-3. Human gates (`STATUS.md`): the single-player checklist on retail, game feel.
+3. Human gates (`STATUS.md`): the single-player checklist on retail
+   (`docs/checklists/single-player.md`) and playtests of new gameplay
+   (`docs/checklists/playtest.md`, with the local rig from
+   `scripts/playtest/setup-local-rig.sh`).
 
 ## Coming next (plan Phase 2)
 

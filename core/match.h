@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 enum class MatchState
@@ -16,6 +17,7 @@ enum class MatchState
 	Countdown,
 	Live,
 	Overtime,
+	RoundCountdown, // between rounds (rounds_on_frag): players held, the arena reset
 	Intermission,
 };
 
@@ -23,14 +25,16 @@ const char *MatchStateName(MatchState state);
 
 struct MatchConfig
 {
-	bool enabled = false;        // match_warmup: false = stock (live immediately)
-	bool ready_required = true;  // match_ready
-	int min_players = 2;         // match_minplayers
-	int64_t warmup_time_ms = 0;  // match_warmup_time; 0 = wait for ready
-	int64_t countdown_ms = 5000; // match_countdown
-	int overtime = 0;            // match_overtime: 0 none, -1 sudden death, N minutes
-	int64_t timelimit_ms = 0;    // timelimit, from the start of LIVE; 0 = none
-	int fraglimit = 0;           // 0 = none
+	bool enabled = false;              // match_warmup: false = stock (live immediately)
+	bool ready_required = true;        // match_ready
+	int min_players = 2;               // match_minplayers
+	int64_t warmup_time_ms = 0;        // match_warmup_time; 0 = wait for ready
+	int64_t countdown_ms = 5000;       // match_countdown
+	int overtime = 0;                  // match_overtime: 0 none, -1 sudden death, N minutes
+	int64_t timelimit_ms = 0;          // timelimit, from the start of LIVE; 0 = none
+	int fraglimit = 0;                 // 0 = none
+	bool rounds_on_frag = false;       // match_rounds 1: every score change ends a round (HoonyMode)
+	int64_t round_countdown_ms = 3000; // match_round_countdown
 };
 
 struct MatchPlayer
@@ -52,7 +56,10 @@ enum class MatchActionKind
 {
 	Announce,   // text to every player (centre print)
 	Countdown,  // value = whole seconds left, sent once per second
-	ResetArena, // going LIVE: reset items and players, zero scores
+	ResetArena, // value 0: going LIVE - reset items, zero scores, respawn players
+	            // value 1: between rounds - reset items and projectiles only
+	RoundHold,  // between rounds: every player out of play, waiting
+	RoundStart, // a round begins: every playing client back in at a spawn
 	EndMatch,   // go to intermission
 };
 
@@ -100,6 +107,9 @@ class Match
 
   private:
 	bool CanStart(const MatchInput &in) const;
+	bool ScoreChanged(const MatchInput &in) const;
+	bool RoundBreak(const MatchInput &in, MatchState from, std::vector<MatchAction> &out);
+	void Baseline(const MatchInput &in);
 	void GoLive(int64_t now_ms, std::vector<MatchAction> &out);
 	void End(const char *why, std::vector<MatchAction> &out);
 
@@ -109,4 +119,6 @@ class Match
 	int64_t live_since_ms_ = 0;
 	int64_t time_end_ms_ = 0; // LIVE/OVERTIME deadline (0 = none)
 	int last_countdown_s_ = -1;
+	MatchState round_return_ = MatchState::Live;    // where RoundCountdown goes back to
+	std::vector<std::pair<int, int>> round_scores_; // (id, score) when the round began
 };

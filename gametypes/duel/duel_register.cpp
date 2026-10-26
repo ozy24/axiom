@@ -34,10 +34,26 @@ bool IsPlaying(const edict_t *ent)
 	return !ent->client->resp.spectator;
 }
 
+// PutClientInServer re-reads the "spectator" userinfo key (via
+// ClientUserinfoChanged), so the queue's decision has to be written there or
+// the next spawn undoes it; players also get their own cvar set, as
+// spectator_respawn does.
+void SetSpectatorInfo(edict_t *ent, bool spectator)
+{
+	gi.Info_SetValueForKey(ent->client->pers.userinfo, "spectator", spectator ? "1" : "0");
+	if (!(ent->svflags & SVF_BOT))
+	{
+		gi.WriteByte(svc_stufftext);
+		gi.WriteString(spectator ? "spectator 1\n" : "spectator 0\n");
+		gi.unicast(ent, true);
+	}
+}
+
 // Moves a client in or out of the game, bypassing spectator_respawn's
 // password and maxspectators checks: the queue, not the player, decides.
 void SetPlaying(edict_t *ent, bool playing)
 {
+	SetSpectatorInfo(ent, !playing);
 	ent->client->pers.spectator = !playing;
 	ent->client->resp.spectator = !playing;
 	ent->client->resp.score = ent->client->pers.score = 0;
@@ -57,6 +73,7 @@ static void Duel_ClientBegin(edict_t *ent)
 	queue.Sync(Present());
 	const int slot = (int)(ent - g_edicts) - 1;
 	const bool playing = queue.IsPlayer(slot);
+	SetSpectatorInfo(ent, !playing);
 	ent->client->pers.spectator = !playing;
 	ent->client->resp.spectator = !playing;
 	if (!playing)
