@@ -110,6 +110,21 @@ class Match
 	{
 		return config_.enabled;
 	}
+	// Whether frags, suicides and captures count. Not before LIVE: warmup and
+	// the countdown are free play, and the adapter holds every score at zero.
+	bool ScoresCount() const
+	{
+		return !config_.enabled || (state_ != MatchState::Warmup && state_ != MatchState::Countdown);
+	}
+	// When the HUD clock reaches zero (level ms), or 0 for no clock: none in
+	// warmup, the countdown or sudden death; the timelimit from LIVE, then
+	// timed overtime. Only meaningful when OwnsRules().
+	int64_t ClockEndMs() const
+	{
+		const bool timed =
+		    state_ == MatchState::Live || state_ == MatchState::Overtime || state_ == MatchState::RoundCountdown;
+		return timed ? time_end_ms_ : 0;
+	}
 
   private:
 	bool CanStart(const MatchInput &in) const;

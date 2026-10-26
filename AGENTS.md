@@ -142,6 +142,9 @@ python3 -I scripts/harness/q2harness.py test --stock STOCK.so --candidate build/
   its timelimit, and a `Duel: … next: …` line shows the rotation.
 - **Tier 7 rounds:** `match_rounds 1` with six bots: a frag must end a round
   and the next round start (Q2RED only; Q2REX's bots don't fight).
+- **Tier 9 warmup:** six bots fight in a warmup that never starts
+  (`match_minplayers 99`); `sv match` must show every score still 0 (Q2RED
+  only).
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

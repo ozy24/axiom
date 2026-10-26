@@ -435,3 +435,31 @@ TEST_CASE("the gametype's end condition carries its reason (capturelimit)")
 	CHECK(std::any_of(out.begin(), out.end(), [](const MatchAction &a)
 	                  { return a.kind == MatchActionKind::EndMatch && a.text == "capturelimit"; }));
 }
+
+// --- Free play before LIVE -----------------------------------------------------
+
+TEST_CASE("scores only count from LIVE; the clock only runs from LIVE")
+{
+	MatchConfig c = Enabled();
+	c.overtime = -1;
+	Match m(c);
+	m.Begin(0);
+	CHECK_FALSE(m.ScoresCount()); // warmup
+	CHECK(m.ClockEndMs() == 0);
+	m.Update(At(1000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Countdown);
+	CHECK_FALSE(m.ScoresCount());
+	CHECK(m.ClockEndMs() == 0);
+	m.Update(At(4000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK(m.ScoresCount());
+	CHECK(m.ClockEndMs() == 4000 + 60000); // the timelimit, from LIVE
+	m.Update(At(64000, {P(1, true, 2), P(2, true, 2)}));
+	REQUIRE(m.State() == MatchState::Overtime);
+	CHECK(m.ScoresCount());
+	CHECK(m.ClockEndMs() == 0); // sudden death has no clock
+
+	Match stock; // match flow off: stock scoring
+	stock.Begin(0);
+	CHECK(stock.ScoresCount());
+}
