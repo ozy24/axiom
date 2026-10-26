@@ -35,9 +35,10 @@ Next: Phase 1c (first id edits, under tests):
 - Manual single-player checklist written for Chris (human gate).
 
 ## Known issues
-- Q2RED segfaults inside its own error handler after a fatal game error
-  (seen when tier 2 loads a save with an unknown function name). The harness
-  reports it correctly; it's a Q2RED bug, not ours.
+- Q2RED crashes at startup if a dedicated server is started without `+map`
+  (`q2ex_KexBotEntity_UnregisterEdict`, stock module too). The harness always
+  passes `+map`. Not fixed yet; described in Q2RED's
+  `game-error-unwind-after-unload-2026-10-26.md`.
 - Q2REX's built-in bots never enter a bot-only match (retail admits bots
   only after a human spawns), so tier 3 can't check frags on Q2REX.
 - `jumpbox.lan` returns a bogus AAAA record (`::`); use `ssh -4`.
@@ -46,8 +47,7 @@ Next: Phase 1c (first id edits, under tests):
   saves can never contain them. Harmless; the check just errs on the safe side.
 
 ## Open human gates
-- Merge policy (Claude merges on green CI, or Chris merges). Until decided,
-  Claude opens PRs and Chris merges.
+- None right now. The manual single-player checklist arrives with M1c.
 
 ## Local setup notes
 - Format tools: `python3 -m venv ~/.local/share/axiom-tools &&
