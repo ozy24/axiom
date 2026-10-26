@@ -13,7 +13,7 @@ that is only written down, add the check.
 
 A Quake II Rerelease game module (`game_x64.dll` / `game_x64.so`) built on id
 Software's GPL `quake2-rerelease-dll`. The working name is Axiom; the name lives
-in one place (`mod.json`, from Phase 1c) and must never be hard-coded.
+in one place, `mod.json`, and must never be hard-coded (see "Identity" below).
 
 Principles:
 - Core gametypes: FFA, TDM, CTF, Duel. Variants (HoonyMode, Clan Arena) are
@@ -45,6 +45,20 @@ Principles:
 
 New code (from Phase 2) goes in small, focused files under `core/` and
 `gametypes/<name>/`, never into id's large files beyond hook calls.
+
+## Identity
+
+- `mod.json` holds `name`, `id`, `version` and `repository`. `cmake/identity.cmake`
+  reads it (plus the git commit as the build id, `nogit` from a source archive)
+  and generates `mod_identity.h` (`MOD_NAME`, `MOD_ID`, `MOD_VERSION`,
+  `MOD_BUILD`). Downstream mods pass `-DMOD_IDENTITY_FILE=<their mod.json>`.
+- At run time `core/identity*.cpp` sets serverinfo `gamename` = id and
+  `g_version` = `<name> <version> (<build>)`, prints the banner, and keeps a
+  greppable `mod-identity:` stamp in the binary (`docs/decisions/0008`).
+- `scripts/check_name_leak.py` fails if the name or id appears anywhere but
+  `mod.json`, docs (`*.md`, `docs/`) and the GitHub repo slug.
+  `scripts/rename_drill.sh` (CI job `rename-drill`) rebuilds under a dummy name
+  and checks the binary. Don't bypass either: get the name from the header.
 
 ## Build
 
@@ -135,7 +149,10 @@ These come from id's code and the engine; each was verified in source.
 ## Workflow
 
 - One branch and PR per change. CI must be green.
-- Every change to id's code is small and reviewable on its own.
+- Every change to id's code is small and reviewable on its own, and every
+  edited line in `rerelease/` carries a `// [mod]` comment, so
+  `git grep -n "\[mod\]" rerelease/` lists every place we differ from stock.
+  Prefer a one-line call into new code under `core/` over logic inside id's files.
 - Every bug fix comes with a test that reproduces it (once the harness exists).
 - **Merge policy (Chris, 2026-10-26):** Claude merges its own PRs once every
   check is green, hosted CI and the jumpbox game tests alike. Squash-merge.

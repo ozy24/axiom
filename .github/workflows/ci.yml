@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # check_mod_markers diffs against the stock-reference tag
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -42,6 +44,8 @@ jobs:
           apt-get update -qq
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq g++-12 cmake ninja-build git
       - uses: actions/checkout@v4
+      - name: Let git read the checkout (owned by another user in the container)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Configure
         run: cmake --preset linux-release -DCMAKE_CXX_COMPILER=g++-12 -DGAME_STATIC_RUNTIME=ON
       - name: Build
@@ -58,6 +62,17 @@ jobs:
           name: game-module-linux-x64
           path: build/linux-release/game_x64.so
           if-no-files-found: error
+
+  rename-drill:
+    # The mod's name lives only in mod.json: rebuild under a dummy name and
+    # require the module to carry it and nothing of the real one.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ninja-build
+      - name: Rename drill
+        run: scripts/rename_drill.sh
 
   windows:
     # The only build that ships to players: MSVC, the compiler family retail uses.
