@@ -93,6 +93,12 @@ Playtest is the open human gate for it.
   captures), and the scoreboard clock shows nothing until LIVE, then counts
   the timelimit from LIVE (was: from map load). Found in Chris's playtest.
   New `sv match` status command; harness tier 9 reproduces the scoring bug.
+- Duel (rows 1-9, `docs/checklists/results/2026-10-26-playtest.md`):
+  countdown now 10 s; `queue` showed lobby names as `##P<n>` (the KEX name
+  token is decoded only as a whole argument; records and console now use the
+  real name, `core/player_name.h`); the queue lost the rotation at a level
+  change (every client re-enters one by one) - now kept for 15 s into a
+  level, harness tier 10. HoonyMode, TDM, CTF rows still to test.
 
 **M3b reached** (TDM and CTF with a harness bot match on both engines, once
 CI is green). Playtest rows 14-18 are the open human gate.

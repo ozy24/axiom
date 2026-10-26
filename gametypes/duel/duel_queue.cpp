@@ -3,11 +3,12 @@
 
 #include <algorithm>
 
-void DuelQueue::Sync(const std::vector<int> &present)
+void DuelQueue::Sync(const std::vector<int> &present, bool keep_absent)
 {
-	order_.erase(std::remove_if(order_.begin(), order_.end(),
-	                            [&](int id) { return std::find(present.begin(), present.end(), id) == present.end(); }),
-	             order_.end());
+	if (!keep_absent)
+		order_.erase(std::remove_if(order_.begin(), order_.end(), [&](int id)
+		                            { return std::find(present.begin(), present.end(), id) == present.end(); }),
+		             order_.end());
 	for (int id : present)
 	{
 		if (std::find(order_.begin(), order_.end(), id) == order_.end())

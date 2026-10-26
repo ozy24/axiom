@@ -10,9 +10,13 @@ class DuelQueue
   public:
 	// Bring the queue up to date with the clients now present (any order):
 	// newcomers join the back, the departed are dropped, the rest keep their place.
-	void Sync(const std::vector<int> &present);
+	// With `keep_absent`, absent clients keep their place instead of being
+	// dropped: at a level change every client re-enters one by one, and the
+	// order (the rotation the last match decided) must survive that.
+	void Sync(const std::vector<int> &present, bool keep_absent = false);
 
-	// The (up to) two clients who should be playing, front first.
+	// The (up to) two clients who should be playing, front first. A front
+	// place held by an absent client (keep_absent) is not handed on.
 	std::vector<int> Players() const;
 
 	// Whether `id` should be playing.

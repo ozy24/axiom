@@ -30,7 +30,7 @@ struct MatchConfig
 	bool ready_required = true;        // match_ready
 	int min_players = 2;               // match_minplayers
 	int64_t warmup_time_ms = 0;        // match_warmup_time; 0 = wait for ready
-	int64_t countdown_ms = 5000;       // match_countdown
+	int64_t countdown_ms = 10000;      // match_countdown
 	int overtime = 0;                  // match_overtime: 0 none, -1 sudden death, N minutes
 	int64_t timelimit_ms = 0;          // timelimit, from the start of LIVE; 0 = none
 	int fraglimit = 0;                 // 0 = none

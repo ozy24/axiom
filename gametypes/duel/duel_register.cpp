@@ -3,6 +3,7 @@
 // loser to the back of the queue at the end.
 #include "g_local.h"
 
+#include "core/player_name.h"
 #include "gametypes/duel/duel_queue.h"
 
 #include <string>
@@ -27,6 +28,15 @@ std::vector<int> Present()
 			ids.push_back((int)i);
 	}
 	return ids;
+}
+
+// At a level change every client is marked gone and re-enters one by one;
+// for this long into a level, absent clients keep their place in the queue.
+constexpr gtime_t kReturnGrace = 15_sec;
+
+void Sync()
+{
+	queue.Sync(Present(), level.time < kReturnGrace);
 }
 
 bool IsPlaying(const edict_t *ent)
@@ -70,7 +80,7 @@ void SetPlaying(edict_t *ent, bool playing)
 // as a spectator, rather than appearing in the arena for a frame.
 static void Duel_ClientBegin(edict_t *ent)
 {
-	queue.Sync(Present());
+	Sync();
 	const int slot = (int)(ent - g_edicts) - 1;
 	const bool playing = queue.IsPlayer(slot);
 	SetSpectatorInfo(ent, !playing);
@@ -85,15 +95,21 @@ bool Duel_ClientCommand(edict_t *ent, const char *cmd)
 {
 	if (Q_strcasecmp(cmd, "queue"))
 		return false;
-	std::string text;
+	// One line each, with the name as its own argument: the client decodes a
+	// lobby player's name token only then (core/player_name.h).
 	int place = 0;
 	for (int id : queue.Order())
 	{
+		const edict_t *who = Slot(id);
 		const char *role = place < 2 ? "duelling" : "waiting";
-		text += G_Fmt("{}. {} ({})\n", place + 1, Slot(id)->client->pers.netname, role).data();
+		if (!who->client->pers.connected)
+			role = "rejoining";
+		gi.LocClient_Print(ent, PRINT_HIGH, "{}. {} ({})\n", G_Fmt("{}", place + 1).data(), who->client->pers.netname,
+		                   role);
 		++place;
 	}
-	gi.LocClient_Print(ent, PRINT_HIGH, "{}", text.empty() ? "The duel queue is empty.\n" : text.c_str());
+	if (!place)
+		gi.LocClient_Print(ent, PRINT_HIGH, "The duel queue is empty.\n");
 	return true;
 }
 
@@ -104,7 +120,7 @@ void Duel_Install(dm_game_rt &hooks)
 
 void Duel_Frame()
 {
-	queue.Sync(Present());
+	Sync();
 	if (level.intermissiontime)
 		return;
 	for (int id : Present())
@@ -135,6 +151,6 @@ void Duel_MatchEnded()
 	// so the champion keeps the spot.
 	const int loser = a->client->resp.score < b->client->resp.score ? players[0] : players[1];
 	queue.Rotate(loser);
-	gi.Com_PrintFmt("Duel: {} {} - {} {}; next: {}\n", a->client->pers.netname, a->client->resp.score,
-	                b->client->resp.score, b->client->pers.netname, Slot(loser)->client->pers.netname);
+	gi.Com_PrintFmt("Duel: {} {} - {} {}; next: {}\n", Core_PlayerName(a).c_str(), a->client->resp.score,
+	                b->client->resp.score, Core_PlayerName(b).c_str(), Core_PlayerName(Slot(loser)).c_str());
 }

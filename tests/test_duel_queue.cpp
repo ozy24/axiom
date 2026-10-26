@@ -50,3 +50,21 @@ TEST_CASE("one or no clients: fewer than two players, nothing breaks")
 	q.Rotate(42); // unknown: ignored
 	CHECK(q.Order() == std::vector<int>{9});
 }
+
+TEST_CASE("a level change keeps the rotation while clients re-enter one by one")
+{
+	DuelQueue q;
+	q.Sync({0, 1, 2}); // bots 0 and 1 duel, the human (2) waits
+	q.Rotate(1);       // 1 lost: the order is now 0, 2, 1
+	REQUIRE(q.Order() == std::vector<int>{0, 2, 1});
+	// The next level: the bots begin first, the human a few seconds later.
+	q.Sync({0}, true);
+	q.Sync({0, 1}, true);
+	CHECK(q.Order() == std::vector<int>{0, 2, 1});
+	CHECK_FALSE(q.IsPlayer(1)); // the loser doesn't take the absent human's place
+	q.Sync({0, 1, 2}, true);
+	CHECK(q.Players() == std::vector<int>{0, 2});
+	// After the grace period an absentee who never came back is dropped.
+	q.Sync({0, 1});
+	CHECK(q.Players() == std::vector<int>{0, 1});
+}
