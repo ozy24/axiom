@@ -112,9 +112,9 @@ scoreboards, simple voting).
 - Q2RED #106: `q2red_sim_client` (scripted players through the LAN lobby) and
   the game tap (`sv_game_tap`, A63: what the game sends each client). #107:
   puppets (A64): ozbot plays a sim client; the game still sees a human.
-- ozbot-re PR #5 (adopt) is **open, waiting for Chris** (Claude's merge
-  policy covers Axiom and Q2RED, not ozbot-re). Until it's merged and the
-  pins move (Q2RED fa193230 + that ozbot), tier 11 is skipped in CI.
+- ozbot-re #5 (adopt) merged as 80ddecde; pins moved to Q2RED fa193230
+  and ozbot 80ddecde (installed on the jumpbox), so tier 11 runs in CI.
+  Claude's merge policy covers Axiom and Q2RED, not ozbot-re.
 - Harness tier 11 human-duel: playtest rows 1-9 through the human path.
   Against the pre-playtest build it fails on every bug Chris found.
 
