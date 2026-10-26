@@ -501,9 +501,12 @@ def tier_duel(args, results):
     log = rig.run(startup, [rig.wait_ready(), ("wait", r"Duel: .* next: ", 90), ("sleep", 2), ("cmd", "quit")],
                   timeout=args.boot_timeout + 150)
     detail = []
-    waiting = len(re.findall(r"waits in the duel queue", log))
-    if waiting != 1:
-        detail.append(f"{waiting} clients queued, expected 1 (three bots, two duel)")
+    # A client can be queued at ClientBegin or by the next frame's reconcile
+    # (on Q2REX the bots begin before each other count as present), so count
+    # distinct names, once each.
+    waiting = set(re.findall(r"(\S.*?) waits in the duel queue", log))
+    if len(waiting) != 1:
+        detail.append(f"{len(waiting)} clients queued ({sorted(waiting)}), expected 1 (three bots, two duel)")
     seen = ["Match: " + l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
     if seen != MATCH_SEQUENCE:
         detail.append(f"transitions {seen}, expected {MATCH_SEQUENCE}")

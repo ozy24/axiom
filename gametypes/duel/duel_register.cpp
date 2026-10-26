@@ -46,7 +46,7 @@ void SetPlaying(edict_t *ent, bool playing)
 	if (playing)
 		gi.LocBroadcast_Print(PRINT_HIGH, "{} steps up to duel.\n", ent->client->pers.netname);
 	else
-		gi.LocClient_Print(ent, PRINT_HIGH, "You're in the duel queue.\n");
+		gi.LocBroadcast_Print(PRINT_HIGH, "{} waits in the duel queue.\n", ent->client->pers.netname);
 }
 } // namespace
 
