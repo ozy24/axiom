@@ -76,7 +76,8 @@ cmake --preset linux-release && cmake --build --preset linux-release
 ```
 
 Windows release builds come only from MSVC on GitHub's Windows runner
-(`windows-msvc-release` preset). A locally cross-compiled DLL is never shipped.
+(`windows-msvc-release` preset: Ninja driving MSVC's `cl.exe`, so CI can cache
+compiles with sccache). A locally cross-compiled DLL is never shipped.
 
 ## Checks
 
