@@ -110,6 +110,16 @@ phases S1-S4: a scriptable Q2RED sim client, ozbot-driven puppets behind a
 real connection, scenario tiers per gametype), then Phase 4 - competitive
 essentials (spectating, timeouts, admin, scoreboards, simple voting).
 
+## Simulated players (S1-S3 of `docs/design/simulated-clients.md`)
+- Q2RED #106: `q2red_sim_client` (scripted players through the LAN lobby) and
+  the game tap (`sv_game_tap`, A63: what the game sends each client). #107:
+  puppets (A64): ozbot plays a sim client; the game still sees a human.
+- ozbot-re #5 (adopt) merged as 80ddecde; pins moved to Q2RED fa193230
+  and ozbot 80ddecde (installed on the jumpbox), so tier 11 runs in CI.
+  Claude's merge policy covers Axiom and Q2RED, not ozbot-re.
+- Harness tier 11 human-duel: playtest rows 1-9 through the human path.
+  Against the pre-playtest build it fails on every bug Chris found.
+
 ## Known issues
 - Q2REX's built-in bots never enter a bot-only match (retail admits bots
   only after a human spawns), so tier 3 can't check frags on Q2REX.

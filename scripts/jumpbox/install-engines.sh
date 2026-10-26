@@ -40,12 +40,16 @@ else
 	export_commit "$Q2RED_SRC" "$Q2RED_COMMIT" "$src/src"
 	cmake -S "$src/src" -B "$src/build" -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo >/dev/null
 	cmake --build "$src/build" --target quake2ex_dedicated_link_probe playfab_multiplayer_reconstruction
+	# Simulated players for the scenario tiers (Q2RED from 91c0da7e).
+	cmake --build "$src/build" --target q2red_sim_client 2>/dev/null || echo "   (no q2red_sim_client at this commit)"
 	server=$(find "$src/build/bin" -name quake2ex_dedicated_link_probe -type f | head -1)
 	playfab=$(find "$src/build/bin" -name 'PlayFabMultiplayerWin_reconstruction.so' -type f | head -1)
+	sim=$(find "$src/build/bin" -name q2red_sim_client -type f | head -1)
 	[[ -n $server && -n $playfab ]] || { echo "q2red build outputs not found"; exit 1; }
 	tmp=$q2red_dest.tmp && rm -rf "$tmp" && mkdir -p "$tmp"
 	install -m 0755 "$server" "$tmp/quake2ex_dedicated"
 	install -m 0644 "$playfab" "$tmp/PlayFabMultiplayerWin_reconstruction.so"
+	[[ -z $sim ]] || install -m 0755 "$sim" "$tmp/q2red_sim_client"
 	echo "$Q2RED_COMMIT" >"$tmp/COMMIT"
 	mv "$tmp" "$q2red_dest"
 fi

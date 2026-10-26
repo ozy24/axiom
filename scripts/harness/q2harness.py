@@ -30,6 +30,8 @@ Tiers (plan Phase 1b):
                  (Q2RED only).
  10. duel-rotation  After a level change the Duel loser waits and the queued
                  bot plays (Q2RED only).
+ 11. human-duel  Simulated players through the human path: the playtest's
+                 match-flow and Duel rows, checked from the game tap (Q2RED).
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -99,6 +101,9 @@ class Rig:
              ("exists", path, seconds) wait for a file to appear
              ("sleep", seconds)
              ("cmd", text)             send a console command over stdin
+             ("sim", script)           start Q2RED's simulated players on a
+                                       script (q2red tools/sim-client) and go on
+             ("simwait",)              wait for them to finish
         A server that exits early (a fatal error, say) ends the steps.
         Returns the console log text."""
         cmd, env, cwd = self.command(startup)
@@ -106,6 +111,7 @@ class Rig:
         proc = subprocess.Popen(cmd, cwd=cwd, env=env, stdin=subprocess.PIPE,
                                 stdout=log, stderr=subprocess.STDOUT, text=True)
         deadline = time.monotonic() + timeout
+        self.sim = None
         try:
             for step in steps:
                 if not self._step(proc, step, deadline):
@@ -118,7 +124,10 @@ class Rig:
         except subprocess.TimeoutExpired:
             raise RuntimeError(f"server did not finish within {timeout}s ({self.dir})")
         finally:
-            # Whatever went wrong, never leave a server running.
+            # Whatever went wrong, never leave a server or a sim running.
+            if self.sim and self.sim.poll() is None:
+                self.sim.kill()
+                self.sim.wait()
             if proc.poll() is None:
                 proc.kill()
                 proc.wait()
@@ -151,6 +160,16 @@ class Rig:
                     raise RuntimeError(f"timed out waiting for {step[1]} ({self.dir})")
                 time.sleep(0.5)
             time.sleep(1)  # let the writer finish
+        elif step[0] == "sim":
+            (self.dir / "sim.script").write_text(step[1])
+            self.sim = subprocess.Popen(
+                ["./q2red_sim_client", "127.0.0.1", str(self.args.lobby_port), "sim.script", "sim.jsonl"],
+                cwd=self.dir, stdout=open(self.dir / "sim.out", "w"), stderr=subprocess.STDOUT)
+        elif step[0] == "simwait":
+            try:
+                self.sim.wait(timeout=max(1, deadline - time.monotonic()))
+            except subprocess.TimeoutExpired:
+                raise RuntimeError(f"sim clients did not finish ({self.dir})")
         elif step[0] == "cmd":
             try:
                 proc.stdin.write(step[1] + "\n")
@@ -186,6 +205,9 @@ class Q2RedRig(Rig):
         # symlink would make test crashes overwrite files in the engine dir.
         for f in ("quake2ex_dedicated", "PlayFabMultiplayerWin_reconstruction.so"):
             shutil.copy2(engine / f, self.dir / f)
+        # Q2RED's simulated players (tools/sim-client), for the scenario tiers.
+        if (engine / "q2red_sim_client").exists():
+            shutil.copy2(engine / "q2red_sim_client", self.dir / "q2red_sim_client")
         (self.dir / "Q2Game.kpf").symlink_to(retail / "Q2Game.kpf")
         (base / "pak0.pak").symlink_to(retail / "baseq2" / "pak0.pak")
         shutil.copy2(module, base / self.module_name)
@@ -606,6 +628,158 @@ def tier_duel_rotation(args, results):
     results.append(("10 duel-rotation", not detail, detail))
 
 
+# --- Scenario tiers: simulated players (docs/design/simulated-clients.md) -------
+
+TOKEN_RE = re.compile(r"##P\d+")
+
+
+def read_jsonl(path):
+    if not path.exists():
+        return []
+    out = []
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            out.append(json.loads(line))
+        except ValueError:
+            pass
+    return out
+
+
+def scenario_rig(args, name):
+    """A Q2RED rig that can host simulated players, or None (and why)."""
+    if args.engine_kind != "q2red":
+        return None, "Q2RED only (simulated players are a Q2RED tool)"
+    if not (pathlib.Path(args.engine) / "q2red_sim_client").exists():
+        return None, f"no q2red_sim_client in {args.engine}"
+    if not args.bots:
+        return None, "no --bots (ozbot plays the simulated players)"
+    return RIGS["q2red"](args, args.candidate, name), None
+
+
+def scenario_startup(rig, extra):
+    return (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "sv_sim_puppets", "1",
+             "+set", "sv_game_tap", str(rig.dir / "tap.jsonl"),
+             "+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "0"] + extra)
+
+
+def scenario_steps(rig, script, during=()):
+    """Map up, the LAN lobby created, the sim clients started; `during` runs
+    while they play; then wait for them and quit."""
+    return ([rig.wait_ready(), ("sleep", 2), ("cmd", "kexmultiplayer create lan"), ("sleep", 3),
+             ("sim", script)] + list(during) + [("simwait",), ("sleep", 1), ("cmd", "quit")])
+
+
+def embedded_tokens(tap):
+    """Name tokens inside a larger argument: the client can't decode those
+    (the `queue` bug, playtest row 7)."""
+    bad = []
+    for r in tap:
+        for a in r.get("args", []) if r.get("type") == "locprint" else []:
+            if "##P" in a and not TOKEN_RE.fullmatch(a):
+                bad.append(f"{r['base']!r} arg {a!r}")
+    return bad
+
+
+def tier_human_duel(args, results):
+    """Duel through the human path: three simulated players (Alice, Bob,
+    Carol), played by ozbot, join like retail clients and run the playtest's
+    match-flow and Duel rows: warmup is free play with no clock, `ready`, the
+    10-second countdown, `queue`, the timelimit, and the rotation across the
+    map change. Q2RED only."""
+    rig, why = scenario_rig(args, "t11-human-duel")
+    if not rig:
+        results.append(("11 human-duel", True, [f"skipped: {why}"]))
+        return
+    script = """seconds 95
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob join=1 puppet
+client 2 name=Carol social=sim-carol join=2 puppet
+at 8 0 cmd score
+at 9 1 cmd kill
+at 12 0 cmd ready
+at 12 1 cmd ready
+at 12 2 cmd ready
+at 13 0 cmd queue
+at 30 0 cmd score
+"""
+    # match_countdown is left at its default: the playtest asked for 10 s.
+    startup = scenario_startup(rig, ["+set", "g_gametype", "duel", "+set", "match_warmup", "1",
+                                     "+set", "timelimit", "0.5", "+map", "q2dm1"])
+    # ozbot presses no button at intermission, so the level change that a
+    # human's press would trigger is issued here (`gamemap`, as ExitLevel does).
+    during = [("sleep", 11), ("cmd", "sv match"), ("wait", r"Duel: .* next: ", 80), ("sleep", 3),
+              ("cmd", "gamemap q2dm1")]
+    log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 180)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    if set(humans) != {"Alice", "Bob", "Carol"}:
+        results.append(("11 human-duel", False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
+        return
+    socials = {r["name"]: r["social"] for r in tap if r.get("type") == "connect"}
+    if socials.get("Alice") != "sim-alice":
+        detail.append(f"social IDs {socials}")
+    alice, carol = humans["Alice"], humans["Carol"]
+    locs = [r for r in tap if r.get("type") == "locprint"]
+    to = lambda slot: [r for r in locs if r["to"] in (slot, -1)]
+
+    ready = [r for r in locs if r["base"] == "{} is ready.\n"]
+    if len(ready) != 2 or not all(TOKEN_RE.fullmatch(a) for r in ready for a in r["args"]):
+        detail.append(f"ready broadcasts {[r['args'] for r in ready]}, expected two with name tokens")
+    if not any(r["base"] == "Join the game first.\n" for r in to(carol)):
+        detail.append("the queued player's `ready` got no 'Join the game first.'")
+
+    centre = [r["args"][0] for r in to(alice) if r["base"] == "{}" and r["args"]]
+    want = ["Match starting"] + [f"Match starts in {n}" for n in range(10, 0, -1)] + ["FIGHT!"]
+    got = [c for c in centre if c in want]
+    if got[:len(want)] != want:
+        detail.append(f"Alice's countdown {got[:14]}, expected {want}")
+
+    queue_lines = [r["args"] for r in locs if r["to"] == alice and r["base"] == "{}. {} ({})\n"]
+    if [q[2] for q in queue_lines] != ["duelling", "duelling", "waiting"] or \
+            not all(TOKEN_RE.fullmatch(q[1]) for q in queue_lines):
+        detail.append(f"`queue` showed {queue_lines}")
+    detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
+
+    # Warmup: no clock until FIGHT!; then the clock is there.
+    fight = next((r["t"] for r in locs if r["to"] == alice and r["args"] == ["FIGHT!"]), None)
+    layouts = [r for r in tap if r.get("type") == "layout" and r["to"] == alice]
+    before = [r for r in layouts if fight and r["t"] < fight]
+    # FIGHT! respawns everyone, which closes the scoreboard; Alice reopens it
+    # while live (the intermission scoreboard rightly has no clock).
+    after = [r for r in layouts if fight and r["t"] > fight and "m_eou_press_button" not in r["text"]]
+    if not before:
+        detail.append("no scoreboard layout in warmup, so the clock wasn't checked")
+    elif any("time_limit" in r["text"] for r in before):
+        detail.append("the warmup scoreboard shows a clock")
+    if not after or not any("time_limit" in r["text"] for r in after):
+        detail.append("no clock on the scoreboard once the match was live")
+
+    # A warmup suicide doesn't score (`sv match` during warmup).
+    warmup_scores = [int(m) for m in re.findall(r"^\S*\s+(-?\d+) (?:Alice|Bob|Carol)", log, re.M)][:3]
+    if warmup_scores and any(warmup_scores):
+        detail.append(f"warmup scores {warmup_scores} after a suicide, expected 0")
+    elif not warmup_scores:
+        detail.append("no `sv match` scores in warmup")
+
+    # The rotation survives the map change: the loser waits, the queued plays.
+    m = re.search(r"Duel: .+ -?\d+ - -?\d+ .+; next: (\S+)", log)
+    if not m:
+        detail.append("no Duel result line")
+    else:
+        loser = m.group(1)
+        ended = next((r["t"] for r in tap if r.get("type") == "layout" and "m_eou_press_button" in r["text"]), 0)
+        later = [r for r in tap if r.get("type") == "stufftext" and r["t"] > ended and "spectator" in r["text"]]
+        spec = {r["to"]: r["text"].strip() for r in later}
+        if spec.get(humans.get(loser)) != "spectator 1" or spec.get(carol) != "spectator 0":
+            detail.append(f"after the map change: {spec} (slots {humans}), expected {loser} spectating "
+                          "and Carol playing")
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append(("11 human-duel", not detail, detail))
+
+
 def tier_teams(args, results):
     """TDM and CTF with the match flow: four bots on two teams play warmup ->
     live -> timelimit, and the record has both teams and every player on one."""
@@ -703,7 +877,7 @@ def cmd_test(args):
     results = []
     for tier in (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
                  tier_rounds, tier_teams, tier_warmup,
-                 tier_duel_rotation):
+                 tier_duel_rotation, tier_human_duel):
         if args.only and tier.__name__ != f"tier_{args.only}":
             continue
         try:
@@ -779,7 +953,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")
