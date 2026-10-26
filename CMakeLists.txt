@@ -57,7 +57,11 @@ set_target_properties(game_jsoncpp PROPERTIES
 # The enabled gametypes, each in gametypes/<id>/gametype.cpp defining
 # `gametype_<id>` (docs/design/gametype-api.md). A downstream mod sets this to
 # its own list; ffa must stay in it.
-set(GAME_GAMETYPES "ffa;tag;ball" CACHE STRING "Gametypes compiled into the module")
+# A plain default rather than a cache entry, so a change to the list here
+# reaches existing build trees; a downstream mod passes -DGAME_GAMETYPES=...
+if(NOT DEFINED GAME_GAMETYPES)
+    set(GAME_GAMETYPES "ffa")
+endif()
 if(NOT "ffa" IN_LIST GAME_GAMETYPES)
     message(FATAL_ERROR "GAME_GAMETYPES must include ffa (the fallback)")
 endif()

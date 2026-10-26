@@ -14,7 +14,7 @@ null hook means "stock behaviour". Nothing else dispatches gametype logic.
 g_gametype (cvar, latched, serverinfo)   e.g. "ffa"
         │  Core_Gametype_Start()  (InitGame, where Rogue called InitGameRules)
         ▼
-GametypeDef { id, title, rogue_gamerules, install(dm_game_rt &) }
+GametypeDef { id, title, install(dm_game_rt &) }
         │  install fills hooks
         ▼
 DMGame  ──► id's call sites (p_client.cpp, g_combat.cpp, g_main.cpp, …)
@@ -26,10 +26,10 @@ DMGame  ──► id's call sites (p_client.cpp, g_combat.cpp, g_main.cpp, …)
   list.
 - **Selection:** `g_gametype` (neutral name, decision 0004), default `ffa`. An
   unknown id falls back to `ffa` with a console warning.
-- **Stock compatibility:** the stock `gamerules` cvar still works. `gamerules 2`
-  selects `tag`, `gamerules 3` selects `ball`; selecting `tag`/`ball` by
-  `g_gametype` sets `gamerules` to match, because 22 places in Rogue's code
-  test `gamerules->integer` directly (item spawns and so on).
+- **Stock compatibility:** the stock `gamerules` cvar still works exactly as in
+  stock. With it set (Rogue's Tag `2`, DeathBall `3`), Rogue's own
+  `InitGameRules` runs untouched and `g_gametype` is ignored; Rogue's modes are
+  not registry gametypes (decision 0010).
 - **Hooks today** (`dm_game_rt`, all optional): `GameInit`, `PostInitSetup`,
   `ClientBegin`, `SelectSpawnPoint`, `PlayerDeath`, `Score`, `PlayerEffects`,
   `DogTag`, `PlayerDisconnect`, `ChangeDamage`, `ChangeKnockback`,
@@ -45,8 +45,10 @@ DMGame  ──► id's call sites (p_client.cpp, g_combat.cpp, g_main.cpp, …)
 | id | title | hooks | notes |
 |---|---|---|---|
 | `ffa` | Free For All | none | stock deathmatch; the default |
-| `tag` | Tag | Rogue's `Tag_*` | stock Ground Zero mode, `gamerules 2`. Crashed in stock (known id bug #1), fixed |
-| `ball` | DeathBall | Rogue's `DBall_*` | stock Ground Zero mode, `gamerules 3` |
+
+Rogue's Tag and DeathBall remain available through the stock `gamerules` cvar,
+outside the registry (decision 0010). Stock Tag crashed on every map; that is
+fixed (known id bug #1) and tested by harness tier 4.
 
 TDM, CTF and Duel arrive in Phase 3; TDM and CTF are currently the stock
 `teamplay` / `ctf` cvars and keep working as before.

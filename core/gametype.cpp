@@ -10,15 +10,3 @@ const GametypeDef *Core_Gametype_Find(const GametypeDef *const *table, size_t co
 	}
 	return nullptr;
 }
-
-const GametypeDef *Core_Gametype_ForRogueGamerules(const GametypeDef *const *table, size_t count, int gamerules)
-{
-	if (gamerules == 0)
-		return nullptr;
-	for (size_t i = 0; i < count; ++i)
-	{
-		if (table[i] && table[i]->rogue_gamerules == gamerules)
-			return table[i];
-	}
-	return nullptr;
-}
