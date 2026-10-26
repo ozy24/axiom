@@ -53,7 +53,10 @@ checks/           compile-time checks built into the module.
    rename drill.
 2. The jumpbox runner runs the game tests against the stock reference: tiers
    1-3 on Q2RED with the `.so` and on Q2REX under Wine with the MSVC `.dll`.
-3. Human gates (`STATUS.md`): the single-player checklist on retail, game feel.
+3. Human gates (`STATUS.md`): the single-player checklist on retail
+   (`docs/checklists/single-player.md`) and playtests of new gameplay
+   (`docs/checklists/playtest.md`, with the local rig from
+   `scripts/playtest/setup-local-rig.sh`).
 
 ## Coming next (plan Phase 2)
 

@@ -16,6 +16,8 @@ const char *MatchStateName(MatchState state)
 		return "live";
 	case MatchState::Overtime:
 		return "overtime";
+	case MatchState::RoundCountdown:
+		return "round countdown";
 	case MatchState::Intermission:
 		return "intermission";
 	}
@@ -76,6 +78,50 @@ bool Match::CanStart(const MatchInput &in) const
 	                   [](const MatchPlayer &p) { return !p.playing || p.ready; });
 }
 
+bool Match::ScoreChanged(const MatchInput &in) const
+{
+	for (const MatchPlayer &p : in.players)
+	{
+		if (!p.playing)
+			continue;
+		for (const auto &[id, score] : round_scores_)
+		{
+			if (id == p.id && score != p.score)
+				return true;
+		}
+	}
+	return false;
+}
+
+void Match::Baseline(const MatchInput &in)
+{
+	round_scores_.clear();
+	for (const MatchPlayer &p : in.players)
+		round_scores_.emplace_back(p.id, p.score);
+}
+
+// HoonyMode: a score changed during a round, and the match isn't over: hold
+// everyone, reset the level, count down to the next round.
+bool Match::RoundBreak(const MatchInput &in, MatchState from, std::vector<MatchAction> &out)
+{
+	if (!config_.rounds_on_frag)
+		return false;
+	if (round_scores_.empty())
+	{
+		Baseline(in); // the first frame of LIVE: scores were just zeroed
+		return false;
+	}
+	if (!ScoreChanged(in))
+		return false;
+	round_return_ = from;
+	state_ = MatchState::RoundCountdown;
+	state_since_ms_ = in.now_ms;
+	last_countdown_s_ = -1;
+	out.push_back({MatchActionKind::RoundHold, "", 0});
+	out.push_back({MatchActionKind::ResetArena, "", 1});
+	return true;
+}
+
 void Match::GoLive(int64_t now_ms, std::vector<MatchAction> &out)
 {
 	state_ = MatchState::Live;
@@ -83,6 +129,7 @@ void Match::GoLive(int64_t now_ms, std::vector<MatchAction> &out)
 	time_end_ms_ = config_.timelimit_ms > 0 ? now_ms + config_.timelimit_ms : 0;
 	out.push_back({MatchActionKind::ResetArena, "", 0});
 	out.push_back({MatchActionKind::Announce, "FIGHT!", 0});
+	round_scores_.clear(); // scores are zeroed by the reset; filled on the next Update
 }
 
 void Match::End(const char *why, std::vector<MatchAction> &out)
@@ -170,7 +217,10 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 			{
 				End("timelimit", out);
 			}
+			break;
 		}
+		if (RoundBreak(in, MatchState::Live, out))
+			break;
 		break;
 	}
 	case MatchState::Overtime:
@@ -200,6 +250,40 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 			{
 				End("overtime", out);
 			}
+			break;
+		}
+		RoundBreak(in, MatchState::Overtime, out);
+		break;
+	}
+	case MatchState::RoundCountdown:
+	{
+		if (in.gametype_over)
+		{
+			End("gametype", out);
+			break;
+		}
+		if (round_return_ == MatchState::Live && time_end_ms_ && in.now_ms >= time_end_ms_)
+		{
+			// Time ran out between rounds: decide as LIVE would, on the next frame.
+			state_ = MatchState::Live;
+			out.push_back({MatchActionKind::RoundStart, "", 0});
+			break;
+		}
+		const int64_t left_ms = config_.round_countdown_ms - (in.now_ms - state_since_ms_);
+		if (left_ms <= 0)
+		{
+			state_ = round_return_;
+			state_since_ms_ = in.now_ms;
+			Baseline(in);
+			out.push_back({MatchActionKind::RoundStart, "", 0});
+			out.push_back({MatchActionKind::Announce, "FIGHT!", 0});
+			break;
+		}
+		const int left_s = (int)((left_ms + 999) / 1000);
+		if (left_s != last_countdown_s_)
+		{
+			last_countdown_s_ = left_s;
+			out.push_back({MatchActionKind::Countdown, "", left_s});
 		}
 		break;
 	}

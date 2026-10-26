@@ -22,6 +22,8 @@ Tiers (plan Phase 1b):
                  on the timelimit, counted from LIVE.
   6. duel        Three bots: two duel, one queues; the match ends and the loser
                  rotates to the back.
+  7. rounds      match_rounds on: a frag ends the round, the next one starts
+                 (Q2RED only: needs bots that fight).
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -523,9 +525,35 @@ def tier_duel(args, results):
     results.append(("6 duel", not detail, detail + ([detail_note] if not rig.expects_frags else [])))
 
 
+def tier_rounds(args, results):
+    """match_rounds on (HoonyMode's mechanics): a frag ends the round, players
+    are held, the next round starts and the bots fight on. Needs bots that
+    fight, so Q2RED only."""
+    rig = RIGS[args.engine_kind](args, args.candidate, "t7-rounds")
+    if not rig.expects_frags:
+        results.append(("7 rounds", True, ["skipped: bots don't fight in a bot-only match on this engine"]))
+        return
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1",
+                "+set", "match_countdown", "3", "+set", "match_rounds", "1", "+set", "match_round_countdown", "2",
+                "+set", "timelimit", "3"] + rig.bot_args() + ["+map", "q2dm1"])
+    log = rig.run(startup, [rig.wait_ready(), ("wait", r"Match: live -> round countdown", 150),
+                            ("wait", r"Match: round countdown -> live", 20), ("sleep", 1), ("cmd", "quit")],
+                  timeout=args.boot_timeout + 220)
+    detail = []
+    if "Match: round countdown -> live" not in log:
+        detail.append("no full round cycle")
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    if "==== ShutdownGame ====" not in log:
+        detail.append("no clean ShutdownGame")
+    detail += error_lines(log, rig)[:20]
+    results.append(("7 rounds", not detail, detail))
+
+
 def cmd_test(args):
     results = []
-    for tier in (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel):
+    for tier in (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
+                 tier_rounds):
         if args.only and tier.__name__ != f"tier_{args.only}":
             continue
         try:
@@ -601,7 +629,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

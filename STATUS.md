@@ -32,8 +32,15 @@ _Updated at the end of every session. Last update: 2026-10-26._
 - Known (stock): with only bots, DM intermission never exits (stock waits for
   a player to press a button).
 
-Next in 3a: HoonyMode (rounds that end on a frag, arena reset each round),
-minimal match JSON for the ladder, Duel lobby metadata on Q2REX.
+## Phase 3a, part 2 (HoonyMode) done
+- Rounds in the match flow (`match_rounds`, `match_round_countdown`): a
+  frag ends the round, players are held, the level resets (scores kept),
+  everyone respawns together. 14 more unit-test cases; harness tier 7.
+- Built-in ruleset `hoony`: Duel with rounds, first to 7, sudden death.
+- Every built-in ruleset now sets every match cvar (a unit test checks), so
+  switching rulesets never leaves one behind.
+
+Next in 3a: minimal match JSON for the ladder; Duel lobby metadata on Q2REX.
 
 ## Known issues
 - Q2RED crashes at startup if a dedicated server is started without `+map`
@@ -49,6 +56,9 @@ minimal match JSON for the ladder, Duel lobby metadata on Q2REX.
 
 ## Open human gates
 - Single-player checklist for M2a, whenever convenient (any build from now on).
+- **Playtest** (`docs/checklists/playtest.md`): match flow, Duel and HoonyMode in
+  a retail client. Rig: `scripts/playtest/setup-local-rig.sh` -> `~/q2playtest`,
+  join with `connect 127.0.0.1:5073`. Doesn't block further work.
 
 ## Local setup notes
 - Format tools: `python3 -m venv ~/.local/share/q2game-tools &&

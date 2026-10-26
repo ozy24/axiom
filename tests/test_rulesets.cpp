@@ -8,9 +8,9 @@
 
 // Every cvar a built-in ruleset may set. A typo, or a mod-prefixed name
 // (decision 0004), fails here instead of silently doing nothing.
-static const std::set<std::string> kKnownCvars = {"g_gametype",       "match_warmup",      "match_ready",
-                                                  "match_minplayers", "match_warmup_time", "match_countdown",
-                                                  "match_overtime",   "timelimit",         "fraglimit"};
+static const std::set<std::string> kKnownCvars = {
+    "g_gametype",     "match_warmup", "match_ready", "match_minplayers", "match_warmup_time",    "match_countdown",
+    "match_overtime", "timelimit",    "fraglimit",   "match_rounds",     "match_round_countdown"};
 
 TEST_CASE("built-in rulesets only set known cvars, one `set` per line")
 {
@@ -45,6 +45,41 @@ TEST_CASE("duel selects the duel gametype with the match flow on")
 	REQUIRE(duel);
 	CHECK(std::string(duel->cfg).find("set g_gametype duel\n") != std::string::npos);
 	CHECK(std::string(duel->cfg).find("set match_warmup 1\n") != std::string::npos);
+}
+
+TEST_CASE("every built-in is a complete profile: it sets the same cvars")
+{
+	auto cvars_of = [](const char *cfg)
+	{
+		std::set<std::string> out;
+		std::istringstream lines(cfg);
+		std::string line, verb, cvar;
+		while (std::getline(lines, line))
+		{
+			std::istringstream words(line);
+			words >> verb >> cvar;
+			out.insert(cvar);
+		}
+		return out;
+	};
+	const std::set<std::string> first = cvars_of(core_rulesets[0].cfg);
+	for (size_t i = 1; i < core_ruleset_count; ++i)
+	{
+		CAPTURE(core_rulesets[i].name);
+		std::set<std::string> these = cvars_of(core_rulesets[i].cfg);
+		// stock leaves the server's own limits alone; the others set them
+		these.erase("timelimit");
+		these.erase("fraglimit");
+		CHECK(these == first);
+	}
+}
+
+TEST_CASE("hoony is a duel with rounds on")
+{
+	const RulesetDef *hoony = Core_Ruleset_Find("hoony");
+	REQUIRE(hoony);
+	CHECK(std::string(hoony->cfg).find("set g_gametype duel\n") != std::string::npos);
+	CHECK(std::string(hoony->cfg).find("set match_rounds 1\n") != std::string::npos);
 }
 
 TEST_CASE("stock puts the match flow off")

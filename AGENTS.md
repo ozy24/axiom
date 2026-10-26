@@ -139,6 +139,8 @@ python3 -I scripts/harness/q2harness.py test --stock STOCK.so --candidate build/
   don't fight in a bot-only match).
 - **Tier 6 duel:** three bots, `g_gametype duel`: one queues, the match runs to
   its timelimit, and a `Duel: … next: …` line shows the rotation.
+- **Tier 7 rounds:** `match_rounds 1` with six bots: a frag must end a round
+  and the next round start (Q2RED only; Q2REX's bots don't fight).
 
 Each tier has been checked on Q2RED against a deliberately broken build (a soldier with
 one extra health point, a renamed think function) and fails as it should.

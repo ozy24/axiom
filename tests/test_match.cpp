@@ -227,3 +227,107 @@ TEST_CASE("a top score held by the leader alone is not a tie")
 	m.Update(At(live + 60000, {P(1, true, 2), P(2, true, 7), P(3, true, 2)}));
 	CHECK(m.State() == MatchState::Intermission);
 }
+
+// --- Rounds (HoonyMode) ------------------------------------------------------
+
+namespace
+{
+MatchConfig Hoony()
+{
+	MatchConfig c = Enabled();
+	c.rounds_on_frag = true;
+	c.round_countdown_ms = 2000;
+	c.fraglimit = 3;
+	return c;
+}
+
+bool HasReset(const std::vector<MatchAction> &out, int value)
+{
+	return std::any_of(out.begin(), out.end(),
+	                   [&](const MatchAction &a) { return a.kind == MatchActionKind::ResetArena && a.value == value; });
+}
+} // namespace
+
+TEST_CASE("a frag ends the round: hold, level-only reset, countdown, next round")
+{
+	Match m(Hoony());
+	const int64_t live = ToLive(m);
+	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)})); // baseline
+	auto out = m.Update(At(live + 5000, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::RoundCountdown);
+	CHECK(Has(out, MatchActionKind::RoundHold));
+	CHECK(HasReset(out, 1));
+	CHECK_FALSE(HasReset(out, 0)); // scores are kept between rounds
+	out = m.Update(At(live + 5100, {P(1, true, 1), P(2, true, 0)}));
+	CHECK(Has(out, MatchActionKind::Countdown));
+	out = m.Update(At(live + 7000, {P(1, true, 1), P(2, true, 0)}));
+	CHECK(m.State() == MatchState::Live);
+	CHECK(Has(out, MatchActionKind::RoundStart));
+	// the new round's baseline is 1-0: no break until the score moves again
+	m.Update(At(live + 7100, {P(1, true, 1), P(2, true, 0)}));
+	CHECK(m.State() == MatchState::Live);
+	m.Update(At(live + 9000, {P(1, true, 1), P(2, true, 1)}));
+	CHECK(m.State() == MatchState::RoundCountdown);
+}
+
+TEST_CASE("the deciding frag ends the match instead of starting a round")
+{
+	Match m(Hoony());
+	const int64_t live = ToLive(m);
+	m.Update(At(live + 100, {P(1, true, 2), P(2, true, 0)}));
+	m.Update(At(live + 3000, {P(1, true, 2), P(2, true, 0)}));
+	auto out = m.Update(At(live + 4000, {P(1, true, 3), P(2, true, 0)}));
+	CHECK(m.State() == MatchState::Intermission);
+	CHECK(Has(out, MatchActionKind::EndMatch));
+	CHECK_FALSE(Has(out, MatchActionKind::RoundHold));
+}
+
+TEST_CASE("a duellist leaving between rounds is still a forfeit")
+{
+	Match m(Hoony());
+	const int64_t live = ToLive(m);
+	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)}));
+	m.Update(At(live + 500, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::RoundCountdown);
+	m.Update(At(live + 600, {P(1, true, 1)}, true));
+	CHECK(m.State() == MatchState::Intermission);
+}
+
+TEST_CASE("rounds off (the default): a frag is just a frag")
+{
+	Match m(Enabled());
+	const int64_t live = ToLive(m);
+	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)}));
+	m.Update(At(live + 500, {P(1, true, 1), P(2, true, 0)}));
+	CHECK(m.State() == MatchState::Live);
+}
+
+TEST_CASE("sudden death with rounds still ends on the first frag")
+{
+	MatchConfig c = Hoony();
+	c.fraglimit = 0;
+	c.overtime = -1;
+	Match m(c);
+	const int64_t live = ToLive(m);
+	m.Update(At(live + 100, {P(1, true, 2), P(2, true, 2)}));
+	m.Update(At(live + 60000, {P(1, true, 2), P(2, true, 2)}));
+	REQUIRE(m.State() == MatchState::Overtime);
+	m.Update(At(live + 61000, {P(1, true, 3), P(2, true, 2)}));
+	CHECK(m.State() == MatchState::Intermission);
+}
+
+TEST_CASE("timed overtime keeps its rounds and returns to overtime")
+{
+	MatchConfig c = Hoony();
+	c.fraglimit = 0;
+	c.overtime = 2;
+	Match m(c);
+	const int64_t live = ToLive(m);
+	m.Update(At(live + 100, {P(1, true, 1), P(2, true, 1)}));
+	m.Update(At(live + 60000, {P(1, true, 1), P(2, true, 1)}));
+	REQUIRE(m.State() == MatchState::Overtime);
+	m.Update(At(live + 61000, {P(1, true, 2), P(2, true, 1)}));
+	REQUIRE(m.State() == MatchState::RoundCountdown);
+	m.Update(At(live + 63000, {P(1, true, 2), P(2, true, 1)}));
+	CHECK(m.State() == MatchState::Overtime);
+}

@@ -1,8 +1,8 @@
 # Match flow
 
 Status: **implemented (Phase 2b, part 1)**: states, cvars, arena reset steps 1-3,
-harness tier 5, rulesets. Not yet: rounds (with Duel, 3a), door/plat reset
-(step 4). One state machine shared by every gametype.
+harness tiers 5 and 7, rulesets, rounds. Not yet: door/plat reset (step 4),
+elimination rounds. One state machine shared by every gametype.
 Change this page in the same PR as the code.
 
 ## Principle: off means stock
@@ -44,8 +44,15 @@ turns it on.
   `N` > 0: N more minutes, repeated while tied.
 - **INTERMISSION:** stock's.
 
-Rounds (HoonyMode, Clan Arena) sit inside LIVE as a sub-state and arrive with
-their first user, Duel's HoonyMode ruleset in Phase 3a.
+**Rounds** (`match_rounds 1`, HoonyMode): while LIVE or OVERTIME, any change
+in a playing client's score ends the round, unless it ends the match
+(fraglimit, sudden death and forfeits are checked first). Then:
+ROUND COUNTDOWN for `match_round_countdown` seconds, with every player held
+out of play (unseen, respawn blocked: CTF's match-start hold) and the level
+reset (items back, projectiles gone; scores kept). When it runs out every
+playing client respawns together and the state returns to LIVE or OVERTIME.
+The timelimit keeps running. Clan Arena-style rounds (end on elimination)
+are a later addition on the same state.
 
 ## Arena reset
 
@@ -74,6 +81,8 @@ isn't a spectator. Every transition prints a `Match:` console line.
 | `match_warmup_time` | `0` | seconds of warmup before starting anyway (0 = wait for ready) |
 | `match_countdown` | `5` | seconds |
 | `match_overtime` | `0` | 0 none, -1 sudden death, N minutes |
+| `match_rounds` | `0` | 1: every score change ends a round (HoonyMode) |
+| `match_round_countdown` | `3` | seconds between rounds |
 
 Rulesets (`.cfg`, decision 0003) set these; built-in defaults are stock.
 `sv ruleset <name>` applies one (`core/rulesets.h`): the built-ins `stock`

@@ -22,7 +22,8 @@ bool ended_this_level = false; // the gametype's match_ended has run
 gtime_t last_time;
 std::array<bool, MAX_CLIENTS> ready{};
 
-cvar_t *match_warmup, *match_ready, *match_minplayers, *match_warmup_time, *match_countdown, *match_overtime;
+cvar_t *match_warmup, *match_ready, *match_minplayers, *match_warmup_time, *match_countdown, *match_overtime,
+    *match_rounds, *match_round_countdown;
 
 void RegisterCvars()
 {
@@ -34,6 +35,8 @@ void RegisterCvars()
 	match_warmup_time = gi.cvar("match_warmup_time", "0", CVAR_NOFLAGS);
 	match_countdown = gi.cvar("match_countdown", "5", CVAR_NOFLAGS);
 	match_overtime = gi.cvar("match_overtime", "0", CVAR_NOFLAGS);
+	match_rounds = gi.cvar("match_rounds", "0", CVAR_NOFLAGS);
+	match_round_countdown = gi.cvar("match_round_countdown", "3", CVAR_NOFLAGS);
 }
 
 MatchConfig ReadConfig()
@@ -46,6 +49,8 @@ MatchConfig ReadConfig()
 	c.warmup_time_ms = (int64_t)(match_warmup_time->value * 1000);
 	c.countdown_ms = (int64_t)(match_countdown->value * 1000);
 	c.overtime = match_overtime->integer;
+	c.rounds_on_frag = match_rounds->integer != 0;
+	c.round_countdown_ms = (int64_t)(match_round_countdown->value * 1000);
 	c.timelimit_ms = (int64_t)(timelimit->value * 60000);
 	c.fraglimit = fraglimit->integer;
 	return c;
@@ -115,8 +120,10 @@ bool Transient(const edict_t *ent)
 }
 
 // Puts the level back to its start: no projectiles or dropped items, every map
-// item present, every player fresh at a spawn point with a zero score.
-void ResetArena()
+// item present. With `players`, also every player fresh at a spawn point with a
+// zero score (going LIVE); without, players and scores are left alone (between
+// rounds, where RoundHold / RoundStart handle the players).
+void ResetArena(bool players)
 {
 	for (uint32_t i = game.maxclients + 1; i < globals.num_edicts; ++i)
 	{
@@ -146,6 +153,8 @@ void ResetArena()
 				m->nextthink = 0_ms; // cancel any pending respawn timer
 		}
 	}
+	if (!players)
+		return;
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		edict_t *ent = ClientEdict(i);
@@ -154,6 +163,41 @@ void ResetArena()
 		ent->client->resp.score = 0;
 		if (Playing(ent))
 			PutClientInServer(ent);
+	}
+}
+
+// Between rounds: every playing client out of play, unseen, unable to respawn
+// until RoundStart. The same hold CTF's match start uses (CTFStartMatch).
+void RoundHold()
+{
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *ent = ClientEdict(i);
+		if (!Playing(ent))
+			continue;
+		ent->svflags = SVF_NOCLIENT;
+		ent->flags &= ~FL_GODMODE;
+		ent->client->respawn_time = level.time + 3600_sec;
+		ent->client->ps.pmove.pm_type = PM_DEAD;
+		ent->deadflag = true;
+		ent->movetype = MOVETYPE_NOCLIP;
+		ent->solid = SOLID_NOT;
+		ent->client->ps.gunindex = 0;
+		ent->client->ps.gunskin = 0;
+		gi.linkentity(ent);
+	}
+}
+
+// A round begins: every playing client back in at a spawn point.
+void RoundStart()
+{
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *ent = ClientEdict(i);
+		if (!Playing(ent))
+			continue;
+		ent->client->respawn_time = level.time;
+		PutClientInServer(ent);
 	}
 }
 
@@ -167,10 +211,17 @@ void Act(const std::vector<MatchAction> &actions)
 			CenterAll(a.text);
 			break;
 		case MatchActionKind::Countdown:
-			CenterAll("Match starts in " + std::to_string(a.value));
+			CenterAll((match.State() == MatchState::RoundCountdown ? "Next round in " : "Match starts in ") +
+			          std::to_string(a.value));
 			break;
 		case MatchActionKind::ResetArena:
-			ResetArena();
+			ResetArena(a.value == 0);
+			break;
+		case MatchActionKind::RoundHold:
+			RoundHold();
+			break;
+		case MatchActionKind::RoundStart:
+			RoundStart();
 			break;
 		case MatchActionKind::EndMatch:
 			gi.Com_PrintFmt("Match: ended ({})\n", a.text.c_str());
