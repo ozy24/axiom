@@ -66,7 +66,7 @@ grows in the right direction:
 | Per-player gametype data, outside id's structs, not saved | Duel queue, Freeze Tag | Phase 3a |
 | Per-frame think | Freeze Tag thaw | when needed |
 | Team assignment (CTF-compatible `ctf_team`) | TDM, CTF | Phase 3b team service |
-| Scoreboard / HUD stats via the stat allocator | Duel, CTF | Phase 3 |
+| Scoreboard / HUD stats via the stat allocator (`core/stat_slots.h`, exists: slots 54..63) | Duel, CTF | Phase 3 |
 | Lobby metadata (retail mode + display name) | Duel | Phase 3a / 4 |
 
 Rules for new hooks: plain function pointers and simple types (decision 0005

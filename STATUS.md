@@ -19,11 +19,19 @@ the MSVC DLL from `8627ce73`; all eight steps passed.
 - Harness tier 4: every registry gametype and stock gamerules 2/3 boot q2dm1
   with bots.
 
-Next in 2a:
-- HUD stat-slot allocator; team service (needed by TDM/CTF in 3b).
-- Relax `gamerules->integer && DMGame.X` gates as gametypes need hooks.
-- M2a: FFA through the API (done in effect), CI green, single-player
-  checklist again (human gate).
+- HUD stat-slot allocator (`core/stat_slots.h`): slots 54..63, by owner,
+  idempotent. The CTF block (18..31) is not handed out: `SetCTFStats` writes
+  it every frame in every mode.
+- **Deferred to 3b, deliberately:** the team service. Nothing uses it before
+  TDM/CTF, so it gets designed against them (just in time, as the plan review
+  advised). Call-site gates (`gamerules->integer && DMGame.X`) are relaxed
+  when a gametype first installs a hook.
+
+M2a status: the code side is done (FFA through the API, Rogue modes decided,
+CI green). The single-player checklist for M2a is the remaining gate; it can
+be run on any later build, so 2b continues meanwhile.
+
+Next: Phase 2b (match state machine, arena reset, rulesets as .cfg).
 
 ## Known issues
 - Q2RED crashes at startup if a dedicated server is started without `+map`
@@ -38,7 +46,7 @@ Next in 2a:
   saves can never contain them. Harmless; the check just errs on the safe side.
 
 ## Open human gates
-- None right now. The single-player checklist comes back at M2a.
+- Single-player checklist for M2a, whenever convenient (any build from now on).
 
 ## Local setup notes
 - Format tools: `python3 -m venv ~/.local/share/q2game-tools &&
