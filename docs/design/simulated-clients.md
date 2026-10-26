@@ -1,6 +1,6 @@
 # Simulated clients: game tests with "human" players
 
-**Status:** planned (2026-10-26). Phase S1 not started.
+**Status:** S1 done (Q2RED #106, 2026-10-26); S2 and S3 next.
 
 ## Why
 
@@ -21,8 +21,12 @@ The goal is a test client that:
    itself, so scoring, rounds, captures and the match flow get exercised;
 3. **does what a player does**: types `ready`, `notready`, `queue`, `team red`,
    `kill`, disconnects and rejoins, all on a script;
-4. **records what a player sees**: prints, centre prints, the scoreboard layout,
-   so a test can assert on them.
+4. **shows what a player was shown**: prints, centre prints, the scoreboard
+   layout, so a test can assert on them. This is recorded on the server by the
+   **game tap** (Q2RED A63, `sv_game_tap <file>`), at the point the game module
+   hands each message to the engine. Decoding it from the wire was tried first;
+   the LAN transport batches datagrams and compresses parts of them, so that
+   would have meant re-implementing the client's parser.
 
 The manual playtest stays for what only a person can judge: feel, pacing, HUD
 appearance, readability. It should get much shorter.
@@ -72,7 +76,7 @@ sim client (network)                  Q2RED                          game module
 
 ## Phases
 
-### S1: Q2RED: a scriptable sim client (Q2RED PRs)
+### S1: Q2RED: a scriptable sim client and the game tap (done, Q2RED #106)
 
 - Promote the probe to a CMake target (`q2red_sim_client`, Linux only),
   installed by the jumpbox's `install-engines.sh` beside the server.
@@ -81,14 +85,15 @@ sim client (network)                  Q2RED                          game module
   - a timeline of actions (`at 12.0: cmd "ready"`, `at 40.0: disconnect`,
     `at 45.0: rejoin`);
   - a total run time.
-- **Output** (JSON lines, one per event):
-  - every `svc_print`, `svc_locprint` (base string plus arguments, `##P`
-    tokens resolved the way the client would), `svc_centerprint`,
-    `svc_layout`, `svc_stufftext` and configstring change;
-  - map changes and reconnects;
-  - each entry timestamped and tagged with the client.
-- **Test:** connect, run one scripted command, and see the reply in the log, on
-  a Q2RED rig.
+- **Output:** the sim client writes its own lifecycle (join, begin, each
+  command, map changes, leaving) as JSON lines. The game tap
+  (`sv_game_tap <file>`, off by default) writes what the game sent each
+  slot: locprint (base and args, `##P` tokens as sent), print, centre print,
+  layout, stufftext, configstring, connect, begin, disconnect.
+- **Checked:** a Duel with one bot and two sim clients (ready, `queue`,
+  disconnect and rejoin across a map change): 437 tap records, social IDs
+  through, `##P` tokens as whole arguments, the countdown to each slot, and
+  `queue` lines only to the asker.
 
 ### S2: Q2RED + ozbot: puppets (one Q2RED PR, one ozbot-re PR)
 
@@ -107,13 +112,14 @@ sim client (network)                  Q2RED                          game module
 
 ### S3: Axiom: scenario tiers (Axiom PRs)
 
-- **Runner** (`scripts/harness/scenarios.py`):
+- **Runner** (`scripts/harness/scenarios.py`). It reads the game tap for what
+  each player was shown, and the sim client log for what they did:
   - starts a Q2RED rig with the LAN lobby, `sv_sim_puppets 1`, and optional
     ozbot bots for numbers;
   - starts up to seven sim clients (the LAN lobby's cap is eight, one held by
     the host);
-  - gathers every client's event log and the server console, then runs the
-    scenario's checks.
+  - gathers the tap, every client's event log and the server console, then
+    runs the scenario's checks.
 - **Scenarios** (`scripts/harness/scenarios/<name>.json` plus checks in
   Python), one per playtest section, first:
   - **Match flow:** `ready` is broadcast with the real name; the countdown
