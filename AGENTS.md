@@ -147,6 +147,11 @@ python3 -I scripts/harness/q2harness.py test --stock STOCK.so --candidate build/
   only).
 - **Tier 10 duel-rotation:** after a Duel ends the level changes
   (`gamemap`); the loser must wait and the queued bot play (Q2RED only).
+- **Tier 11 human-duel:** three simulated players (Q2RED `q2red_sim_client`,
+  played by ozbot as puppets, `docs/design/simulated-clients.md`) join like
+  retail clients and run the playtest's match-flow and Duel rows; checks read
+  the server's game tap (what each player was shown). Q2RED only; skipped when
+  the engine has no sim client.
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.
