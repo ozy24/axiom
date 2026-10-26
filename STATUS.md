@@ -119,16 +119,15 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
   Claude's merge policy covers Axiom and Q2RED, not ozbot-re.
 - Harness tier 11 human-duel: playtest rows 1-9 through the human path.
   Against the pre-playtest build it fails on every bug Chris found.
-
-## Simulated players (S1-S3 of `docs/design/simulated-clients.md`)
-- Q2RED #106: `q2red_sim_client` (scripted players through the LAN lobby) and
-  the game tap (`sv_game_tap`, A63: what the game sends each client). #107:
-  puppets (A64): ozbot plays a sim client; the game still sees a human.
-- ozbot-re #5 (adopt) merged as 80ddecde; pins moved to Q2RED fa193230
-  and ozbot 80ddecde (installed on the jumpbox), so tier 11 runs in CI.
-  Claude's merge policy covers Axiom and Q2RED, not ozbot-re.
-- Harness tier 11 human-duel: playtest rows 1-9 through the human path.
-  Against the pre-playtest build it fails on every bug Chris found.
+- Tier 12 human-teams (TDM, CTF: team joins, no start with one team, the
+  record's teams) and tier 13 human-rounds (HoonyMode rounds ended by
+  scripted suicides). Scenario settings go in an exec'd cfg: too many
+  `+set`s pass the engine's 50-argument limit, which also showed Q2RED
+  segfaulting after that fatal error (fixed, Q2RED #108, A65).
+- Not covered yet: a CTF capture (ozbot capturing on q2ctf1 within a short
+  test is unproven) and leaving intermission by a button press (ozbot
+  presses none; scenarios issue `gamemap`). Playtest rows 1-17 now have
+  automated equivalents; row 18 and feel/HUD stay manual.
 
 ## Known issues
 - Q2REX's built-in bots never enter a bot-only match (retail admits bots
