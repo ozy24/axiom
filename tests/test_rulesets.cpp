@@ -39,6 +39,14 @@ TEST_CASE("built-in rulesets only set known cvars, one `set` per line")
 	}
 }
 
+TEST_CASE("duel selects the duel gametype with the match flow on")
+{
+	const RulesetDef *duel = Core_Ruleset_Find("duel");
+	REQUIRE(duel);
+	CHECK(std::string(duel->cfg).find("set g_gametype duel\n") != std::string::npos);
+	CHECK(std::string(duel->cfg).find("set match_warmup 1\n") != std::string::npos);
+}
+
 TEST_CASE("stock puts the match flow off")
 {
 	const RulesetDef *stock = Core_Ruleset_Find("stock");

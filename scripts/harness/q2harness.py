@@ -20,6 +20,8 @@ Tiers (plan Phase 1b):
                  shut down cleanly.
   5. match-flow  match_warmup on: warmup -> countdown -> live -> intermission
                  on the timelimit, counted from LIVE.
+  6. duel        Three bots: two duel, one queues; the match ends and the loser
+                 rotates to the back.
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -487,9 +489,43 @@ def tier_match_flow(args, results):
     results.append(("5 match-flow", not detail, detail))
 
 
+def tier_duel(args, results):
+    """Duel with three bots: two duel, the third queues as a spectator; the match
+    runs to its timelimit and the loser rotates to the back of the queue."""
+    rig = RIGS[args.engine_kind](args, args.candidate, "t6-duel")
+    bots = (["+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "3", "+set", "bot_skill", "3"]
+            if rig.kind == "q2red" else ["+set", "bot_minPlayers", "3"])
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", "duel",
+                "+set", "match_warmup", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25"]
+               + bots + ["+map", "q2dm1"])
+    log = rig.run(startup, [rig.wait_ready(), ("wait", r"Duel: .* next: ", 90), ("sleep", 2), ("cmd", "quit")],
+                  timeout=args.boot_timeout + 150)
+    detail = []
+    # A client can be queued at ClientBegin or by the next frame's reconcile
+    # (on Q2REX the bots begin before each other count as present), so count
+    # distinct names, once each.
+    waiting = set(re.findall(r"(\S.*?) waits in the duel queue", log))
+    if rig.expects_frags and len(waiting) != 1:
+        detail.append(f"{len(waiting)} clients queued ({sorted(waiting)}), expected 1 (three bots, two duel)")
+    elif not rig.expects_frags:
+        # Q2REX: in a bot-only match only two of the three bots ever begin as
+        # clients (seen in CI: the third connects and never begins), so there is
+        # no third client to queue. Flow and rotation are still checked.
+        detail_note = "queueing not checked: only two bots begin on this engine"
+    seen = ["Match: " + l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
+    if seen != MATCH_SEQUENCE:
+        detail.append(f"transitions {seen}, expected {MATCH_SEQUENCE}")
+    if not re.search(r"Duel: .+ \d+ - \d+ .+; next: ", log):
+        detail.append("no Duel result line")
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append(("6 duel", not detail, detail + ([detail_note] if not rig.expects_frags else [])))
+
+
 def cmd_test(args):
     results = []
-    for tier in (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow):
+    for tier in (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel):
         if args.only and tier.__name__ != f"tier_{args.only}":
             continue
         try:
@@ -560,12 +596,12 @@ def main():
     ap.add_argument("--settle", type=float, default=6, help="seconds after the map loads before saving")
     ap.add_argument("--dm-seconds", type=float, default=60)
     ap.add_argument("--runs", type=int, default=6, help="calibration runs")
-    ap.add_argument("--gametypes", default="ffa",
+    ap.add_argument("--gametypes", default="ffa,duel",
                     help="gametype ids tier 4 boots (the registry's, GAME_GAMETYPES)")
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

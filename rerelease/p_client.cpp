@@ -2324,7 +2324,7 @@ void ClientBeginDeathmatch(edict_t *ent)
 	// ZOID
 
 	// PGM
-	if (gamerules->integer && DMGame.ClientBegin)
+	if (DMGame.ClientBegin) // [mod] gate relaxed: the mod's gametypes install hooks without gamerules
 	{
 		DMGame.ClientBegin(ent);
 	}

@@ -60,7 +60,7 @@ set_target_properties(game_jsoncpp PROPERTIES
 # A plain default rather than a cache entry, so a change to the list here
 # reaches existing build trees; a downstream mod passes -DGAME_GAMETYPES=...
 if(NOT DEFINED GAME_GAMETYPES)
-    set(GAME_GAMETYPES "ffa")
+    set(GAME_GAMETYPES "ffa;duel")
 endif()
 if(NOT "ffa" IN_LIST GAME_GAMETYPES)
     message(FATAL_ERROR "GAME_GAMETYPES must include ffa (the fallback)")
@@ -74,7 +74,9 @@ foreach(gt IN LISTS GAME_GAMETYPES)
     endif()
     string(APPEND GAMETYPE_DECLS "extern const GametypeDef gametype_${gt};\n")
     string(APPEND GAMETYPE_ENTRIES "&gametype_${gt}, ")
-    list(APPEND GAME_GAMETYPE_SOURCES "${CMAKE_SOURCE_DIR}/gametypes/${gt}/gametype.cpp")
+    # Every .cpp in the gametype's folder: its definition, logic and adapter.
+    file(GLOB _gt_sources CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/gametypes/${gt}/*.cpp")
+    list(APPEND GAME_GAMETYPE_SOURCES ${_gt_sources})
 endforeach()
 string(REPLACE "\\n" "\n" GAMETYPE_DECLS "${GAMETYPE_DECLS}")
 configure_file("${CMAKE_SOURCE_DIR}/cmake/gametype_registry.cpp.in"
@@ -183,9 +185,10 @@ if(GAME_BUILD_TESTS)
         core/rulesets.cpp
         core/match.cpp
         core/stat_slots.cpp
+        tests/test_duel_queue.cpp
         core/gametype.cpp
-        ${GAME_GAMETYPE_SOURCES}
-        "${MOD_GENERATED_DIR}/gametype_registry.cpp")
+        gametypes/ffa/gametype.cpp
+        gametypes/duel/duel_queue.cpp)
     target_include_directories(game_tests PRIVATE
         "${CMAKE_SOURCE_DIR}"
         "${CMAKE_SOURCE_DIR}/tests"
