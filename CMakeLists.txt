@@ -93,7 +93,9 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${MOD_GENERATED_DIR}/gametype_registry.cpp"
     "${CMAKE_SOURCE_DIR}/core/host_gi.cpp"
     "${CMAKE_SOURCE_DIR}/core/identity.cpp"
-    "${CMAKE_SOURCE_DIR}/core/identity_register.cpp")
+    "${CMAKE_SOURCE_DIR}/core/identity_register.cpp"
+    "${CMAKE_SOURCE_DIR}/core/stat_slots.cpp"
+    "${CMAKE_SOURCE_DIR}/core/stat_slots_register.cpp")
 
 set_target_properties(game_x64 PROPERTIES
     # id's project uses C++17 (game.vcxproj LanguageStandard stdcpp17).
@@ -170,7 +172,9 @@ if(GAME_BUILD_TESTS)
         tests/test_main.cpp
         tests/test_identity.cpp
         tests/test_gametype.cpp
+        tests/test_stat_slots.cpp
         core/identity.cpp
+        core/stat_slots.cpp
         core/gametype.cpp
         ${GAME_GAMETYPE_SOURCES}
         "${MOD_GENERATED_DIR}/gametype_registry.cpp")
