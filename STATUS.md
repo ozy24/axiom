@@ -105,8 +105,10 @@ Playtest is the open human gate for it.
 **M3b reached** (TDM and CTF with a harness bot match on both engines, once
 CI is green). Playtest rows 14-18 are the open human gate.
 
-Next: Phase 4 - competitive essentials (spectating, timeouts, admin,
-scoreboards, simple voting).
+Next: simulated clients for the game tests (`docs/design/simulated-clients.md`,
+phases S1-S4: a scriptable Q2RED sim client, ozbot-driven puppets behind a
+real connection, scenario tiers per gametype), then Phase 4 - competitive
+essentials (spectating, timeouts, admin, scoreboards, simple voting).
 
 ## Known issues
 - Q2REX's built-in bots never enter a bot-only match (retail admits bots
