@@ -52,6 +52,30 @@ set_target_properties(game_jsoncpp PROPERTIES
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN ON)
 
+# --- Gametypes ---------------------------------------------------------------
+
+# The enabled gametypes, each in gametypes/<id>/gametype.cpp defining
+# `gametype_<id>` (docs/design/gametype-api.md). A downstream mod sets this to
+# its own list; ffa must stay in it.
+set(GAME_GAMETYPES "ffa;tag;ball" CACHE STRING "Gametypes compiled into the module")
+if(NOT "ffa" IN_LIST GAME_GAMETYPES)
+    message(FATAL_ERROR "GAME_GAMETYPES must include ffa (the fallback)")
+endif()
+set(GAMETYPE_DECLS "")
+set(GAMETYPE_ENTRIES "")
+set(GAME_GAMETYPE_SOURCES "")
+foreach(gt IN LISTS GAME_GAMETYPES)
+    if(NOT gt MATCHES "^[a-z][a-z0-9_]*$" OR NOT EXISTS "${CMAKE_SOURCE_DIR}/gametypes/${gt}/gametype.cpp")
+        message(FATAL_ERROR "gametype '${gt}': expected gametypes/${gt}/gametype.cpp")
+    endif()
+    string(APPEND GAMETYPE_DECLS "extern const GametypeDef gametype_${gt};\n")
+    string(APPEND GAMETYPE_ENTRIES "&gametype_${gt}, ")
+    list(APPEND GAME_GAMETYPE_SOURCES "${CMAKE_SOURCE_DIR}/gametypes/${gt}/gametype.cpp")
+endforeach()
+string(REPLACE "\\n" "\n" GAMETYPE_DECLS "${GAMETYPE_DECLS}")
+configure_file("${CMAKE_SOURCE_DIR}/cmake/gametype_registry.cpp.in"
+    "${MOD_GENERATED_DIR}/gametype_registry.cpp" @ONLY)
+
 # --- The game module ---------------------------------------------------------
 
 add_library(game_x64 SHARED ${GAME_SOURCES}
@@ -59,6 +83,10 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     # depend on is unchanged (AGENTS.md hard rule 2).
     "${CMAKE_SOURCE_DIR}/checks/stock_client_contract.cpp"
     # The mod's own code (AGENTS.md: small focused files, not id's).
+    "${CMAKE_SOURCE_DIR}/core/gametype.cpp"
+    "${CMAKE_SOURCE_DIR}/core/gametype_register.cpp"
+    ${GAME_GAMETYPE_SOURCES}
+    "${MOD_GENERATED_DIR}/gametype_registry.cpp"
     "${CMAKE_SOURCE_DIR}/core/host_gi.cpp"
     "${CMAKE_SOURCE_DIR}/core/identity.cpp"
     "${CMAKE_SOURCE_DIR}/core/identity_register.cpp")
@@ -132,7 +160,11 @@ if(GAME_BUILD_TESTS)
     add_executable(game_tests
         tests/test_main.cpp
         tests/test_identity.cpp
-        core/identity.cpp)
+        tests/test_gametype.cpp
+        core/identity.cpp
+        core/gametype.cpp
+        ${GAME_GAMETYPE_SOURCES}
+        "${MOD_GENERATED_DIR}/gametype_registry.cpp")
     target_include_directories(game_tests PRIVATE
         "${CMAKE_SOURCE_DIR}"
         "${CMAKE_SOURCE_DIR}/tests"

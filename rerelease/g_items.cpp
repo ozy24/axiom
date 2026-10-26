@@ -1123,7 +1123,9 @@ THINK(droptofloor) (edict_t *ent) -> void
 	vec3_t	dest;
 
 	// [Paril-KEX] scale foodcube based on how much we ingested
-	if (strcmp(ent->classname, "item_foodcube") == 0)
+	// [mod] null check: SpawnItem copies the item's classname, which is nullptr
+	// for the tag token, so stock Tag crashed here (docs/known-id-bugs.md #1)
+	if (ent->classname && strcmp(ent->classname, "item_foodcube") == 0)
 	{
 		ent->mins = vec3_t { -8, -8, -8 } * ent->s.scale;
 		ent->maxs = vec3_t { 8, 8, 8 } * ent->s.scale;

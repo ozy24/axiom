@@ -15,6 +15,8 @@ Tiers (plan Phase 1b):
                  (docs/decisions/0007), proven by the engine's SV_ReadLevelFile.
   3. dm-smoke    A deathmatch match with bots: no crash, frags happen, clean
                  shutdown, no new error lines.
+  4. gametype-boot  Every registered gametype boots q2dm1 with bots, logs its
+                 "Gametype:" line and shuts down cleanly.
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -430,9 +432,28 @@ def tier_dm_smoke(args, results):
     results.append(("3 dm-smoke", not detail, detail + [f"({len(frags)} obituary lines)"]))
 
 
+def tier_gametype_boot(args, results):
+    """Every registered gametype boots q2dm1 with bots and shuts down cleanly."""
+    for gt in [g for g in args.gametypes.split(",") if g]:
+        rig = RIGS[args.engine_kind](args, args.candidate, f"t4-{gt}")
+        startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", gt]
+                   + rig.bot_args() + ["+map", "q2dm1"])
+        log = rig.run(startup, [rig.wait_ready(), ("sleep", args.boot_seconds), ("cmd", "quit")],
+                      timeout=args.boot_timeout + args.boot_seconds + 60)
+        detail = []
+        if not re.search(rf"Gametype: .+ \({re.escape(gt)}\)", log):
+            detail.append(f"no \"Gametype: ... ({gt})\" line")
+        if rig.returncode != 0:
+            detail.append(f"server exited with code {rig.returncode}")
+        if "==== ShutdownGame ====" not in log:
+            detail.append("no clean ShutdownGame")
+        detail += error_lines(log, rig)[:20]
+        results.append((f"4 gametype-boot {gt}", not detail, detail))
+
+
 def cmd_test(args):
     results = []
-    for tier in (tier_save_diff, tier_load_stock, tier_dm_smoke):
+    for tier in (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot):
         if args.only and tier.__name__ != f"tier_{args.only}":
             continue
         try:
@@ -503,7 +524,10 @@ def main():
     ap.add_argument("--settle", type=float, default=6, help="seconds after the map loads before saving")
     ap.add_argument("--dm-seconds", type=float, default=60)
     ap.add_argument("--runs", type=int, default=6, help="calibration runs")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke"])
+    ap.add_argument("--gametypes", default="ffa,tag,ball",
+                    help="gametype ids tier 4 boots (the registry's, GAME_GAMETYPES)")
+    ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")
