@@ -2,7 +2,7 @@
 
 _Updated at the end of every session. Last update: 2026-10-26._
 
-## Current phase: 3a (Duel)
+## Current phase: 3a done (M3a); 3b next
 
 ## Phase 2b, part 1 (match flow) done
 - `core/match.*` state machine (24 unit-test cases) and adapter: warmup,
@@ -49,8 +49,19 @@ _Updated at the end of every session. Last update: 2026-10-26._
   (`PutClientInServer` re-reads the `spectator` userinfo key). Tier 6 now
   catches flapping and checks the record.
 
-Next in 3a: Duel lobby metadata on Q2REX, then M3a. Then 3b (TDM, CTF, team
-service).
+## Phase 3a, part 4 (lobby metadata) done
+- `GametypeDef::retail_mode`; each game load publishes Q2REX's lobby cvars
+  (`q2rex_lobby_mode` = id, `_mode_name` = title, "(rounds)" with rounds on,
+  `_retail_mode`, `_score_kind`). Retail browsers keep seeing deathmatch.
+  Q2RED doesn't read them yet (a possible Q2RED change, offered to Chris).
+- A ruleset's latched g_gametype applies at the next `map`: the engine
+  restarts the game module (checked on Q2RED).
+
+**M3a reached** (Duel with a bot match on both engines, match JSON written).
+Playtest is the open human gate for it.
+
+Next: Phase 3b - TDM and CTF on the API, the team service (out of
+`g_ctf.cpp`), CTF's match/election code replaced by the match flow.
 
 ## Known issues
 - Q2RED crashes at startup if a dedicated server is started without `+map`

@@ -12,6 +12,7 @@ TEST_CASE("ffa is stock deathmatch: no hooks")
 	extern const GametypeDef gametype_ffa;
 	const GametypeDef *ffa = &gametype_ffa;
 	CHECK(std::string(ffa->id) == "ffa");
+	CHECK(std::string(ffa->retail_mode) == "deathmatch");
 	CHECK(ffa->install == nullptr);
 	CHECK(ffa->frame == nullptr);
 	CHECK(ffa->match_over == nullptr);
@@ -21,8 +22,8 @@ TEST_CASE("ffa is stock deathmatch: no hooks")
 
 TEST_CASE("lookup is exact and works on any table")
 {
-	static const GametypeDef a = {"alpha", "Alpha", nullptr, nullptr, nullptr, nullptr, nullptr};
-	static const GametypeDef b = {"beta", "Beta", nullptr, nullptr, nullptr, nullptr, nullptr};
+	static const GametypeDef a = {"alpha", "Alpha", "deathmatch", nullptr, nullptr, nullptr, nullptr, nullptr};
+	static const GametypeDef b = {"beta", "Beta", "deathmatch", nullptr, nullptr, nullptr, nullptr, nullptr};
 	const GametypeDef *const table[] = {&a, &b};
 	CHECK(Core_Gametype_Find(table, 2, "beta") == &b);
 	CHECK(Core_Gametype_Find(table, 2, "bet") == nullptr);
