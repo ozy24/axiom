@@ -3,6 +3,7 @@
 // and handles the ready / notready commands.
 #include "g_local.h"
 
+#include "core/gametype.h"
 #include "core/match.h"
 #include "core/match_hooks.h"
 
@@ -17,6 +18,7 @@ namespace
 {
 Match match;
 bool begun = false;
+bool ended_this_level = false; // the gametype's match_ended has run
 gtime_t last_time;
 std::array<bool, MAX_CLIENTS> ready{};
 
@@ -67,6 +69,8 @@ MatchInput Snapshot()
 {
 	MatchInput in;
 	in.now_ms = level.time.milliseconds();
+	const GametypeDef *gt = Core_Gametype_Active();
+	in.gametype_over = gt && gt->match_over && gt->match_over();
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		const edict_t *ent = ClientEdict(i);
@@ -187,10 +191,25 @@ void Core_Match_Frame()
 		match.Begin(level.time.milliseconds());
 		ready.fill(false);
 		begun = true;
+		ended_this_level = false;
 		if (match.OwnsRules())
 			gi.Com_PrintFmt("Match: {}\n", MatchStateName(match.State()));
 	}
 	last_time = level.time;
+
+	// The gametype's own per-frame work and end-of-match hook run whether or
+	// not the match flow owns the rules (stock rules can end the level too).
+	if (const GametypeDef *gt = deathmatch->integer ? Core_Gametype_Active() : nullptr)
+	{
+		if (gt->frame)
+			gt->frame();
+		if (level.intermissiontime && !ended_this_level)
+		{
+			ended_this_level = true;
+			if (gt->match_ended)
+				gt->match_ended();
+		}
+	}
 	if (!match.OwnsRules() || level.intermissiontime)
 		return;
 
@@ -208,6 +227,13 @@ bool Core_Match_OwnsRules()
 
 bool Core_Match_ClientCommand(edict_t *ent, const char *cmd)
 {
+	// The active gametype's own commands first (Duel's `queue`).
+	if (const GametypeDef *gt = deathmatch->integer ? Core_Gametype_Active() : nullptr)
+	{
+		if (gt->client_command && gt->client_command(ent, cmd))
+			return true;
+	}
+
 	const bool want_ready = !Q_strcasecmp(cmd, "ready");
 	if (!want_ready && Q_strcasecmp(cmd, "notready"))
 		return false;

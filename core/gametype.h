@@ -11,12 +11,19 @@
 #include <string_view>
 
 struct dm_game_rt;
+struct edict_t;
 
 struct GametypeDef
 {
 	const char *id;                     // g_gametype value, lowercase: "ffa"
 	const char *title;                  // shown to players: "Free For All"
 	void (*install)(dm_game_rt &hooks); // may be null: stock behaviour
+
+	// Optional (null = nothing), driven by the match flow's per-frame tick:
+	void (*frame)();                                       // every server frame in deathmatch
+	bool (*match_over)();                                  // the gametype's own end condition while LIVE
+	void (*match_ended)();                                 // once, when the level reaches intermission
+	bool (*client_command)(edict_t *ent, const char *cmd); // true if handled
 };
 
 // The generated registry (build/generated/gametype_registry.cpp).

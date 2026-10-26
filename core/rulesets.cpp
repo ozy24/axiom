@@ -20,6 +20,16 @@ const RulesetDef core_rulesets[] = {
      "set match_overtime -1\n"
      "set timelimit 10\n"
      "set fraglimit 0\n"},
+    {"duel", "one on one: warmup and ready-up, 10 minutes, sudden death on a tie, winner stays on",
+     "set g_gametype duel\n"
+     "set match_warmup 1\n"
+     "set match_ready 1\n"
+     "set match_minplayers 2\n"
+     "set match_warmup_time 0\n"
+     "set match_countdown 5\n"
+     "set match_overtime -1\n"
+     "set timelimit 10\n"
+     "set fraglimit 0\n"},
 };
 const size_t core_ruleset_count = sizeof(core_rulesets) / sizeof(core_rulesets[0]);
 

@@ -2,34 +2,7 @@
 
 _Updated at the end of every session. Last update: 2026-10-26._
 
-## Current phase: 2a (seams and the gametype API)
-
-M1c reached 2026-10-26: Chris ran the single-player checklist on retail with
-the MSVC DLL from `8627ce73`; all eight steps passed.
-
-2a, part 1 (gametype registry) done:
-- `docs/design/gametype-api.md`: Rogue's `DMGame` is the one dispatch table;
-  an Axiom registry (`core/gametype.h`, `gametypes/<id>/`, CMake
-  `GAME_GAMETYPES`) selects by `g_gametype` (stock `gamerules` still works).
-- ffa (stock DM, no hooks) is the only registry gametype. Rogue's Tag and
-  DeathBall stay reachable only through stock `gamerules`, untouched (Chris,
-  decision 0010). One `[mod]` line in `g_main.cpp` replaces the
-  `InitGameRules` call.
-- Known id bug #1 fixed: stock Tag crashed on every map (`droptofloor`).
-- Harness tier 4: every registry gametype and stock gamerules 2/3 boot q2dm1
-  with bots.
-
-- HUD stat-slot allocator (`core/stat_slots.h`): slots 54..63, by owner,
-  idempotent. The CTF block (18..31) is not handed out: `SetCTFStats` writes
-  it every frame in every mode.
-- **Deferred to 3b, deliberately:** the team service. Nothing uses it before
-  TDM/CTF, so it gets designed against them (just in time, as the plan review
-  advised). Call-site gates (`gamerules->integer && DMGame.X`) are relaxed
-  when a gametype first installs a hook.
-
-M2a status: the code side is done (FFA through the API, Rogue modes decided,
-CI green). The single-player checklist for M2a is the remaining gate; it can
-be run on any later build, so 2b continues meanwhile.
+## Current phase: 3a (Duel)
 
 ## Phase 2b, part 1 (match flow) done
 - `core/match.*` state machine (24 unit-test cases) and adapter: warmup,
@@ -46,8 +19,21 @@ be run on any later build, so 2b continues meanwhile.
   and `match` compiled in; other names exec `rulesets/<name>.cfg`. Safe names
   only. Unit tests check every built-in sets only known cvars.
 
-Next: Phase 3a, Duel (1v1 queue, spectators, overtime, HoonyMode ruleset,
-minimal match JSON for the ladder).
+## Phase 3a, part 1 (Duel) done
+- `gametypes/duel/`: a play queue (pure, unit-tested) — the front two play,
+  everyone else spectates; newcomers spawn straight in as spectators via
+  `DMGame.ClientBegin` (gate relaxed, `[mod]`); `queue` lists it; a duellist
+  leaving is a forfeit; the loser rotates to the back, the winner stays on.
+- New optional `GametypeDef` hooks, driven by the match flow's tick:
+  `frame`, `match_over`, `match_ended`, `client_command`.
+- Built-in ruleset `duel`; harness tier 6.
+- Known: two ozbot bots on q2dm1 score nothing in a minute even in plain FFA,
+  so the Duel test checks flow, queueing and rotation, not frags.
+- Known (stock): with only bots, DM intermission never exits (stock waits for
+  a player to press a button).
+
+Next in 3a: HoonyMode (rounds that end on a frag, arena reset each round),
+minimal match JSON for the ladder, Duel lobby metadata on Q2REX.
 
 ## Known issues
 - Q2RED crashes at startup if a dedicated server is started without `+map`
