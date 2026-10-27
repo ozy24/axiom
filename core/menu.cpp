@@ -129,10 +129,8 @@ MenuPage Core_Menu_Main(const MenuView &v)
 
 	if (v.teams)
 	{
-		if (v.team != 1)
-			Add(page, "Join Red" + Count(v.red), MenuAction::JoinRed);
-		if (v.team != 2)
-			Add(page, "Join Blue" + Count(v.blue), MenuAction::JoinBlue);
+		Add(page, "Join Red" + Count(v.red), MenuAction::JoinRed);
+		Add(page, "Join Blue" + Count(v.blue), MenuAction::JoinBlue);
 		if (v.team != 0)
 			Add(page, "Spectate", MenuAction::Spectate);
 	}

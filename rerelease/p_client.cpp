@@ -3128,7 +3128,9 @@ bool HandleMenuMovement(edict_t *ent, usercmd_t *ucmd)
 		}
 	}
 
-	if (ent->client->latched_buttons & (BUTTON_ATTACK | BUTTON_JUMP))
+	if (ent->client->latched_buttons & BUTTON_ATTACK) // [mod] fire doesn't select (an easy accidental join); swallowed, so it doesn't start the chase cam either
+		return true;
+	if (ent->client->latched_buttons & BUTTON_JUMP) // [mod] was BUTTON_ATTACK | BUTTON_JUMP
 	{
 		PMenu_Select(ent);
 		return true;

@@ -162,11 +162,18 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 	case MenuAction::None:
 		break;
 	case MenuAction::JoinRed:
-		CTFJoinTeam(ent, CTF_TEAM1); // as stock's join menu; closes the menu
-		break;
 	case MenuAction::JoinBlue:
-		CTFJoinTeam(ent, CTF_TEAM2);
+	{
+		const ctfteam_t team = state->actions[hnd->cur] == MenuAction::JoinRed ? CTF_TEAM1 : CTF_TEAM2;
+		if (ent->client->resp.ctf_team == team)
+		{
+			PMenu_Close(ent);
+			gi.LocClient_Print(ent, PRINT_HIGH, "$g_already_on_team", CTFTeamName(team)); // as `team`
+			break;
+		}
+		CTFJoinTeam(ent, team); // as stock's join menu; closes the menu
 		break;
+	}
 	case MenuAction::JoinGame:
 		PMenu_Close(ent);
 		SetSpectator(ent, false);
@@ -174,7 +181,10 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 	case MenuAction::Spectate:
 		PMenu_Close(ent);
 		if (G_TeamplayEnabled())
-			CTFObserver(ent); // `observer`
+		{
+			CTFObserver(ent); // `observer`; its respawn reopens the join menu
+			PMenu_Close(ent);
+		}
 		else
 			SetSpectator(ent, true);
 		break;
