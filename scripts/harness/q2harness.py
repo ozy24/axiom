@@ -41,7 +41,9 @@ Tiers (plan Phase 1b):
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
 
 Engines, retail data and bots default to the pinned installs under /srv/q2ci
-(scripts/harness/pins.env). Each run gets a fresh rig directory, so runs never
+(scripts/harness/pins.env), or, off the jumpbox, to the local kit that
+scripts/harness/setup-local-kit.sh builds in ~/.cache/q2harness-kit (which
+also supplies --stock). Each run gets a fresh rig directory, so runs never
 share state.
 """
 
@@ -76,6 +78,16 @@ def pins():
         if m:
             out[m.group(1)] = m.group(2)
     return out
+
+
+def install_root():
+    """Where the pinned engines, bots and retail data live: the jumpbox's
+    /srv/q2ci, else a developer's local kit (scripts/harness/setup-local-kit.sh,
+    ~/.cache/q2harness-kit or $KIT)."""
+    if pathlib.Path("/srv/q2ci/engines").is_dir():
+        return pathlib.Path("/srv/q2ci")
+    cache = pathlib.Path(os.environ.get("XDG_CACHE_HOME") or pathlib.Path.home() / ".cache")
+    return pathlib.Path(os.environ.get("KIT") or cache / "q2harness-kit")
 
 
 def volatile_file(kind):
@@ -1078,12 +1090,16 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=["test", "calibrate"])
     ap.add_argument("--engine-kind", choices=sorted(RIGS), default="q2red")
-    ap.add_argument("--stock", required=True, help="stock reference module (.so for q2red, .dll for q2rex)")
+    root = install_root()
+    local_stock = root / "stock-reference" / p.get("STOCK_REFERENCE_COMMIT", "")[:8] / "game_x64.so"
+    ap.add_argument("--stock", default=str(local_stock) if local_stock.exists() else None,
+                    required=not local_stock.exists(),
+                    help="stock reference module (.so for q2red, .dll for q2rex); default: the local kit's")
     ap.add_argument("--candidate", help="module under test (test only)")
-    ap.add_argument("--engine", default=f"/srv/q2ci/engines/q2red-{p.get('Q2RED_COMMIT')}")
-    ap.add_argument("--rex-engine", default=f"/srv/q2ci/engines/q2rex-{p.get('Q2REX_VERSION')}")
-    ap.add_argument("--bots", default=f"/srv/q2ci/engines/ozbot-{p.get('OZBOT_COMMIT')}")
-    ap.add_argument("--retail", default="/srv/q2ci/retail")
+    ap.add_argument("--engine", default=str(root / "engines" / f"q2red-{p.get('Q2RED_COMMIT')}"))
+    ap.add_argument("--rex-engine", default=str(root / "engines" / f"q2rex-{p.get('Q2REX_VERSION')}"))
+    ap.add_argument("--bots", default=str(root / "engines" / f"ozbot-{p.get('OZBOT_COMMIT')}"))
+    ap.add_argument("--retail", default=str(root / "retail"))
     ap.add_argument("--wine", default=shutil.which("wine") or "wine")
     ap.add_argument("--online", dest="offline", action="store_false",
                     help="let Q2REX reach the network (default: offline namespace)")
