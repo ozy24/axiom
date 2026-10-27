@@ -523,6 +523,7 @@ TEST_CASE("the HUD: warmup, the countdown, then the clock, one at a time")
 	Match m(c);
 	m.Begin(0);
 	CHECK(m.HudText(At(500, {P(1, true), P(2, false)})) == Hud("WARMUP", ""));
+	CHECK(m.HudText(At(500, {P(1, false)})) == Hud("WAITING FOR PLAYERS", "")); // match_minplayers 2
 	CHECK(m.CountdownSeconds(500) == 0);
 	m.Update(At(1000, {P(1, true), P(2, true)}));
 	REQUIRE(m.State() == MatchState::Countdown);
@@ -536,6 +537,20 @@ TEST_CASE("the HUD: warmup, the countdown, then the clock, one at a time")
 	m.Update(At(64000, {P(1, true, 2), P(2, true, 1)}));
 	REQUIRE(m.State() == MatchState::Intermission);
 	CHECK(m.HudText(At(64000, {})) == Hud("MATCH END", ""));
+}
+
+TEST_CASE("the HUD: warmup says what the start waits for, teams included")
+{
+	MatchConfig c = Enabled();
+	c.teams = true;
+	Match m(c);
+	m.Begin(0);
+	MatchPlayer red = P(1, false), red2 = P(2, false), blue = P(3, false);
+	red.team = red2.team = 1;
+	blue.team = 2;
+	CHECK(m.HudText(At(500, {red})) == Hud("WAITING FOR PLAYERS", ""));
+	CHECK(m.HudText(At(500, {red, red2})) == Hud("WAITING FOR TEAMS", ""));
+	CHECK(m.HudText(At(500, {red, blue})) == Hud("WARMUP", ""));
 }
 
 TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
