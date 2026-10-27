@@ -693,6 +693,15 @@ TEST_CASE("sounds: a won round plays flagcap; the next round's FIGHT plays tele_
 	CHECK(Sounds(out) == std::vector<std::string>{"misc/tele_up.wav"});
 }
 
+TEST_CASE("sounds: the match end plays the jingle over the scoreboard")
+{
+	Match m(Enabled());
+	const int64_t live = ToLive(m);
+	auto out = m.Update(At(live + 60000, {P(1, true, 2), P(2, true, 1)}));
+	REQUIRE(m.State() == MatchState::Intermission);
+	CHECK(Sounds(out) == std::vector<std::string>{"world/xian1.wav"});
+}
+
 TEST_CASE("sounds: none with the match flow off (stock)")
 {
 	Match m;

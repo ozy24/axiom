@@ -262,6 +262,7 @@ void Match::End(const char *why, std::vector<MatchAction> &out)
 {
 	state_ = MatchState::Intermission;
 	out.push_back({MatchActionKind::EndMatch, why, 0});
+	out.push_back({MatchActionKind::Sound, "world/xian1.wav", 0}); // the scoreboard jingle, as MuffMode
 }
 
 // LIVE with a timelimit: the stock voice at 30 and 20 seconds left, then every

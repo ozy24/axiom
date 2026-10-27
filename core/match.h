@@ -76,7 +76,7 @@ enum class MatchActionKind
 {
 	Announce,     // text to every player (centre print)
 	Klaxon,       // the stock klaxon, heard everywhere: overtime and sudden death begin
-	Sound,        // text = a stock sound, heard everywhere: the spoken countdown, FIGHT, round won
+	Sound,        // text = a stock sound, heard everywhere: the spoken countdown, FIGHT, round won, match end
 	Countdown,    // value = whole seconds left, sent once per second
 	ResetArena,   // value 0: going LIVE - reset items, zero scores, respawn players
 	              // value 1: between rounds - reset items and projectiles only
