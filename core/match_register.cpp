@@ -539,6 +539,10 @@ void Core_Match_Statusbar(statusbar_t &sb)
 		sb.xv(254).yb(-42 + dy);
 		sb.sb << "loc_stat_rstring " << clock << ' ';
 		break;
+	case 7: // MuffMode's place: xv 0 yb -78, left-aligned (mm_statusbar.cpp)
+		sb.xv(0).yb(-78 + dy);
+		sb.sb << "loc_stat_string " << clock << ' ';
+		break;
 	case 4: // just above the stock row, centred
 		sb.xv(0).yb(-40 + dy);
 		sb.sb << "loc_stat_cstring " << clock << ' ';
