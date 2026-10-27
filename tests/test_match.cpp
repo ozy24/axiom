@@ -532,8 +532,8 @@ TEST_CASE("the HUD: warmup with the ready count, the countdown, then the clock")
 	CHECK(m.CountdownSeconds(3100) == 1);
 	m.Update(At(4000, {P(1, true), P(2, true)}));
 	REQUIRE(m.State() == MatchState::Live);
-	CHECK(m.HudText(At(4000, {P(1, true), P(2, true)})) == Hud("MATCH", "1:00"));
-	CHECK(m.HudText(At(4000 + 18500, {P(1, true), P(2, true)})) == Hud("MATCH", "0:42"));
+	CHECK(m.HudText(At(4000, {P(1, true), P(2, true)})) == Hud("", "1:00"));
+	CHECK(m.HudText(At(4000 + 18500, {P(1, true), P(2, true)})) == Hud("", "0:42"));
 	m.Update(At(64000, {P(1, true, 2), P(2, true, 1)}));
 	REQUIRE(m.State() == MatchState::Intermission);
 	CHECK(m.HudText(At(64000, {})) == Hud("MATCH END", ""));
@@ -545,7 +545,7 @@ TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
 	c.timelimit_ms = 0;
 	Match up(c);
 	const int64_t live = ToLive(up);
-	CHECK(up.HudText(At(live + 75000, {P(1, true), P(2, true)})) == Hud("MATCH", "1:15"));
+	CHECK(up.HudText(At(live + 75000, {P(1, true), P(2, true)})) == Hud("", "1:15"));
 
 	MatchConfig o = Enabled();
 	o.overtime = 2;

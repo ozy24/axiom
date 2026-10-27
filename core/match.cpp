@@ -187,9 +187,10 @@ MatchHudText Match::HudText(const MatchInput &in) const
 {
 	if (!config_.enabled)
 		return {};
-	// Status names are OpenTDM's (g_tdm_core.c), capitalised: WARMUP, COUNTDOWN,
-	// MATCH, OVERTIME, MATCH END. The match clock, while one runs: down to the
-	// timelimit, else up from LIVE.
+	// Status names are OpenTDM's (g_tdm_core.c), capitalised - WARMUP,
+	// COUNTDOWN, OVERTIME, MATCH END - but none during normal live play, where
+	// the running clock says it (Chris, 2026-10-27). The match clock, while one
+	// runs: down to the timelimit, else up from LIVE.
 	const std::string clock = time_end_ms_ ? Clock(time_end_ms_ - in.now_ms) : Clock(in.now_ms - live_since_ms_);
 	const std::string round = config_.rounds_on_frag ? "ROUND " + std::to_string(round_) : "";
 	switch (state_)
@@ -210,7 +211,7 @@ MatchHudText Match::HudText(const MatchInput &in) const
 	case MatchState::Countdown:
 		return {"COUNTDOWN", ""}; // the seconds: the big digits (CountdownSeconds)
 	case MatchState::Live:
-		return {config_.rounds_on_frag ? round : "MATCH", clock};
+		return {round, clock}; // just the clock: a running clock means the match is on
 	case MatchState::Overtime:
 		if (config_.overtime < 0)
 			return {"SUDDEN DEATH", ""}; // no clock: the next score ends it
