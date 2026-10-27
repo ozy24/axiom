@@ -43,11 +43,6 @@ void Core_IdView_SetSpectatorStats(edict_t *ent)
 {
 	const player_stat_t stat = IdViewStat();
 	const edict_t *target = ent->client->chase_target;
-	if (!target || !target->inuse)
-		return;
-	if (stat)
+	if (stat && target && target->inuse)
 		ent->client->ps.stats[stat] = CONFIG_CTF_PLAYER_NAME + (int)(target - g_edicts) - 1;
-	// The target's weapon icon, which stock shows a centre-handed player in
-	// place of the gun model, duplicates the ammo icon over the chase view.
-	ent->client->ps.stats[STAT_HELPICON] = 0;
 }

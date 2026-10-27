@@ -1024,7 +1024,7 @@ void G_SetStats(edict_t *ent)
 	//
 	if (ent->client->pers.helpchanged >= 1 && ent->client->pers.helpchanged <= 2 && (level.time.milliseconds() % 1000) < 500) // haleyjd: time-limited
 		ent->client->ps.stats[STAT_HELPICON] = gi.imageindex("i_help");
-	else if ((ent->client->pers.hand == CENTER_HANDED) && ent->client->pers.weapon)
+	else if ((ent->client->pers.hand == CENTER_HANDED) && ent->client->pers.weapon && !deathmatch->integer) // [mod] not in deathmatch: the ammo and selected-item icons already show the weapon
 		ent->client->ps.stats[STAT_HELPICON] = gi.imageindex(ent->client->pers.weapon->icon);
 	else
 		ent->client->ps.stats[STAT_HELPICON] = 0;
