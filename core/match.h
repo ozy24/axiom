@@ -139,10 +139,13 @@ class Match
 	{
 		return round_;
 	}
-	// The HUD's match-state line (docs/design/hud.md): "WARMUP - 1/2 READY",
-	// "MATCH STARTS IN 7", the clock, "SUDDEN DEATH", "ROUND 3 - 9:42"... Empty
+	// The HUD's match-state line (docs/design/hud.md): "WARMUP\n1/2 READY",
+	// "MATCH STARTING", the clock, "SUDDEN DEATH", "ROUND 3 - 9:42"... Empty
 	// when there is nothing to show: the match flow off, or intermission.
 	std::string StateText(const MatchInput &in) const;
+	// The HUD's big countdown digits: whole seconds left in the match or round
+	// countdown, else 0 (hidden).
+	int CountdownSeconds(int64_t now_ms) const;
 
 	int64_t ClockEndMs() const
 	{

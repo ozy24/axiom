@@ -200,10 +200,10 @@ std::string Match::StateText(const MatchInput &in) const
 			playing += p.playing;
 			ready += p.playing && p.ready;
 		}
-		return "WARMUP - " + std::to_string(ready) + "/" + std::to_string(playing) + " READY";
+		return "WARMUP\n" + std::to_string(ready) + "/" + std::to_string(playing) + " READY";
 	}
 	case MatchState::Countdown:
-		return "MATCH STARTS IN " + std::to_string(SecondsLeft(config_.countdown_ms, in.now_ms - state_since_ms_));
+		return "MATCH STARTING"; // the seconds: the big digits (CountdownSeconds)
 	case MatchState::Live:
 		return round + (time_end_ms_ ? Clock(time_end_ms_ - in.now_ms) : Clock(in.now_ms - live_since_ms_));
 	case MatchState::Overtime:
@@ -213,11 +213,22 @@ std::string Match::StateText(const MatchInput &in) const
 	case MatchState::RoundOver:
 		return "ROUND OVER";
 	case MatchState::RoundCountdown:
-		return "NEXT ROUND IN " + std::to_string(SecondsLeft(config_.round_countdown_ms, in.now_ms - state_since_ms_));
+		return "NEXT ROUND";
 	case MatchState::Intermission:
 		return {};
 	}
 	return {};
+}
+
+int Match::CountdownSeconds(int64_t now_ms) const
+{
+	if (!config_.enabled)
+		return 0;
+	if (state_ == MatchState::Countdown)
+		return SecondsLeft(config_.countdown_ms, now_ms - state_since_ms_);
+	if (state_ == MatchState::RoundCountdown)
+		return SecondsLeft(config_.round_countdown_ms, now_ms - state_since_ms_);
+	return 0;
 }
 
 void Match::GoLive(int64_t now_ms, std::vector<MatchAction> &out)

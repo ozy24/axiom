@@ -509,12 +509,14 @@ TEST_CASE("the state line: warmup with the ready count, countdown, clock, end")
 	MatchConfig c = Enabled(); // countdown 3 s, timelimit 60 s
 	Match m(c);
 	m.Begin(0);
-	CHECK(m.StateText(At(500, {P(1, true), P(2, false)})) == "WARMUP - 1/2 READY");
-	CHECK(m.StateText(At(500, {P(1, true), P(2, true), P(3, false, 0, false)})) == "WARMUP - 2/2 READY");
+	CHECK(m.StateText(At(500, {P(1, true), P(2, false)})) == "WARMUP\n1/2 READY");
+	CHECK(m.CountdownSeconds(500) == 0);
+	CHECK(m.StateText(At(500, {P(1, true), P(2, true), P(3, false, 0, false)})) == "WARMUP\n2/2 READY");
 	m.Update(At(1000, {P(1, true), P(2, true)}));
 	REQUIRE(m.State() == MatchState::Countdown);
-	CHECK(m.StateText(At(1000, {P(1, true), P(2, true)})) == "MATCH STARTS IN 3");
-	CHECK(m.StateText(At(3100, {P(1, true), P(2, true)})) == "MATCH STARTS IN 1");
+	CHECK(m.StateText(At(1000, {P(1, true), P(2, true)})) == "MATCH STARTING");
+	CHECK(m.CountdownSeconds(1000) == 3);
+	CHECK(m.CountdownSeconds(3100) == 1);
 	m.Update(At(4000, {P(1, true), P(2, true)}));
 	REQUIRE(m.State() == MatchState::Live);
 	CHECK(m.StateText(At(4000, {P(1, true), P(2, true)})) == "1:00");
@@ -559,10 +561,13 @@ TEST_CASE("the state line in rounds: the round number, round over, next round")
 	CHECK(m.StateText(At(live + 5000, {})) == "ROUND OVER");
 	m.Update(At(live + 6000, {P(1, true, 1), P(2, true, 0)}));
 	REQUIRE(m.State() == MatchState::RoundCountdown);
-	CHECK(m.StateText(At(live + 6000, {})) == "NEXT ROUND IN 2");
+	CHECK(m.StateText(At(live + 6000, {})) == "NEXT ROUND");
+	CHECK(m.CountdownSeconds(live + 6000) == 2);
+	CHECK(m.CountdownSeconds(live + 7500) == 1);
 	m.Update(At(live + 8000, {P(1, true, 1), P(2, true, 0)}));
 	REQUIRE(m.State() == MatchState::Live);
 	CHECK(m.StateText(At(live + 8000, {})) == "ROUND 2 - 0:52");
+	CHECK(m.CountdownSeconds(live + 8000) == 0);
 }
 
 TEST_CASE("the state line is empty with the match flow off (stock HUD)")

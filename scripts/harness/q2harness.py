@@ -698,7 +698,7 @@ def state_line(tap):
     """The HUD's match-state line, from the game tap: whether the status bar
     draws it, and each text it showed, in order (repeats collapsed)."""
     cs = [r for r in tap if r.get("type") == "configstring"]
-    drawn = any("loc_stat_cstring" in r["text"] and "yb -78" in r["text"] for r in cs if "hnum" in r["text"])
+    drawn = any("loc_stat_cstring" in r["text"] and "yb -88" in r["text"] for r in cs if "hnum" in r["text"])
     index = next((r["index"] for r in cs if r["text"].startswith("WARMUP")), None)
     texts = []
     for r in cs:
@@ -756,11 +756,11 @@ at 30 0 cmd score
     if not any(r["base"] == "Join the game first.\n" for r in to(carol)):
         detail.append("the queued player's `ready` got no 'Join the game first.'")
 
+    # The countdown's seconds are the HUD's big digits now; the centre prints
+    # bracket it.
     centre = [r["args"][0] for r in to(alice) if r["base"] == "{}" and r["args"]]
-    want = ["Match starting"] + [f"Match starts in {n}" for n in range(10, 0, -1)] + ["FIGHT!"]
-    got = [c for c in centre if c in want]
-    if got[:len(want)] != want:
-        detail.append(f"Alice's countdown {got[:14]}, expected {want}")
+    if centre[:2] != ["Match starting", "FIGHT!"]:
+        detail.append(f"Alice's centre prints {centre[:4]}, expected 'Match starting' then 'FIGHT!'")
 
     queue_lines = [r["args"] for r in locs if r["to"] == alice and r["base"] == "{}. {} ({})\n"]
     if [q[2] for q in queue_lines] != ["duelling", "duelling", "waiting"] or \
@@ -786,11 +786,10 @@ at 30 0 cmd score
     drawn, texts = state_line(tap)
     if not drawn:
         detail.append("the status bar doesn't draw the match-state line")
-    want_line = ["MATCH STARTS IN 10", "MATCH STARTS IN 1"]
-    if not any(re.fullmatch(r"WARMUP - \d+/\d+ READY", t) for t in texts) or \
-            not all(w in texts for w in want_line) or not any(re.fullmatch(r"\d+:\d\d", t) for t in texts):
+    if not any(re.fullmatch(r"WARMUP\n\d+/\d+ READY", t) for t in texts) or "MATCH STARTING" not in texts \
+            or not any(re.fullmatch(r"\d+:\d\d", t) for t in texts):
         detail.append(f"state line texts {texts[:4]}...{texts[-3:]}, expected warmup with a ready count, "
-                      "MATCH STARTS IN 10..1, then the clock")
+                      "MATCH STARTING, then the clock")
 
     # A warmup suicide doesn't score (`sv match` during warmup).
     warmup_scores = [int(m) for m in re.findall(r"^\S*\s+(-?\d+) (?:Alice|Bob|Carol)", log, re.M)][:3]
@@ -908,8 +907,7 @@ at 40 1 cmd kill
     alice = humans.get("Alice")
     centre = [r["args"][0] for r in tap if r.get("type") == "locprint" and r["to"] == alice
               and r["base"] == "{}" and r["args"]]
-    breaks = sum(1 for i in range(len(centre) - 3)
-                 if centre[i:i + 4] == ["Next round in 3", "Next round in 2", "Next round in 1", "FIGHT!"])
+    breaks = centre.count("FIGHT!") - 1  # every round after the first starts with FIGHT!
     seen = ["Match: " + l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
     round_breaks = seen.count("Match: live -> round over")
     # Bots fight too, so frags can add rounds; the two suicides make at least two.
@@ -919,7 +917,7 @@ at 40 1 cmd kill
     if seen[-1:] != ["Match: ended (timelimit)"]:
         detail.append(f"the match ended {seen[-1:]}, expected by the timelimit")
     drawn, texts = state_line(tap)
-    for want in ("ROUND OVER", "NEXT ROUND IN 3"):
+    for want in ("ROUND OVER", "NEXT ROUND"):
         if want not in texts:
             detail.append(f"the state line never showed {want!r}")
     if not any(t.startswith("ROUND 2 - ") for t in texts):

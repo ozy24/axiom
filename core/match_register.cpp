@@ -219,6 +219,13 @@ player_stat_t StateStat()
 	return (player_stat_t)(slot ? *slot : 0);
 }
 
+// The HUD's big countdown digits: seconds left in the match or round countdown.
+player_stat_t CountdownStat()
+{
+	static const std::optional<int> slot = Core_StatSlots().Allocate("match_countdown");
+	return (player_stat_t)(slot ? *slot : 0);
+}
+
 void PublishState()
 {
 	const std::string text = match.OwnsRules() && !level.intermissiontime ? match.StateText(Snapshot()) : "";
@@ -358,9 +365,7 @@ void Act(const std::vector<MatchAction> &actions)
 			CenterAll(a.text);
 			break;
 		case MatchActionKind::Countdown:
-			CenterAll((match.State() == MatchState::RoundCountdown ? "Next round in " : "Match starts in ") +
-			          std::to_string(a.value));
-			break;
+			break; // shown by the HUD's big digits (Core_Match_SetStats)
 		case MatchActionKind::ResetArena:
 			ResetArena(a.value == 0);
 			break;
@@ -471,20 +476,28 @@ bool Core_Match_SuicidePoint(edict_t *self)
 
 void Core_Match_Statusbar(statusbar_t &sb)
 {
-	if (!deathmatch->integer || !StateStat())
+	if (!deathmatch->integer || !StateStat() || !CountdownStat())
 		return;
-	// Bottom centre, above SPECTATOR MODE / CHASING (yb -58 / -68): centred
-	// text from a configstring. Stock tokens only, and no `ifbit`.
-	const player_stat_t stat = StateStat();
-	sb.ifstat(stat).xv(0).yb(-78);
-	sb.sb << "loc_stat_cstring " << stat << ' ';
+	// The state line, bottom centre: centred text from a configstring, two
+	// lines in warmup ("WARMUP" / "1/2 READY"), so it starts at -88 to stay
+	// clear of CHASING / SPECTATOR MODE (yb -68 / -58). Stock tokens only, and
+	// no `ifbit`.
+	const player_stat_t state = StateStat(), countdown = CountdownStat();
+	sb.ifstat(state).xv(0).yb(-88);
+	sb.sb << "loc_stat_cstring " << state << ' ';
 	sb.endifstat();
+	// The countdown in big HUD digits, mid-screen (MuffMode's placement: num 3
+	// right-aligns in a 50 px field, so xv 118 centres one digit).
+	sb.ifstat(countdown).xv(118).yb(-256).num(3, countdown).endifstat();
 }
 
 void Core_Match_SetStats(edict_t *ent)
 {
 	if (StateStat())
 		ent->client->ps.stats[StateStat()] = state_text.empty() ? 0 : kStateConfigstring;
+	if (CountdownStat())
+		ent->client->ps.stats[CountdownStat()] =
+		    Core_Match_OwnsRules() ? match.CountdownSeconds(level.time.milliseconds()) : 0;
 }
 
 bool Core_Match_Frozen(const edict_t *ent)
