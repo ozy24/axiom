@@ -23,7 +23,7 @@ void Core_IdView_Statusbar(statusbar_t &sb)
 	if (!stat)
 		return;
 	// One line above the match status (yb -58).
-	sb.ifstat(stat).xv(0).yb(-71);
+	sb.ifstat(stat).xv(0).yb(-68);
 	sb.sb << "loc_stat_cstring " << stat << ' ';
 	sb.endifstat();
 }
