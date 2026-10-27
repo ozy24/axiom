@@ -377,6 +377,10 @@ void Act(const std::vector<MatchAction> &actions)
 		{
 		case MatchActionKind::Announce:
 			CenterAll(a.text);
+			if (a.value == kAnnounceKlaxon)
+				// Heard everywhere, as stock CTF plays its match countdown.
+				gi.positioned_sound(world->s.origin, world, CHAN_AUTO | CHAN_RELIABLE,
+				                    gi.soundindex("world/klaxon2.wav"), 1, ATTN_NONE, 0);
 			break;
 		case MatchActionKind::Countdown:
 			break; // shown by the HUD's big digits (Core_Match_SetStats)
