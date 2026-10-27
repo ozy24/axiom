@@ -9,9 +9,10 @@
 // Every cvar a built-in ruleset may set. A typo, or a mod-prefixed name
 // (decision 0004), fails here instead of silently doing nothing.
 static const std::set<std::string> kKnownCvars = {
-    "g_gametype",     "match_warmup", "match_ready", "match_minplayers", "match_warmup_time",     "match_countdown",
-    "match_overtime", "timelimit",    "fraglimit",   "match_rounds",     "match_round_countdown", "ctf",
-    "teamplay",       "capturelimit"};
+    "g_gametype",        "match_warmup",    "match_ready",           "match_minplayers",
+    "match_warmup_time", "match_countdown", "match_overtime",        "timelimit",
+    "fraglimit",         "match_rounds",    "match_round_countdown", "ctf",
+    "teamplay",          "capturelimit",    "match_round_pause"};
 
 TEST_CASE("built-in rulesets only set known cvars, one `set` per line")
 {
