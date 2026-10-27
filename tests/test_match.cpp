@@ -590,31 +590,26 @@ TEST_CASE("the HUD is empty with the match flow off (stock HUD)")
 	CHECK(m.HudText(At(1000, {P(1, true)})) == Hud("", ""));
 }
 
-TEST_CASE("overtime and sudden death are announced as MuffMode does, with the klaxon")
+TEST_CASE("overtime and sudden death sound the klaxon; the HUD names them, no centre print")
 {
-	auto announce = [](const std::vector<MatchAction> &out)
-	{
-		for (const MatchAction &a : out)
-			if (a.kind == MatchActionKind::Announce)
-				return a;
-		return MatchAction{MatchActionKind::Announce, "(none)", 0};
-	};
+	auto kinds = [](const std::vector<MatchAction> &out, MatchActionKind kind)
+	{ return std::count_if(out.begin(), out.end(), [&](const MatchAction &a) { return a.kind == kind; }); };
 	MatchConfig c = Enabled();
 	c.overtime = 2;
 	Match timed(c);
 	const int64_t live = ToLive(timed);
-	MatchAction a = announce(timed.Update(At(live + 60000, {P(1, true, 3), P(2, true, 3)})));
-	CHECK(a.text == "Overtime!\n2:00 added");
-	CHECK(a.value == kAnnounceKlaxon);
-	a = announce(timed.Update(At(live + 60000 + 120000, {P(1, true, 4), P(2, true, 4)}))); // still tied
-	CHECK(a.text == "Overtime!\n2:00 added");
+	auto out = timed.Update(At(live + 60000, {P(1, true, 3), P(2, true, 3)}));
+	CHECK(kinds(out, MatchActionKind::Klaxon) == 1);
+	CHECK(kinds(out, MatchActionKind::Announce) == 0);
+	out = timed.Update(At(live + 60000 + 120000, {P(1, true, 4), P(2, true, 4)})); // still tied
+	CHECK(kinds(out, MatchActionKind::Klaxon) == 1);
 
 	c.overtime = -1;
 	Match sudden(c);
 	const int64_t live2 = ToLive(sudden);
-	a = announce(sudden.Update(At(live2 + 60000, {P(1, true, 3), P(2, true, 3)})));
-	CHECK(a.text == "Sudden Death!");
-	CHECK(a.value == kAnnounceKlaxon);
+	out = sudden.Update(At(live2 + 60000, {P(1, true, 3), P(2, true, 3)}));
+	CHECK(kinds(out, MatchActionKind::Klaxon) == 1);
+	CHECK(kinds(out, MatchActionKind::Announce) == 0);
 }
 
 TEST_CASE("no firing in the match countdown; the round countdown freezes outright")

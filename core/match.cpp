@@ -248,16 +248,6 @@ void Match::GoLive(int64_t now_ms, std::vector<MatchAction> &out)
 	round_scores_.clear(); // scores are zeroed by the reset; filled on the next Update
 }
 
-// The tie at the timelimit (or after timed overtime), as MuffMode announces it:
-// "Overtime!" with the time added, or "Sudden Death!", and the klaxon.
-MatchAction Match::OvertimeAlert() const
-{
-	if (config_.overtime < 0)
-		return {MatchActionKind::Announce, "Sudden Death!", kAnnounceKlaxon};
-	return {MatchActionKind::Announce, "Overtime!\n" + Clock((int64_t)config_.overtime * 60000) + " added",
-	        kAnnounceKlaxon};
-}
-
 void Match::End(const char *why, std::vector<MatchAction> &out)
 {
 	state_ = MatchState::Intermission;
@@ -342,7 +332,7 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 				state_ = MatchState::Overtime;
 				state_since_ms_ = in.now_ms;
 				time_end_ms_ = config_.overtime > 0 ? in.now_ms + (int64_t)config_.overtime * 60000 : 0;
-				out.push_back(OvertimeAlert());
+				out.push_back({MatchActionKind::Klaxon, "", 0}); // the HUD names the state (Chris, 2026-10-27)
 			}
 			else
 			{
@@ -375,7 +365,7 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 			if (count >= 2 && top == second)
 			{
 				time_end_ms_ = in.now_ms + (int64_t)config_.overtime * 60000;
-				out.push_back(OvertimeAlert());
+				out.push_back({MatchActionKind::Klaxon, "", 0}); // the HUD names the state (Chris, 2026-10-27)
 			}
 			else
 			{

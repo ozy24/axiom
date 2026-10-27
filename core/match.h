@@ -74,7 +74,8 @@ struct MatchHudText
 
 enum class MatchActionKind
 {
-	Announce,     // text to every player (centre print); value kAnnounceKlaxon adds the klaxon
+	Announce,     // text to every player (centre print)
+	Klaxon,       // the stock klaxon, heard everywhere: overtime and sudden death begin
 	Countdown,    // value = whole seconds left, sent once per second
 	ResetArena,   // value 0: going LIVE - reset items, zero scores, respawn players
 	              // value 1: between rounds - reset items and projectiles only
@@ -83,10 +84,6 @@ enum class MatchActionKind
 	RoundStart,   // the round begins: everyone released
 	EndMatch,     // go to intermission
 };
-
-// MatchAction::value for an Announce that also sounds the stock klaxon
-// (world/klaxon2.wav), as MuffMode does for overtime and sudden death.
-constexpr int kAnnounceKlaxon = 1;
 
 struct MatchAction
 {
@@ -177,7 +174,6 @@ class Match
 	void Baseline(const MatchInput &in);
 	void GoLive(int64_t now_ms, std::vector<MatchAction> &out);
 	void End(const char *why, std::vector<MatchAction> &out);
-	MatchAction OvertimeAlert() const;
 
 	MatchConfig config_;
 	MatchState state_ = MatchState::Live;
