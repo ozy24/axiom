@@ -119,6 +119,15 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
   Claude's merge policy covers Axiom and Q2RED, not ozbot-re.
 - Harness tier 11 human-duel: playtest rows 1-9 through the human path.
   Against the pre-playtest build it fails on every bug Chris found.
+- Tier 12 human-teams (TDM, CTF: team joins, no start with one team, the
+  record's teams) and tier 13 human-rounds (HoonyMode rounds ended by
+  scripted suicides). Scenario settings go in an exec'd cfg: too many
+  `+set`s pass the engine's 50-argument limit, which also showed Q2RED
+  segfaulting after that fatal error (fixed, Q2RED #108, A65).
+- Not covered yet: a CTF capture (ozbot capturing on q2ctf1 within a short
+  test is unproven) and leaving intermission by a button press (ozbot
+  presses none; scenarios issue `gamemap`). Playtest rows 1-17 now have
+  automated equivalents; row 18 and feel/HUD stay manual.
 
 ## Known issues
 - Q2REX's built-in bots never enter a bot-only match (retail admits bots

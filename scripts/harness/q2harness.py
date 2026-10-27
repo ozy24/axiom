@@ -32,6 +32,10 @@ Tiers (plan Phase 1b):
                  bot plays (Q2RED only).
  11. human-duel  Simulated players through the human path: the playtest's
                  match-flow and Duel rows, checked from the game tap (Q2RED).
+ 12. human-teams TDM and CTF: simulated players pick teams; no start with one
+                 team; the record has everyone on their team (Q2RED).
+ 13. human-rounds  HoonyMode: each scripted suicide ends a round, the next
+                 starts after "Next round in 3..1" (Q2RED).
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -657,9 +661,17 @@ def scenario_rig(args, name):
 
 
 def scenario_startup(rig, extra):
-    return (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "sv_sim_puppets", "1",
-             "+set", "sv_game_tap", str(rig.dir / "tap.jsonl"),
-             "+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "0"] + extra)
+    """The server's settings go in a cfg it execs: a scenario's `+set`s would
+    pass the engine's command-line argument limit (MAX_NUM_ARGVS)."""
+    sets = ["deathmatch", "1", "maxclients", "8", "sv_sim_puppets", "1",
+            "sv_game_tap", str(rig.dir / "tap.jsonl"), "sv_bot_brain", "ozbot", "bot_count", "0"]
+    rest = list(extra)
+    while len(rest) >= 3 and rest[0] == "+set":
+        sets += rest[1:3]
+        rest = rest[3:]
+    lines = [f'set {k} "{v}"' for k, v in zip(sets[0::2], sets[1::2])]
+    (rig.dir / "baseq2" / "scenario.cfg").write_text("\n".join(lines) + "\n")
+    return ["+exec", "scenario.cfg"] + rest
 
 
 def scenario_steps(rig, script, during=()):
@@ -780,6 +792,114 @@ at 30 0 cmd score
     results.append(("11 human-duel", not detail, detail))
 
 
+def tier_human_teams(args, results):
+    """TDM and CTF through the human path: four simulated players pick teams
+    with `team red` / `team blue`; the match must not start while only one
+    team is staffed; then it runs to its timelimit, and the record has each
+    player on the team they chose. Q2RED only."""
+    for gt in ("tdm", "ctf"):
+        label = f"12 human-teams {gt}"
+        rig, why = scenario_rig(args, f"t12-{gt}")
+        if not rig:
+            results.append((label, True, [f"skipped: {why}"]))
+            continue
+        script = """seconds 75
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Carol social=sim-carol puppet
+client 3 name=Dave social=sim-dave puppet
+at 6 0 cmd team red
+at 6 1 cmd team red
+at 8 0 cmd ready
+at 8 1 cmd ready
+at 14 2 cmd team blue
+at 14 3 cmd team blue
+at 16 2 cmd ready
+at 16 3 cmd ready
+"""
+        startup = scenario_startup(rig, ["+set", "g_gametype", gt, "+set", "match_warmup", "1",
+                                         "+set", "timelimit", "0.5", "+set", "g_matchlog_dir", "matches",
+                                         "+map", GAMETYPE_MAP.get(gt, "q2dm1")])
+        log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 160)
+        tap = read_jsonl(rig.dir / "tap.jsonl")
+        detail = []
+        if not re.search(rf"Gametype: .+ \({gt}\)", log):
+            detail.append(f"gametype {gt} not selected")
+        locs = [r for r in tap if r.get("type") == "locprint"]
+        joins = [r for r in locs if r["base"] == "$g_joined_team"]
+        starting = next((r["t"] for r in locs if r["args"] == ["Match starting"]), None)
+        if len(joins) < 4:
+            detail.append(f"{len(joins)} team joins, expected 4")
+        elif starting is None:
+            detail.append("the match never started")
+        elif starting < joins[2]["t"]:
+            detail.append("the countdown started with only one team staffed")
+        seen = ["Match: " + l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
+        if seen != MATCH_SEQUENCE:
+            detail.append(f"transitions {seen}, expected {MATCH_SEQUENCE}")
+        detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
+        records = sorted(rig.dir.rglob("matches/*.json"))
+        if len(records) != 1:
+            detail.append(f"{len(records)} match records, expected 1")
+        else:
+            rec = json.loads(records[0].read_text())
+            teams = {p["name"]: p.get("team") for p in rec.get("players", [])}
+            want = {"Alice": "red", "Bob": "red", "Carol": "blue", "Dave": "blue"}
+            if teams != want:
+                detail.append(f"record teams {teams}, expected {want}")
+            if [t.get("name") for t in rec.get("teams", [])] != ["red", "blue"]:
+                detail.append(f"record team scores {rec.get('teams')}")
+        if rig.returncode != 0:
+            detail.append(f"server exited with code {rig.returncode}")
+        detail += error_lines(log, rig)[:20]
+        results.append((label, not detail, detail))
+
+
+def tier_human_rounds(args, results):
+    """HoonyMode's rounds through the human path: two simulated players duel
+    with match_rounds 1; each scripted `kill` (a score change, like a frag)
+    must end the round - both players held, "Next round in 3..1", FIGHT! -
+    and play resume, with the match still ended by its timelimit. Q2RED only."""
+    rig, why = scenario_rig(args, "t13-rounds")
+    if not rig:
+        results.append(("13 human-rounds", True, [f"skipped: {why}"]))
+        return
+    script = """seconds 85
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+at 6 0 cmd ready
+at 6 1 cmd ready
+at 26 0 cmd kill
+at 40 1 cmd kill
+"""
+    startup = scenario_startup(rig, ["+set", "g_gametype", "duel", "+set", "match_warmup", "1",
+                                     "+set", "match_rounds", "1", "+set", "match_round_countdown", "3",
+                                     "+set", "match_overtime", "0", "+set", "fraglimit", "0",
+                                     "+set", "timelimit", "1", "+map", "q2dm1"])
+    log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 160)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    alice = humans.get("Alice")
+    centre = [r["args"][0] for r in tap if r.get("type") == "locprint" and r["to"] == alice
+              and r["base"] == "{}" and r["args"]]
+    breaks = sum(1 for i in range(len(centre) - 3)
+                 if centre[i:i + 4] == ["Next round in 3", "Next round in 2", "Next round in 1", "FIGHT!"])
+    seen = ["Match: " + l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
+    round_breaks = seen.count("Match: live -> round countdown")
+    # Bots fight too, so frags can add rounds; the two suicides make at least two.
+    if breaks < 2 or round_breaks < 2:
+        detail.append(f"{breaks} round countdowns shown, {round_breaks} round breaks logged; expected two "
+                      "or more (two scripted suicides)")
+    if seen[-1:] != ["Match: ended (timelimit)"]:
+        detail.append(f"the match ended {seen[-1:]}, expected by the timelimit")
+    detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append(("13 human-rounds", not detail, detail))
+
+
 def tier_teams(args, results):
     """TDM and CTF with the match flow: four bots on two teams play warmup ->
     live -> timelimit, and the record has both teams and every player on one."""
@@ -877,7 +997,8 @@ def cmd_test(args):
     results = []
     for tier in (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
                  tier_rounds, tier_teams, tier_warmup,
-                 tier_duel_rotation, tier_human_duel):
+                 tier_duel_rotation, tier_human_duel, tier_human_teams,
+                 tier_human_rounds):
         if args.only and tier.__name__ != f"tier_{args.only}":
             continue
         try:
@@ -953,7 +1074,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

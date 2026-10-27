@@ -152,6 +152,13 @@ python3 -I scripts/harness/q2harness.py test --stock STOCK.so --candidate build/
   retail clients and run the playtest's match-flow and Duel rows; checks read
   the server's game tap (what each player was shown). Q2RED only; skipped when
   the engine has no sim client.
+- **Tier 12 human-teams:** `tdm` and `ctf` with four simulated players who
+  pick teams with `team red` / `team blue`: no countdown while one team is
+  empty, then a timelimit end and a record with everyone on their team.
+- **Tier 13 human-rounds:** HoonyMode with two simulated players: each
+  scripted suicide ends a round ("Next round in 3..1", FIGHT!) and the match
+  still ends on its timelimit. Scenario settings go in an exec'd cfg: too
+  many `+set`s pass the engine's argument limit.
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.
