@@ -183,7 +183,7 @@ class Match
 	int64_t live_since_ms_ = 0;
 	int64_t time_end_ms_ = 0; // LIVE/OVERTIME deadline (0 = none)
 	int last_countdown_s_ = -1;
-	int last_warning_s_ = 0; // LIVE: the seconds left last spoken for (timelimit warnings)
+	int last_warning_s_ = 0;                     // LIVE: the seconds left last spoken for (timelimit warnings)
 	MatchState round_return_ = MatchState::Live; // where RoundCountdown goes back to
 	int round_ = 0;
 	std::vector<std::pair<int, int>> round_scores_; // (id, score) when the round began

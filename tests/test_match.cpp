@@ -654,9 +654,8 @@ TEST_CASE("sounds: the countdown is spoken, FIGHT plays tele_up")
 		for (const std::string &s : Sounds(m.Update(At(t, {P(1, true), P(2, true)}))))
 			heard.push_back(s);
 	// 12 and 11 have no stock voice; 10 down to 1 do.
-	CHECK(heard == std::vector<std::string>{"world/10.wav", "world/9.wav", "world/8.wav", "world/7.wav",
-	                                        "world/6.wav", "world/5.wav", "world/4.wav", "world/3.wav",
-	                                        "world/2.wav", "world/1.wav"});
+	CHECK(heard == std::vector<std::string>{"world/10.wav", "world/9.wav", "world/8.wav", "world/7.wav", "world/6.wav",
+	                                        "world/5.wav", "world/4.wav", "world/3.wav", "world/2.wav", "world/1.wav"});
 	auto out = m.Update(At(13000, {P(1, true), P(2, true)}));
 	REQUIRE(m.State() == MatchState::Live);
 	CHECK(Sounds(out) == std::vector<std::string>{"misc/tele_up.wav"});
