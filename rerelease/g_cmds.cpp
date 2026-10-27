@@ -2,6 +2,7 @@
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
 #include "core/match_hooks.h" // [mod]
+#include "core/menu_hooks.h" // [mod]
 #include "m_player.h"
 
 void SelectNextItem(edict_t *ent, item_flags_t itflags, bool menu = true)
@@ -754,6 +755,9 @@ void Cmd_Inven_f(edict_t *ent)
 		cl->showinventory = false;
 		return;
 	}
+
+	if (Core_Menu_Inven(ent)) // [mod] the Tab menu in deathmatch
+		return;
 
 	// ZOID
 	if (G_TeamplayEnabled() && cl->resp.ctf_team == CTF_NOTEAM)

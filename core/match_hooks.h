@@ -39,5 +39,13 @@ bool Core_Match_ClockEnd(gtime_t &end);
 // handled. From ServerCommand.
 bool Core_Match_ServerCommand(const char *cmd);
 
+// The Tab menu's Ready row (core/menu_register.cpp): whether ready-up is on
+// now (warmup or the countdown, with match_ready), a client's state, and
+// setting it as `ready` / `notready` do.
+bool Core_Match_ReadyUp();
+bool Core_Match_Playing(const edict_t *ent); // in the match: begun, not a spectator, on a team in team modes
+bool Core_Match_IsReady(const edict_t *ent);
+void Core_Match_SetReady(edict_t *ent, bool ready);
+
 // `ready` / `notready`; true if handled. From ClientCommand, before id's chain.
 bool Core_Match_ClientCommand(edict_t *ent, const char *cmd);

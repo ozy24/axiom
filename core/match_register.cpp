@@ -565,15 +565,37 @@ bool Core_Match_ClientCommand(edict_t *ent, const char *cmd)
 	// Match flow off: stock's commands (CTF competition mode's own ready-up).
 	if (!Core_Match_OwnsRules())
 		return false;
+	Core_Match_SetReady(ent, want_ready);
+	return true;
+}
+
+bool Core_Match_Playing(const edict_t *ent)
+{
+	return Playing(ent);
+}
+
+bool Core_Match_ReadyUp()
+{
+	return Core_Match_OwnsRules() && match.Config().ready_required &&
+	       (match.State() == MatchState::Warmup || match.State() == MatchState::Countdown);
+}
+
+bool Core_Match_IsReady(const edict_t *ent)
+{
+	return ready[(uint32_t)(ent - g_edicts) - 1];
+}
+
+void Core_Match_SetReady(edict_t *ent, bool want_ready)
+{
 	if (match.State() != MatchState::Warmup && match.State() != MatchState::Countdown)
 	{
 		gi.LocClient_Print(ent, PRINT_HIGH, "There is no match warmup.\n");
-		return true;
+		return;
 	}
 	if (!Playing(ent))
 	{
 		gi.LocClient_Print(ent, PRINT_HIGH, "Join the game first.\n");
-		return true;
+		return;
 	}
 	const uint32_t slot = (uint32_t)(ent - g_edicts) - 1;
 	if (ready[slot] != want_ready)
@@ -582,5 +604,4 @@ bool Core_Match_ClientCommand(edict_t *ent, const char *cmd)
 		gi.LocBroadcast_Print(PRINT_HIGH, want_ready ? "{} is ready.\n" : "{} is not ready.\n",
 		                      ent->client->pers.netname);
 	}
-	return true;
 }
