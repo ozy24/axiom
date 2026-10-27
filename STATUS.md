@@ -129,6 +129,12 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
   presses none; scenarios issue `gamemap`). Playtest rows 1-17 now have
   automated equivalents; row 18 and feel/HUD stay manual.
 
+## HoonyMode round flow (2026-10-27, from the playtest)
+- A frag ends the round: ROUND OVER for `match_round_pause` (2 s, the winner
+  plays on, the dead stay dead), then everyone respawns frozen for
+  `match_round_countdown` (now 5 s), then FIGHT!. Fixes the vanishing bot
+  (the old hold overwrote svflags, dropping SVF_BOT).
+
 ## Known issues
 - Q2REX's built-in bots never enter a bot-only match (retail admits bots
   only after a human spawns), so tier 3 can't check frags on Q2REX.

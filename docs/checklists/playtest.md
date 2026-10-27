@@ -34,10 +34,10 @@ Change modes from a terminal: `~/q2playtest/cmd.sh "sv ruleset hoony"` then
 
 | # | Try | Expect | Note |
 |---|---|---|---|
-| 10 | Get a frag (or be fragged) | Round ends at once: both out of play, "Next round in 3…1" | |
-| 11 | Next round starts | Both respawn together, items reset, scores kept | |
+| 10 | Get a frag (or be fragged) | The winner can still move; the loser stays dead about 2 s with the kill message | |
+| 11 | Next round starts | Both respawn together, frozen (can look, can't move or fire), "Next round in 5…1", FIGHT!; items reset, scores kept, the bot visible | |
 | 12 | Play to 7 | The deciding frag ends the match (no extra round) | |
-| 13 | Overall | Is the round pause too long / too short? Does it feel like HoonyMode? | |
+| 13 | Overall | Are the 2 s pause and 5 s frozen countdown right? Does it feel like HoonyMode? | |
 
 ## TDM and CTF (`sv ruleset tdm` / `sv ruleset ctf`, then `map q2dm1` / `map q2ctf1`)
 

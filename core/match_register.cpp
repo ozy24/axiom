@@ -33,7 +33,7 @@ gtime_t last_time;
 std::array<bool, MAX_CLIENTS> ready{};
 
 cvar_t *match_warmup, *match_ready, *match_minplayers, *match_warmup_time, *match_countdown, *match_overtime,
-    *match_rounds, *match_round_countdown;
+    *match_rounds, *match_round_countdown, *match_round_pause, *match_suicide_point;
 
 void RegisterCvars()
 {
@@ -46,7 +46,9 @@ void RegisterCvars()
 	match_countdown = gi.cvar("match_countdown", "10", CVAR_NOFLAGS);
 	match_overtime = gi.cvar("match_overtime", "0", CVAR_NOFLAGS);
 	match_rounds = gi.cvar("match_rounds", "0", CVAR_NOFLAGS);
-	match_round_countdown = gi.cvar("match_round_countdown", "3", CVAR_NOFLAGS);
+	match_round_countdown = gi.cvar("match_round_countdown", "5", CVAR_NOFLAGS);
+	match_round_pause = gi.cvar("match_round_pause", "2", CVAR_NOFLAGS);
+	match_suicide_point = gi.cvar("match_suicide_point", "0", CVAR_NOFLAGS);
 	// Where finished-match records go (relative to the server's working
 	// directory); empty = none.
 	g_matchlog_dir = gi.cvar("g_matchlog_dir", "", CVAR_NOFLAGS);
@@ -64,6 +66,7 @@ MatchConfig ReadConfig()
 	c.overtime = match_overtime->integer;
 	c.rounds_on_frag = match_rounds->integer != 0;
 	c.round_countdown_ms = (int64_t)(match_round_countdown->value * 1000);
+	c.round_pause_ms = (int64_t)(match_round_pause->value * 1000);
 	c.timelimit_ms = (int64_t)(timelimit->value * 60000);
 	c.fraglimit = fraglimit->integer;
 	// TDM and CTF run on stock's team code (Core_Gametype_PreInit): the lead
@@ -213,30 +216,23 @@ void ZeroScores()
 		G_ResetTeamScores();
 }
 
-// Between rounds: every playing client out of play, unseen, unable to respawn
-// until RoundStart. The same hold CTF's match start uses (CTFStartMatch).
-void RoundHold()
+// The round is over: a playing client who is dead stays dead (no respawn on a
+// button press) until RoundRespawn. The winner plays on. Run every frame of
+// the pause, so a death during it is held too.
+void HoldDead()
 {
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		edict_t *ent = ClientEdict(i);
-		if (!Playing(ent))
-			continue;
-		ent->svflags = SVF_NOCLIENT;
-		ent->flags &= ~FL_GODMODE;
-		ent->client->respawn_time = level.time + 3600_sec;
-		ent->client->ps.pmove.pm_type = PM_DEAD;
-		ent->deadflag = true;
-		ent->movetype = MOVETYPE_NOCLIP;
-		ent->solid = SOLID_NOT;
-		ent->client->ps.gunindex = 0;
-		ent->client->ps.gunskin = 0;
-		gi.linkentity(ent);
+		if (Playing(ent) && ent->deadflag)
+			ent->client->respawn_time = level.time + 3600_sec;
 	}
 }
 
-// A round begins: every playing client back in at a spawn point.
-void RoundStart()
+// After the pause: every playing client back in at a spawn point with a fresh
+// loadout - the dead through respawn (which leaves their body), the living
+// straight to a spawn. Frozen until RoundStart (Core_Match_Frozen).
+void RoundRespawn()
 {
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
@@ -244,7 +240,10 @@ void RoundStart()
 		if (!Playing(ent))
 			continue;
 		ent->client->respawn_time = level.time;
-		PutClientInServer(ent);
+		if (ent->deadflag)
+			respawn(ent);
+		else
+			PutClientInServer(ent);
 	}
 }
 
@@ -341,11 +340,14 @@ void Act(const std::vector<MatchAction> &actions)
 			ResetArena(a.value == 0);
 			break;
 		case MatchActionKind::RoundHold:
-			RoundHold();
+			HoldDead();
+			break;
+		case MatchActionKind::RoundRespawn:
+			RoundRespawn();
 			break;
 		case MatchActionKind::RoundStart:
-			RoundStart();
-			break;
+			break; // the release: Core_Match_Frozen is false from here
+
 		case MatchActionKind::EndMatch:
 			end_reason = a.text;
 			gi.Com_PrintFmt("Match: ended ({})\n", a.text.c_str());
@@ -395,6 +397,8 @@ void Core_Match_Frame()
 	Act(actions);
 	if (!match.ScoresCount())
 		ZeroScores();
+	if (match.State() == MatchState::RoundOver)
+		HoldDead();
 }
 
 bool Core_Match_OwnsRules()
@@ -421,6 +425,23 @@ bool Core_Match_ServerCommand(const char *cmd)
 		                Playing(ent) ? "" : " (not playing)");
 	}
 	return true;
+}
+
+bool Core_Match_SuicidePoint(edict_t *self)
+{
+	RegisterCvars();
+	if (!match_suicide_point->integer || !deathmatch->integer || G_TeamplayEnabled() || !self->client)
+		return false;
+	const int opponent = Core_SuicideOpponent(Snapshot().players, (int)(self - g_edicts) - 1);
+	if (opponent < 0)
+		return false;
+	ClientEdict((uint32_t)opponent)->client->resp.score++;
+	return true;
+}
+
+bool Core_Match_Frozen(const edict_t *ent)
+{
+	return Core_Match_OwnsRules() && match.Frozen() && Playing(ent);
 }
 
 bool Core_Match_ClockEnd(gtime_t &end)

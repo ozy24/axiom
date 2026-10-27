@@ -58,12 +58,18 @@ turns it on.
 **Rounds** (`match_rounds 1`, HoonyMode): while LIVE or OVERTIME, any change
 in a playing client's score ends the round, unless it ends the match
 (fraglimit, sudden death and forfeits are checked first). Then:
-ROUND COUNTDOWN for `match_round_countdown` seconds, with every player held
-out of play (unseen, respawn blocked: CTF's match-start hold) and the level
-reset (items back, projectiles gone; scores kept). When it runs out every
-playing client respawns together and the state returns to LIVE or OVERTIME.
-The timelimit keeps running. Clan Arena-style rounds (end on elimination)
-are a later addition on the same state.
+
+1. **ROUND OVER** for `match_round_pause` seconds (2): the winner plays on,
+   the dead stay dead and can't respawn, and the kill message is on screen.
+2. **ROUND COUNTDOWN** for `match_round_countdown` seconds (5): items back,
+   every playing client respawned at a spawn point with a fresh loadout, and
+   frozen - they can look around but not move or fire
+   (`Core_Match_Frozen`, a marked early return in `ClientThink`).
+3. FIGHT!: released, and the state returns to LIVE or OVERTIME.
+
+Scores are kept and the timelimit keeps running; if it runs out in the pause,
+everyone is respawned before the match decides. Clan Arena-style rounds (end
+on elimination) would reuse the same states.
 
 ## Arena reset
 
@@ -93,7 +99,9 @@ isn't a spectator. Every transition prints a `Match:` console line.
 | `match_countdown` | `10` | seconds (10 since the 2026-10-26 playtest) |
 | `match_overtime` | `0` | 0 none, -1 sudden death, N minutes |
 | `match_rounds` | `0` | 1: every score change ends a round (HoonyMode) |
-| `match_round_countdown` | `3` | seconds between rounds |
+| `match_round_countdown` | `5` | seconds frozen at the spawns before a round (rounds on) |
+| `match_suicide_point` | `0` | 1: a suicide or death to the world is a point to the only opponent, not -1 (HoonyMode; not in team modes or with more than one opponent) |
+| `match_round_pause` | `2` | seconds after the round-ending frag before the respawn (rounds on) |
 
 Rulesets (`.cfg`, decision 0003) set these; built-in defaults are stock.
 `sv ruleset <name>` applies one (`core/rulesets.h`): the built-ins `stock`

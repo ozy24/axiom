@@ -886,7 +886,7 @@ at 40 1 cmd kill
     breaks = sum(1 for i in range(len(centre) - 3)
                  if centre[i:i + 4] == ["Next round in 3", "Next round in 2", "Next round in 1", "FIGHT!"])
     seen = ["Match: " + l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
-    round_breaks = seen.count("Match: live -> round countdown")
+    round_breaks = seen.count("Match: live -> round over")
     # Bots fight too, so frags can add rounds; the two suicides make at least two.
     if breaks < 2 or round_breaks < 2:
         detail.append(f"{breaks} round countdowns shown, {round_breaks} round breaks logged; expected two "
@@ -969,8 +969,9 @@ def tier_warmup(args, results):
 
 
 def tier_rounds(args, results):
-    """match_rounds on (HoonyMode's mechanics): a frag ends the round, players
-    are held, the next round starts and the bots fight on. Needs bots that
+    """match_rounds on (HoonyMode's mechanics): a frag ends the round, a pause,
+    everyone respawns frozen for the countdown, the next round starts and the
+    bots fight on. Needs bots that
     fight, so Q2RED only."""
     rig = RIGS[args.engine_kind](args, args.candidate, "t7-rounds")
     if not rig.expects_frags:
@@ -979,12 +980,21 @@ def tier_rounds(args, results):
     startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1",
                 "+set", "match_countdown", "3", "+set", "match_rounds", "1", "+set", "match_round_countdown", "2",
                 "+set", "timelimit", "3"] + rig.bot_args() + ["+map", "q2dm1"])
-    log = rig.run(startup, [rig.wait_ready(), ("wait", r"Match: live -> round countdown", 150),
-                            ("wait", r"Match: round countdown -> live", 20), ("sleep", 1), ("cmd", "quit")],
-                  timeout=args.boot_timeout + 220)
+    # A frag ends the round (the pause), everyone respawns frozen (the
+    # countdown), the round starts - and a second frag ends that one too: the
+    # bots still play after a round reset (the old hold wiped their SVF_BOT).
+    log = rig.run(startup, [rig.wait_ready(), ("wait", r"Match: live -> round over", 150),
+                            ("wait", r"Match: round countdown -> live", 20),
+                            ("wait", r"(?s)round countdown -> live.*Match: live -> round over", 150),
+                            ("sleep", 1), ("cmd", "quit")],
+                  timeout=args.boot_timeout + 360)
     detail = []
-    if "Match: round countdown -> live" not in log:
-        detail.append("no full round cycle")
+    seen = ["Match: " + l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
+    cycle = ["Match: live -> round over", "Match: round over -> round countdown", "Match: round countdown -> live"]
+    if not any(seen[i:i + 3] == cycle for i in range(len(seen))):
+        detail.append(f"no full round cycle in {seen}")
+    if seen.count("Match: live -> round over") < 2:
+        detail.append("no second round ended by a frag: the bots stopped playing after the round reset")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     if "==== ShutdownGame ====" not in log:
