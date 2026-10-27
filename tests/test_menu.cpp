@@ -155,7 +155,7 @@ TEST_CASE("menu: teams list both sides with counts; the cursor starts on the sma
 	v.red = 3;
 	v.blue = 1;
 	MenuPage page = Core_Menu_Main(v);
-	CHECK(Shows(page, "Join Red (3)"));
+	CHECK(Shows(page, "Join Red  (3)"));
 	CHECK(Shows(page, "Join Blue (1)"));
 	CHECK(RowOf(page, MenuAction::Spectate) < 0); // already not playing
 	CHECK(Core_Menu_MainCursor(page, v) == RowOf(page, MenuAction::JoinBlue));
@@ -168,9 +168,9 @@ TEST_CASE("menu: teams list both sides with counts; the cursor starts on the sma
 	v.team = 1;
 	v.playing = true;
 	page = Core_Menu_Main(v);
-	CHECK(Shows(page, "Join Red (2)"));
-	CHECK(
-	    std::any_of(page.begin(), page.end(), [](const MenuRow &r) { return r.text == "Join Red (2)" && r.highlight; }));
+	CHECK(Shows(page, "Join Red  (2)"));
+	CHECK(std::any_of(page.begin(), page.end(),
+	                  [](const MenuRow &r) { return r.text == "Join Red  (2)" && r.highlight; }));
 	CHECK(Actions(page) == std::vector<MenuAction>{MenuAction::JoinBlue, MenuAction::Spectate, MenuAction::MatchInfo,
 	                                               MenuAction::Close});
 }

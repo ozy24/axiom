@@ -132,9 +132,9 @@ MenuPage Core_Menu_Main(const MenuView &v)
 		// Your own team stays listed, in the alternate colour and skipped by
 		// the cursor: stock has no grey (Chris, 2026-10-27).
 		if (v.team == 1)
-			Add(page, "Join Red" + Count(v.red), MenuAction::None, MenuAlign::Left, true);
+			Add(page, "Join Red " + Count(v.red), MenuAction::None, MenuAlign::Left, true);
 		else
-			Add(page, "Join Red" + Count(v.red), MenuAction::JoinRed);
+			Add(page, "Join Red " + Count(v.red), MenuAction::JoinRed);
 		if (v.team == 2)
 			Add(page, "Join Blue" + Count(v.blue), MenuAction::None, MenuAlign::Left, true);
 		else
