@@ -18,8 +18,9 @@ struct RulesetDef
 {
 	const char *name;
 	const char *description;
-	const char *cfg;       // console commands, one per line
-	bool standard = false; // its gametype's standard settings (a gametype vote applies it)
+	const char *cfg;               // console commands, one per line
+	const char *variant = nullptr; // null: its gametype's standard settings; else the variant's
+	                               // name, voted as "<gametype>: <variant>" ("Duel: HoonyMode")
 };
 
 extern const RulesetDef core_rulesets[];
@@ -31,7 +32,7 @@ const RulesetDef *Core_Ruleset_Find(std::string_view name);
 // The gametype a ruleset's text selects ("set g_gametype tdm"), or empty.
 std::string Core_Ruleset_Gametype(const RulesetDef &def);
 
-// The built-in marked standard for a gametype id, or nullptr.
+// The built-in with a gametype's standard settings (no variant), or nullptr.
 const RulesetDef *Core_Ruleset_Standard(std::string_view gametype);
 
 // Ruleset names are [a-z0-9_-], 1..32 characters, so a name can never reach

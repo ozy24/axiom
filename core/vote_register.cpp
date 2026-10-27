@@ -31,7 +31,7 @@ void RegisterCvars()
 	if (g_vote)
 		return;
 	g_vote = gi.cvar("g_vote", "1", CVAR_NOFLAGS);
-	g_vote_allow = gi.cvar("g_vote_allow", "map gametype ruleset restart", CVAR_NOFLAGS);
+	g_vote_allow = gi.cvar("g_vote_allow", "map gametype restart", CVAR_NOFLAGS);
 	g_vote_midgame = gi.cvar("g_vote_midgame", "1", CVAR_NOFLAGS);
 	g_vote_time = gi.cvar("g_vote_time", "30", CVAR_NOFLAGS);
 	g_vote_cooldown = gi.cvar("g_vote_cooldown", "30", CVAR_NOFLAGS);
@@ -96,10 +96,9 @@ VoteChoices Choices()
 {
 	VoteChoices c;
 	c.maps = Core_Vote_MapList(g_map_list->string, ctf->integer != 0);
-	for (size_t i = 0; i < core_gametype_count; ++i)
-		c.gametypes.push_back(core_gametypes[i]->id);
 	for (size_t i = 0; i < core_ruleset_count; ++i)
-		c.rulesets.push_back(core_rulesets[i].name);
+		if (GametypeById(Core_Ruleset_Gametype(core_rulesets[i])))
+			c.gametypes.push_back(core_rulesets[i].name);
 	return c;
 }
 
@@ -117,6 +116,26 @@ const GametypeDef *RulesetGametype(std::string_view name)
 	return def ? GametypeById(Core_Ruleset_Gametype(*def)) : nullptr;
 }
 
+// A built-in ruleset as a gametype vote names it: "Duel", "Duel: HoonyMode".
+std::string RulesetLabel(const RulesetDef &def)
+{
+	const GametypeDef *gt = GametypeById(Core_Ruleset_Gametype(def));
+	const std::string title = gt ? gt->title : def.name;
+	return def.variant ? title + ": " + def.variant : title;
+}
+
+// A gametype vote's argument as a ruleset name: a gametype id means its
+// standard ruleset (`callvote gametype ffa` is "match").
+std::string GametypeVoteRuleset(std::string arg)
+{
+	for (char &c : arg)
+		c = (char)tolower((unsigned char)c);
+	if (!Core_Ruleset_Find(arg))
+		if (const RulesetDef *standard = Core_Ruleset_Standard(arg))
+			return standard->name;
+	return arg;
+}
+
 // The console text that carries out a passed vote. Every kind ends in `map`,
 // a fresh load of the level, so latched settings (g_gametype) take effect.
 std::string Commands(const VoteProposal &p)
@@ -131,15 +150,8 @@ std::string Commands(const VoteProposal &p)
 		return std::string("map ") + level.mapname + "\n";
 	case VoteKind::Gametype:
 	{
-		// The gametype's standard settings, not the current ones: HoonyMode's
-		// rounds must not follow a vote to TDM.
-		const RulesetDef *standard = Core_Ruleset_Standard(p.arg);
-		const std::string settings =
-		    standard ? Core_Ruleset_Commands(standard->name) : "set g_gametype " + p.arg + "\n";
-		return settings + "map " + map_for(GametypeById(p.arg)) + "\n";
-	}
-	case VoteKind::Ruleset:
-	{
+		// The whole ruleset, not just g_gametype: HoonyMode's rounds must not
+		// follow a vote to TDM.
 		const GametypeDef *gt = RulesetGametype(p.arg);
 		return Core_Ruleset_Commands(p.arg) + "map " + map_for(gt ? gt : Core_Gametype_Active()) + "\n";
 	}
@@ -185,7 +197,13 @@ void Call(edict_t *ent, std::string_view kind_name, std::string_view arg)
 		gi.LocClient_Print(ent, PRINT_HIGH, "Wait for the next map.\n");
 		return;
 	}
-	const VoteProposal p{*kind, std::string(arg)};
+	VoteProposal p{*kind, std::string(arg), ""};
+	if (p.kind == VoteKind::Gametype)
+	{
+		p.arg = GametypeVoteRuleset(p.arg);
+		if (const RulesetDef *def = Core_Ruleset_Find(p.arg))
+			p.label = RulesetLabel(*def);
+	}
 	const VoteError e = vote.Call(Slot(ent), p, Choices(), Live(), Voters(), level.time.milliseconds());
 	if (e != VoteError::None)
 	{
@@ -318,11 +336,17 @@ VoteMenuInfo Core_Vote_MenuInfo(const edict_t *ent)
 	                !level.intermissiontime && (!Live() || config.midgame);
 	for (VoteKind k : config.allowed)
 		info.kinds.push_back(VoteKindName(k));
-	const VoteChoices choices = Choices();
-	info.maps = choices.maps;
+	info.maps = Choices().maps;
 	for (size_t i = 0; i < core_gametype_count; ++i)
-		info.gametypes.emplace_back(core_gametypes[i]->id, core_gametypes[i]->title);
-	info.rulesets = choices.rulesets;
+	{
+		MenuVoteGametype gt{core_gametypes[i]->id, core_gametypes[i]->title, {}};
+		if (const RulesetDef *standard = Core_Ruleset_Standard(gt.id))
+			gt.rulesets.emplace_back(standard->name, gt.title);
+		for (size_t r = 0; r < core_ruleset_count; ++r)
+			if (core_rulesets[r].variant && Core_Ruleset_Gametype(core_rulesets[r]) == gt.id)
+				gt.rulesets.emplace_back(core_rulesets[r].name, core_rulesets[r].variant);
+		info.gametypes.push_back(std::move(gt));
+	}
 	const GametypeDef *gt = Core_Gametype_Active();
 	info.gametype = gt ? gt->id : "";
 	info.ruleset = gi.cvar("g_ruleset", "stock", CVAR_SERVERINFO)->string;

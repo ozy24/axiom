@@ -3,7 +3,6 @@
 #include "core/menu.h"
 
 #include <algorithm>
-#include <tuple>
 
 namespace
 {
@@ -237,52 +236,87 @@ MenuPage Core_Menu_CallVote(const MenuView &v)
 		Add(page, "Map", MenuAction::VoteMaps);
 	if (allowed("gametype"))
 		Add(page, "Gametype", MenuAction::VoteGametypes);
-	if (allowed("ruleset"))
-		Add(page, "Ruleset", MenuAction::VoteRulesets);
 	if (allowed("restart"))
 		Add(page, "Restart Match", MenuAction::VoteFor, MenuAlign::Left, false, "restart");
 	Footer(page, {"$g_pc_return", MenuAlign::Left, MenuAction::Back, false, {}});
 	return page;
 }
 
-MenuPage Core_Menu_VoteChoices(const MenuView &v, std::string_view kind)
+namespace
 {
-	// (arg, text, current)
-	std::vector<std::tuple<std::string, std::string, bool>> items;
-	std::string title;
-	if (kind == "map")
-	{
-		title = "Vote: Map";
-		for (const std::string &m : v.vote_maps)
-			items.emplace_back(m, m, m == v.map_file);
-	}
-	else if (kind == "gametype")
-	{
-		title = "Vote: Gametype";
-		for (const auto &[id, name] : v.vote_gametypes)
-			items.emplace_back(id, name, id == v.gametype_id);
-	}
-	else
-	{
-		title = "Vote: Ruleset";
-		for (const std::string &r : v.vote_rulesets)
-			items.emplace_back(r, r, r == v.ruleset);
-	}
-
+// Choice rows from row 2; the bottom row is `back`. A list longer than the
+// page ends in `more`.
+MenuPage ChoicePage(const std::string &title, const std::vector<MenuRow> &rows, const std::string &more, MenuRow back)
+{
 	MenuPage page;
 	Title(page, title, true);
 	Add(page, "");
-	// Rows 2..16 hold choices; the bottom row is Back.
-	constexpr size_t kRoom = kMenuRows - 3;
-	const bool more = items.size() > kRoom;
-	const size_t shown = more ? kRoom - 1 : items.size();
+	// 14 rows, not the 15 that fit: 15 full-length rows under a full-length
+	// title pass the client's 1024-byte layout (tests/test_menu.cpp).
+	constexpr size_t kRoom = kMenuRows - 4;
+	const bool over = rows.size() > kRoom;
+	const size_t shown = over ? kRoom - 1 : rows.size();
 	for (size_t i = 0; i < shown; ++i)
-	{
-		const auto &[arg, text, current] = items[i];
-		Choice(page, Core_Menu_Clean(text), MenuAction::VoteFor, current, std::string(kind) + " " + arg);
-	}
-	if (more)
-		Add(page, Core_Menu_Clean("More: callvote " + std::string(kind)));
-	Footer(page, {"Back", MenuAlign::Left, MenuAction::CallVote, false, {}});
+		page.push_back(rows[i]);
+	if (over)
+		Add(page, Core_Menu_Clean(more));
+	Footer(page, std::move(back));
 	return page;
+}
+
+MenuRow ChoiceRow(const std::string &text, MenuAction action, bool current, std::string arg)
+{
+	MenuPage one;
+	Choice(one, Core_Menu_Clean(text), action, current, std::move(arg));
+	return one.front();
+}
+} // namespace
+
+MenuPage Core_Menu_VoteMaps(const MenuView &v)
+{
+	std::vector<MenuRow> rows;
+	for (const std::string &m : v.vote_maps)
+		rows.push_back(ChoiceRow(m, MenuAction::VoteFor, m == v.map_file, "map " + m));
+	return ChoicePage("Vote: Map", rows, "More: callvote map",
+	                  {"Back", MenuAlign::Left, MenuAction::CallVote, false, {}});
+}
+
+MenuPage Core_Menu_VoteGametypes(const MenuView &v)
+{
+	std::vector<MenuRow> rows;
+	for (const MenuVoteGametype &gt : v.vote_gametypes)
+	{
+		if (gt.rulesets.empty())
+			continue;
+		if (gt.rulesets.size() == 1)
+		{
+			const std::string &name = gt.rulesets.front().first;
+			rows.push_back(ChoiceRow(gt.title, MenuAction::VoteFor, gt.id == v.gametype_id, "gametype " + name));
+			continue;
+		}
+		// Its variants are a page of their own; the current gametype is marked
+		// but stays selectable, to pick another of its variants.
+		MenuRow row = ChoiceRow(gt.title, MenuAction::VoteVariants, false, gt.id);
+		row.highlight = gt.id == v.gametype_id;
+		rows.push_back(row);
+	}
+	return ChoicePage("Vote: Gametype", rows, "More: callvote gametype",
+	                  {"Back", MenuAlign::Left, MenuAction::CallVote, false, {}});
+}
+
+MenuPage Core_Menu_VoteVariants(const MenuView &v, std::string_view gametype)
+{
+	std::vector<MenuRow> rows;
+	std::string title = "Vote: Gametype";
+	for (const MenuVoteGametype &gt : v.vote_gametypes)
+	{
+		if (gt.id != gametype)
+			continue;
+		title = "Vote: " + gt.title;
+		for (const auto &[name, text] : gt.rulesets)
+			rows.push_back(
+			    ChoiceRow(text, MenuAction::VoteFor, gt.id == v.gametype_id && name == v.ruleset, "gametype " + name));
+	}
+	return ChoicePage(title, rows, "More: callvote gametype",
+	                  {"Back", MenuAlign::Left, MenuAction::VoteGametypes, false, {}});
 }

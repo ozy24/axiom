@@ -1,7 +1,7 @@
 # Voting
 
-Players change the map, gametype or ruleset, or restart the match, by
-majority vote. Console commands are the interface; the Tab menu issues the
+Players change the map or gametype, or restart the match, by majority
+vote. Console commands are the interface; the Tab menu issues the
 same commands. Pure logic: `core/vote.{h,cpp}` (tests: `tests/test_vote.cpp`);
 engine side: `core/vote_register.cpp`; harness: tier 14.
 
@@ -10,8 +10,7 @@ engine side: `core/vote_register.cpp`; harness: tier 14.
 | Command | Does |
 |---|---|
 | `callvote map <name>` | a map on the map list |
-| `callvote gametype <id>` | `ffa`, `duel`, `tdm`, `ctf`: applies that gametype's standard ruleset (`match`, `duel`, `tdm`, `ctf`) and reloads; the current settings don't carry over (HoonyMode's rounds don't follow a vote to TDM) |
-| `callvote ruleset <name>` | a built-in ruleset (`sv rulesets`), applied before the reload |
+| `callvote gametype <name>` | a gametype's standard settings (`ffa`, `duel`, `tdm`, `ctf`) or a variant (`hoony`, `stock`): applies that built-in ruleset, then reloads. The current settings don't carry over (HoonyMode's rounds don't follow a vote to TDM). `callvote ruleset` is the same command. |
 | `callvote restart` | reloads the current map: a fresh warmup |
 | `vote yes` / `vote no` | answer the open vote; an answer can be changed |
 | `yes` / `no` | stock's commands: answer our vote while one is open, else stock's CTF elections as before |
@@ -19,9 +18,19 @@ engine side: `core/vote_register.cpp`; harness: tier 14.
 
 Every passed vote ends in `map <name>` (a fresh load, so latched settings
 such as `g_gametype` apply), never through intermission: a warmup vote must
-not write a match record or rotate the Duel queue. A gametype or ruleset
+not write a match record or rotate the Duel queue. A gametype
 change keeps the current map if the new map list has it, else takes the
 list's first map (FFA on q2dm1 voted to CTF goes to q2ctf1).
+
+## Gametypes and their variants
+
+Players vote on gametypes; rulesets are the settings behind them, not a
+separate vote. Each built-in ruleset belongs to the gametype it selects:
+the one with no `variant` is the gametype's standard settings (`match` for
+FFA, `duel`, `tdm`, `ctf`); the others are its variants, named in
+`RulesetDef::variant` (`stock`: "Free For All: Stock"; `hoony`: "Duel:
+HoonyMode"). A future Clan Arena is a TDM variant the same way. Custom
+`rulesets/<name>.cfg` aren't votable (the module can't list files).
 
 ## Rules
 
@@ -51,7 +60,7 @@ list's first map (FFA on q2dm1 voted to CTF goes to q2ctf1).
 | Cvar | Default | |
 |---|---|---|
 | `g_vote` | 1 | voting on |
-| `g_vote_allow` | `map gametype ruleset restart` | the kinds that can be called |
+| `g_vote_allow` | `map gametype restart` | the kinds that can be called |
 | `g_vote_midgame` | 1 | also during a live match; 0 = warmup only |
 | `g_vote_time` | 30 | seconds to vote (minimum 5) |
 | `g_vote_cooldown` | 30 | seconds after a caller's failed vote |
@@ -64,14 +73,16 @@ anything else is dropped, so a list can't inject a console command.
 ## What players see
 
 - The HUD's single status line (docs/design/hud.md) shows the vote instead
-  of the match status while it is open, `VOTE: MAP Q2DM3 (1/3)` (yes votes /
-  voters), then `VOTE PASSED`.
+  of the match status while it is open, `VOTE: MAP Q2DM3 (1/3)` or `VOTE:
+  DUEL: HOONYMODE (1/3)` (yes votes / voters), then `VOTE PASSED`.
 - A broadcast when a vote is called, passes, fails or times out.
 - The Tab menu: while a vote is open, a voter's main page leads with the
   proposal and **Vote Yes / Vote No** (the cursor starts on Vote Yes; their
   current answer is marked and skipped). When they can call one, **Call a
-  Vote** opens Map / Gametype / Ruleset / Restart Match; the lists mark the
-  current choice. A list longer than the page (15 rows) ends in "More:
+  Vote** opens Map / Gametype / Restart Match; the lists mark the current
+  choice. Under Gametype, one with a single ruleset (TDM, CTF) is voted
+  from the list; one with variants (FFA, Duel) opens them ("Duel",
+  "HoonyMode"). A list longer than the page (14 rows) ends in "More:
   callvote <kind>".
 
 ## Compared with MMREX
@@ -80,11 +91,11 @@ MMREX (`match/vote.cpp`, `ui/vote_menu.cpp`, ~3,000 lines) has 17 vote
 kinds, a disable bitmask (`g_vote_flags`), two map cvars (`g_map_list`,
 `g_map_pool`), and forces a ballot menu onto every voter. Axiom keeps its
 rules (majority of eligible humans, caller votes yes, 30 s, 3 s delay,
-per-map limit) and differs where noted above: four kinds
-(rulesets cover the limit and item toggles), an allow-list, one map list,
+per-map limit) and differs where noted above: three kinds (a gametype's
+variants cover the limit and item toggles), an allow-list, one map list,
 no forced menu, a cooldown, and pure tested logic shared by menu and
 console.
 
 Later: an end-of-match map pick and map rotation (MMREX's `map_pick`,
-`map_rotation`); custom `rulesets/<name>.cfg` in the ruleset vote (the
-module can't list files, so it would need a list cvar).
+`map_rotation`); custom `rulesets/<name>.cfg` in the gametype vote (it
+would need a list cvar naming them and their gametype).

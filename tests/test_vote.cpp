@@ -7,7 +7,7 @@ namespace
 VoteConfig AllKinds()
 {
 	VoteConfig c;
-	c.allowed = {VoteKind::Map, VoteKind::Gametype, VoteKind::Ruleset, VoteKind::Restart};
+	c.allowed = {VoteKind::Map, VoteKind::Gametype, VoteKind::Restart};
 	return c;
 }
 
@@ -15,14 +15,13 @@ VoteChoices Choices()
 {
 	VoteChoices c;
 	c.maps = Core_Vote_MapList("", false);
-	c.gametypes = {"ffa", "duel", "tdm", "ctf"};
-	c.rulesets = {"stock", "match", "hoony"};
+	c.gametypes = {"stock", "match", "duel", "hoony", "tdm", "ctf"};
 	return c;
 }
 
 VoteProposal Map(const char *name)
 {
-	return {VoteKind::Map, name};
+	return {VoteKind::Map, name, ""};
 }
 } // namespace
 
@@ -30,9 +29,11 @@ TEST_CASE("vote: kinds parse case-insensitively and describe themselves")
 {
 	CHECK(Core_Vote_ParseKind("MAP") == VoteKind::Map);
 	CHECK(Core_Vote_ParseKind("restart") == VoteKind::Restart);
+	CHECK(Core_Vote_ParseKind("ruleset") == VoteKind::Gametype); // the older word
 	CHECK_FALSE(Core_Vote_ParseKind("kick").has_value());
 	CHECK(Core_Vote_Describe(Map("q2dm3")) == "map q2dm3");
-	CHECK(Core_Vote_Describe({VoteKind::Restart, ""}) == "restart");
+	CHECK(Core_Vote_Describe({VoteKind::Restart, "", ""}) == "restart");
+	CHECK(Core_Vote_Describe({VoteKind::Gametype, "hoony", "Duel: HoonyMode"}) == "gametype Duel: HoonyMode");
 }
 
 TEST_CASE("vote: list words are lowercased, deduplicated, and unsafe ones dropped")
@@ -164,7 +165,7 @@ TEST_CASE("vote: calls are refused for the right reasons")
 	{
 		config.allowed = {VoteKind::Map};
 		Vote v(config);
-		const VoteProposal p{VoteKind::Restart, ""};
+		const VoteProposal p{VoteKind::Restart, "", ""};
 		CHECK(v.Call(0, p, Choices(), false, voters, 0) == VoteError::NotAllowed);
 		CHECK(Core_Vote_ErrorText(VoteError::NotAllowed, config, p, Choices()) ==
 		      "Votes on restart are off. Allowed: map.");
@@ -192,12 +193,12 @@ TEST_CASE("vote: calls are refused for the right reasons")
 	{
 		Vote v(config);
 		CHECK(v.Call(0, Map("q2dm9"), Choices(), false, voters, 0) == VoteError::BadArg);
-		CHECK(v.Call(0, {VoteKind::Gametype, "tag"}, Choices(), false, voters, 0) == VoteError::BadArg);
-		CHECK(v.Call(0, {VoteKind::Ruleset, "../x"}, Choices(), false, voters, 0) == VoteError::BadArg);
-		CHECK(v.Call(0, {VoteKind::Restart, "now"}, Choices(), false, voters, 0) == VoteError::BadArg);
+		CHECK(v.Call(0, {VoteKind::Gametype, "tag", ""}, Choices(), false, voters, 0) == VoteError::BadArg);
+		CHECK(v.Call(0, {VoteKind::Gametype, "../x", ""}, Choices(), false, voters, 0) == VoteError::BadArg);
+		CHECK(v.Call(0, {VoteKind::Restart, "now", ""}, Choices(), false, voters, 0) == VoteError::BadArg);
 		CHECK(Core_Vote_ErrorText(VoteError::BadArg, config, Map("q2dm9"), Choices()) ==
 		      "Maps: q2dm1 q2dm2 q2dm3 q2dm4 q2dm5 q2dm6 q2dm7 q2dm8.");
-		CHECK(v.Call(0, {VoteKind::Gametype, "CTF"}, Choices(), false, voters, 0) == VoteError::None);
+		CHECK(v.Call(0, {VoteKind::Gametype, "CTF", ""}, Choices(), false, voters, 0) == VoteError::None);
 	}
 	SUBCASE("no vote to answer")
 	{
@@ -223,4 +224,12 @@ TEST_CASE("vote: each player calls a limited number per map; a new map resets it
 	CHECK(v.Call(0, Map("q2dm2"), Choices(), false, two, 20000) == VoteError::LimitReached);
 	v.Reset();
 	CHECK(v.Call(0, Map("q2dm2"), Choices(), false, two, 20000) == VoteError::None);
+}
+
+TEST_CASE("vote: a gametype shows on the HUD by its name")
+{
+	Vote v(AllKinds());
+	REQUIRE(v.Call(0, {VoteKind::Gametype, "hoony", "Duel: HoonyMode"}, Choices(), false, {0, 1}, 0) ==
+	        VoteError::None);
+	CHECK(v.HudText() == "VOTE: DUEL: HOONYMODE (1/2)");
 }

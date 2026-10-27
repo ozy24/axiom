@@ -15,7 +15,8 @@ const RulesetDef core_rulesets[] = {
      "set match_rounds 0\n"
      "set match_round_countdown 5\n"
      "set match_round_pause 2\n"
-     "set match_suicide_point 0\n"},
+     "set match_suicide_point 0\n",
+     "Stock"},
     {"match", "free for all with warmup and ready-up, 10 minutes, sudden death on a tie",
      "set g_gametype ffa\n"
      "set ctf 0\n"
@@ -31,7 +32,7 @@ const RulesetDef core_rulesets[] = {
      "set match_round_pause 2\n"
      "set match_suicide_point 0\n"
      "set timelimit 10\n"
-     "set fraglimit 0\n", true},
+     "set fraglimit 0\n"},
     {"duel", "one on one: warmup and ready-up, 10 minutes, sudden death on a tie, winner stays on",
      "set g_gametype duel\n"
      "set ctf 0\n"
@@ -47,7 +48,7 @@ const RulesetDef core_rulesets[] = {
      "set match_round_pause 2\n"
      "set match_suicide_point 0\n"
      "set timelimit 10\n"
-     "set fraglimit 0\n", true},
+     "set fraglimit 0\n"},
     {"hoony", "HoonyMode duel: every frag ends a round and resets the arena; first to 5, sudden death on a tie",
      "set g_gametype duel\n"
      "set ctf 0\n"
@@ -63,7 +64,8 @@ const RulesetDef core_rulesets[] = {
      "set match_round_pause 2\n"
      "set match_suicide_point 1\n"
      "set timelimit 15\n"
-     "set fraglimit 5\n"},
+     "set fraglimit 5\n",
+     "HoonyMode"},
     {"tdm", "team deathmatch: warmup and ready-up, 20 minutes, sudden death on a tie",
      "set g_gametype tdm\n"
      "set ctf 0\n"
@@ -79,7 +81,7 @@ const RulesetDef core_rulesets[] = {
      "set match_round_pause 2\n"
      "set match_suicide_point 0\n"
      "set timelimit 20\n"
-     "set fraglimit 0\n", true},
+     "set fraglimit 0\n"},
     {"ctf", "capture the flag: warmup and ready-up, 20 minutes or 8 captures, sudden death on a tie",
      "set g_gametype ctf\n"
      "set ctf 1\n"
@@ -96,7 +98,7 @@ const RulesetDef core_rulesets[] = {
      "set match_suicide_point 0\n"
      "set timelimit 20\n"
      "set fraglimit 0\n"
-     "set capturelimit 8\n", true},
+     "set capturelimit 8\n"},
 };
 const size_t core_ruleset_count = sizeof(core_rulesets) / sizeof(core_rulesets[0]);
 
@@ -125,7 +127,7 @@ const RulesetDef *Core_Ruleset_Standard(std::string_view gametype)
 {
 	for (size_t i = 0; i < core_ruleset_count; ++i)
 	{
-		if (core_rulesets[i].standard && Core_Ruleset_Gametype(core_rulesets[i]) == gametype)
+		if (!core_rulesets[i].variant && Core_Ruleset_Gametype(core_rulesets[i]) == gametype)
 			return &core_rulesets[i];
 	}
 	return nullptr;

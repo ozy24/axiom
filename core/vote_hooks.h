@@ -2,6 +2,8 @@
 // Tab menu and the HUD read from it.
 #pragma once
 
+#include "core/menu.h"
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -33,12 +35,11 @@ struct VoteMenuInfo
 	std::string proposal;           // "map q2dm3"
 	int answer = -1;                // this client's: -1 none, 0 no, 1 yes
 	bool can_call = false;          // voting on, a voter, nothing open, and midgame or not a live match
-	std::vector<std::string> kinds; // allowed: "map", "gametype", "ruleset", "restart"
+	std::vector<std::string> kinds; // allowed: "map", "gametype", "restart"
 	std::vector<std::string> maps;
-	std::vector<std::pair<std::string, std::string>> gametypes; // (id, title)
-	std::vector<std::string> rulesets;
-	std::string gametype; // the current one's id
-	std::string ruleset;  // g_ruleset
+	std::vector<MenuVoteGametype> gametypes; // each with its built-in rulesets
+	std::string gametype;                    // the current one's id
+	std::string ruleset;                     // g_ruleset
 };
 VoteMenuInfo Core_Vote_MenuInfo(const edict_t *ent);
 

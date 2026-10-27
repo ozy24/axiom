@@ -1,7 +1,9 @@
 // Voting (docs/design/voting.md), as pure logic: what can be voted on, who
 // counts, and when a vote passes or fails. No engine access.
 //
-// Four kinds: map, gametype, ruleset and restart (the current map, reloaded).
+// Three kinds: map, gametype and restart (the current map, reloaded). A
+// gametype vote names a ruleset: the gametype's standard one or a variant
+// (HoonyMode is Duel's); "ruleset" is accepted as another word for it.
 // Only voters count: humans in the match (in Duel, everyone in the queue).
 // The caller's vote is a yes. A vote passes on a majority of the voters there
 // now, fails as soon as it can't pass or after the timeout, and runs a few
@@ -27,18 +29,19 @@ enum class VoteKind
 {
 	Map,
 	Gametype,
-	Ruleset,
 	Restart,
 };
 
-// "map", "gametype", "ruleset", "restart"; and back, case-insensitively.
+// "map", "gametype", "restart"; and back, case-insensitively ("ruleset" too,
+// for gametype).
 const char *VoteKindName(VoteKind kind);
 std::optional<VoteKind> Core_Vote_ParseKind(std::string_view name);
 
 struct VoteProposal
 {
 	VoteKind kind = VoteKind::Restart;
-	std::string arg; // the map, gametype id or ruleset name; empty for restart
+	std::string arg;   // the map or ruleset name; empty for restart
+	std::string label; // shown instead of arg if set: "Duel: HoonyMode"
 
 	bool operator==(const VoteProposal &o) const
 	{
@@ -46,7 +49,7 @@ struct VoteProposal
 	}
 };
 
-// "map q2dm3", "restart".
+// "map q2dm3", "gametype Duel: HoonyMode", "restart".
 std::string Core_Vote_Describe(const VoteProposal &p);
 
 // The words of a list cvar (g_map_list, g_vote_allow), lowercased; anything
@@ -77,8 +80,7 @@ struct VoteConfig
 struct VoteChoices
 {
 	std::vector<std::string> maps;
-	std::vector<std::string> gametypes;
-	std::vector<std::string> rulesets;
+	std::vector<std::string> gametypes; // ruleset names
 };
 
 enum class VoteError
@@ -173,7 +175,8 @@ class Vote
 	// Seconds left to vote (rounded up); 0 when not open.
 	int SecondsLeft(int64_t now_ms) const;
 
-	// The HUD status line: "VOTE: MAP Q2DM3 (1/2)", "VOTE PASSED"; empty
+	// The HUD status line: "VOTE: MAP Q2DM3 (1/2)", "VOTE: DUEL: HOONYMODE
+	// (1/2)", "VOTE PASSED"; empty
 	// with no vote.
 	std::string HudText() const;
 

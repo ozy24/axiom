@@ -27,7 +27,7 @@ enum class Page : int32_t
 	CallVote,
 	VoteMaps,
 	VoteGametypes,
-	VoteRulesets,
+	VoteVariants,
 };
 
 // The menu's arg (PMenu_Open TagFrees it on close): which page, and what each
@@ -37,7 +37,8 @@ struct MenuState
 {
 	Page page;
 	MenuAction actions[kMenuRows];
-	char args[kMenuRows][64]; // VoteFor: "map q2dm3"
+	char args[kMenuRows][64]; // VoteFor: "map q2dm3"; VoteVariants: the gametype
+	char gametype[32];        // Page::VoteVariants: whose
 };
 
 bool Active()
@@ -95,7 +96,6 @@ MenuView View(const edict_t *ent)
 	v.vote_kinds = vote.kinds;
 	v.vote_maps = vote.maps;
 	v.vote_gametypes = vote.gametypes;
-	v.vote_rulesets = vote.rulesets;
 	v.gametype_id = vote.gametype;
 	return v;
 }
@@ -121,7 +121,7 @@ void Fill(pmenu_t *entries, MenuState &state, const MenuPage &page)
 	}
 }
 
-MenuPage Build(const edict_t *ent, Page page)
+MenuPage Build(const edict_t *ent, Page page, const char *gametype)
 {
 	const MenuView view = View(ent);
 	switch (page)
@@ -133,11 +133,11 @@ MenuPage Build(const edict_t *ent, Page page)
 	case Page::CallVote:
 		return Core_Menu_CallVote(view);
 	case Page::VoteMaps:
-		return Core_Menu_VoteChoices(view, "map");
+		return Core_Menu_VoteMaps(view);
 	case Page::VoteGametypes:
-		return Core_Menu_VoteChoices(view, "gametype");
-	case Page::VoteRulesets:
-		return Core_Menu_VoteChoices(view, "ruleset");
+		return Core_Menu_VoteGametypes(view);
+	case Page::VoteVariants:
+		return Core_Menu_VoteVariants(view, gametype);
 	}
 	return {};
 }
@@ -149,19 +149,20 @@ void Update(edict_t *ent)
 {
 	pmenuhnd_t *hnd = ent->client->menu;
 	MenuState *state = (MenuState *)hnd->arg;
-	const MenuPage page = Build(ent, state->page);
+	const MenuPage page = Build(ent, state->page, state->gametype);
 	Fill(hnd->entries, *state, page);
 	if (hnd->cur < 0 || hnd->cur >= kMenuRows || state->actions[hnd->cur] == MenuAction::None)
 		hnd->cur = Core_Menu_Next(page, -1);
 }
 
-void Open(edict_t *ent, Page which)
+void Open(edict_t *ent, Page which, const char *gametype = "")
 {
 	if (ent->client->menu)
 		PMenu_Close(ent);
 	MenuState *state = (MenuState *)gi.TagMalloc(sizeof(MenuState), TAG_LEVEL);
 	state->page = which;
-	const MenuPage page = Build(ent, which);
+	Q_strlcpy(state->gametype, gametype, sizeof(state->gametype));
+	const MenuPage page = Build(ent, which, gametype);
 	pmenu_t entries[kMenuRows] = {};
 	Fill(entries, *state, page);
 	const int cur = which == Page::Main ? Core_Menu_MainCursor(page, View(ent)) : Core_Menu_Next(page, -1);
@@ -271,9 +272,12 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 	case MenuAction::VoteGametypes:
 		Open(ent, Page::VoteGametypes);
 		break;
-	case MenuAction::VoteRulesets:
-		Open(ent, Page::VoteRulesets);
+	case MenuAction::VoteVariants:
+	{
+		const std::string gametype = state->args[hnd->cur]; // Open frees this menu's state
+		Open(ent, Page::VoteVariants, gametype.c_str());
 		break;
+	}
 	case MenuAction::VoteFor:
 	{
 		const std::string args = state->args[hnd->cur]; // the menu's arg goes on close

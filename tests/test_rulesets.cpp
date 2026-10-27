@@ -147,7 +147,7 @@ TEST_CASE("every gametype has exactly one standard ruleset, and it selects that 
 		CAPTURE(gt);
 		int standards = 0;
 		for (size_t i = 0; i < core_ruleset_count; ++i)
-			standards += core_rulesets[i].standard && Core_Ruleset_Gametype(core_rulesets[i]) == gt;
+			standards += !core_rulesets[i].variant && Core_Ruleset_Gametype(core_rulesets[i]) == gt;
 		CHECK(standards == 1);
 		REQUIRE(Core_Ruleset_Standard(gt) != nullptr);
 		CHECK(Core_Ruleset_Gametype(*Core_Ruleset_Standard(gt)) == gt);

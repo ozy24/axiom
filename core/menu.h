@@ -27,11 +27,11 @@ enum class MenuAction
 	Close,
 	VoteYes, // the open vote (core/vote.h)
 	VoteNo,
-	CallVote, // the Call a Vote page; from a choice list, back to it
-	VoteMaps, // a choice list ...
-	VoteGametypes,
-	VoteRulesets,
-	VoteFor, // callvote with the row's arg ("map q2dm3", "restart")
+	CallVote,      // the Call a Vote page; from a choice list, back to it
+	VoteMaps,      // the maps
+	VoteGametypes, // the gametypes (also Back from a gametype's variants)
+	VoteVariants,  // a gametype's variants; the row's arg is its id
+	VoteFor,       // callvote with the row's arg ("map q2dm3", "gametype hoony", "restart")
 };
 
 enum class MenuAlign
@@ -47,7 +47,7 @@ struct MenuRow
 	MenuAlign align = MenuAlign::Left;
 	MenuAction action = MenuAction::None;
 	bool highlight = false; // drawn in the alternate colour
-	std::string arg;        // VoteFor: what to call
+	std::string arg;        // VoteFor: what to call; VoteVariants: the gametype
 };
 
 using MenuPage = std::vector<MenuRow>;
@@ -76,6 +76,15 @@ std::string Core_Menu_Layout(const MenuPage &page, int cur);
 // PMenu_Next / PMenu_Prev move it; -1 if no row is selectable.
 int Core_Menu_Next(const MenuPage &page, int cur);
 int Core_Menu_Prev(const MenuPage &page, int cur);
+
+// A gametype in the vote: its rulesets, the standard one first. One ruleset:
+// voted from the list; more: a submenu of variants.
+struct MenuVoteGametype
+{
+	std::string id;                                            // "duel"
+	std::string title;                                         // "Duel"
+	std::vector<std::pair<std::string, std::string>> rulesets; // (name, row text): ("hoony", "HoonyMode")
+};
 
 // What the pages show: the adapter fills it from the level each refresh.
 struct MenuView
@@ -112,10 +121,9 @@ struct MenuView
 	std::string vote_proposal;           // "map q2dm3"
 	int vote_answer = -1;                // this player's: -1 none, 0 no, 1 yes
 	bool vote_can_call = false;          // Call a Vote shows
-	std::vector<std::string> vote_kinds; // allowed: "map", "gametype", "ruleset", "restart"
+	std::vector<std::string> vote_kinds; // allowed: "map", "gametype", "restart"
 	std::vector<std::string> vote_maps;
-	std::vector<std::pair<std::string, std::string>> vote_gametypes; // (id, title)
-	std::vector<std::string> vote_rulesets;
+	std::vector<MenuVoteGametype> vote_gametypes;
 	std::string gametype_id; // the current one, marked in its list
 };
 
@@ -130,6 +138,12 @@ MenuPage Core_Menu_MatchInfo(const MenuView &view);
 // Call a Vote: the allowed kinds; restart is called from here, the others
 // open their choice list.
 MenuPage Core_Menu_CallVote(const MenuView &view);
-// A kind's choices ("map", "gametype", "ruleset"), the current one marked and
-// skipped. A list longer than the page ends in a row saying to use callvote.
-MenuPage Core_Menu_VoteChoices(const MenuView &view, std::string_view kind);
+// The maps, the current one marked and skipped. A list longer than the page
+// ends in a row saying to use callvote.
+MenuPage Core_Menu_VoteMaps(const MenuView &view);
+// The gametypes: one with a single ruleset is voted from here (marked and
+// skipped if current); one with variants opens them (marked if current).
+MenuPage Core_Menu_VoteGametypes(const MenuView &view);
+// A gametype's variants ("Duel", "HoonyMode"), the current ruleset marked and
+// skipped; Back returns to the gametypes.
+MenuPage Core_Menu_VoteVariants(const MenuView &view, std::string_view gametype);

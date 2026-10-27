@@ -49,8 +49,6 @@ const char *VoteKindName(VoteKind kind)
 		return "map";
 	case VoteKind::Gametype:
 		return "gametype";
-	case VoteKind::Ruleset:
-		return "ruleset";
 	case VoteKind::Restart:
 		return "restart";
 	}
@@ -60,15 +58,18 @@ const char *VoteKindName(VoteKind kind)
 std::optional<VoteKind> Core_Vote_ParseKind(std::string_view name)
 {
 	const std::string n = Lower(name);
-	for (VoteKind k : {VoteKind::Map, VoteKind::Gametype, VoteKind::Ruleset, VoteKind::Restart})
+	for (VoteKind k : {VoteKind::Map, VoteKind::Gametype, VoteKind::Restart})
 		if (n == VoteKindName(k))
 			return k;
+	if (n == "ruleset")
+		return VoteKind::Gametype;
 	return std::nullopt;
 }
 
 std::string Core_Vote_Describe(const VoteProposal &p)
 {
-	return p.arg.empty() ? VoteKindName(p.kind) : std::string(VoteKindName(p.kind)) + " " + p.arg;
+	const std::string &what = p.label.empty() ? p.arg : p.label;
+	return what.empty() ? VoteKindName(p.kind) : std::string(VoteKindName(p.kind)) + " " + what;
 }
 
 std::vector<std::string> Core_Vote_Words(std::string_view text)
@@ -145,8 +146,6 @@ std::string Core_Vote_ErrorText(VoteError e, const VoteConfig &config, const Vot
 			return "Maps: " + Join(choices.maps) + ".";
 		case VoteKind::Gametype:
 			return "Gametypes: " + Join(choices.gametypes) + ".";
-		case VoteKind::Ruleset:
-			return "Rulesets: " + Join(choices.rulesets) + ".";
 		case VoteKind::Restart:
 			return "Usage: callvote restart";
 		}
@@ -196,9 +195,6 @@ VoteError Vote::Call(int caller, VoteProposal proposal, const VoteChoices &choic
 		break;
 	case VoteKind::Gametype:
 		arg_ok = Contains(choices.gametypes, proposal.arg);
-		break;
-	case VoteKind::Ruleset:
-		arg_ok = Contains(choices.rulesets, proposal.arg);
 		break;
 	case VoteKind::Restart:
 		arg_ok = proposal.arg.empty();
@@ -308,6 +304,9 @@ std::string Vote::HudText() const
 		return "VOTE PASSED";
 	if (state_ != State::Open)
 		return {};
-	return "VOTE: " + Upper(Core_Vote_Describe(proposal_)) + " (" + std::to_string(tally_.yes) + "/" +
-	       std::to_string(tally_.voters) + ")";
+	// A gametype shows by its name alone; the line has room for about 40 characters.
+	const std::string what = proposal_.kind == VoteKind::Gametype && !proposal_.label.empty()
+	                             ? proposal_.label
+	                             : Core_Vote_Describe(proposal_);
+	return "VOTE: " + Upper(what) + " (" + std::to_string(tally_.yes) + "/" + std::to_string(tally_.voters) + ")";
 }
