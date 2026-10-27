@@ -498,14 +498,15 @@ void Core_Match_Statusbar(statusbar_t &sb)
 {
 	if (!deathmatch->integer || !StatusStat() || !ClockStat() || !CountdownStat())
 		return;
-	// Centred above the stock HUD row: the clock in green (the ready count in
-	// warmup) at yb -61, the status in white just below it at yb -51 (Chris
-	// put the clock on top, 2026-10-27). Stock tokens only, and no `ifbit`.
+	// Centred above the stock HUD row, as OpenTDM stacks them: the status in
+	// white, then the clock in green (the ready count in warmup) at the height
+	// of the stock "Press any button" prompt, raised 3 px (yb -51). Stock tokens only, and
+	// no `ifbit`.
 	const player_stat_t status = StatusStat(), clock = ClockStat(), countdown = CountdownStat();
-	sb.ifstat(status).xv(0).yb(-51);
+	sb.ifstat(status).xv(0).yb(-61);
 	sb.sb << "loc_stat_cstring " << status << ' ';
 	sb.endifstat();
-	sb.ifstat(clock).xv(0).yb(-61);
+	sb.ifstat(clock).xv(0).yb(-51);
 	sb.sb << "loc_stat_cstring2 " << clock << ' ';
 	sb.endifstat();
 	// The countdown in big HUD digits, mid-screen (MuffMode's placement: num 3

@@ -701,7 +701,7 @@ def state_line(tap):
     next one (docs/design/hud.md)."""
     cs = [r for r in tap if r.get("type") == "configstring"]
     bars = [r["text"] for r in cs if "hnum" in r["text"]]
-    drawn = any("yb -51 loc_stat_cstring " in t and "yb -61 loc_stat_cstring2 " in t for t in bars)
+    drawn = any("yb -61 loc_stat_cstring " in t and "yb -51 loc_stat_cstring2 " in t for t in bars)
     status = next((r["index"] for r in cs if r["text"].startswith("WARMUP")), None)
     texts = []
     for r in cs:
