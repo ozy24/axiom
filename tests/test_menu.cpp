@@ -168,9 +168,9 @@ TEST_CASE("menu: teams list both sides with counts; the cursor starts on the sma
 	v.team = 1;
 	v.playing = true;
 	page = Core_Menu_Main(v);
-	CHECK(Shows(page, "On Red (2)"));
+	CHECK(Shows(page, "Join Red (2)"));
 	CHECK(
-	    std::any_of(page.begin(), page.end(), [](const MenuRow &r) { return r.text == "On Red (2)" && r.highlight; }));
+	    std::any_of(page.begin(), page.end(), [](const MenuRow &r) { return r.text == "Join Red (2)" && r.highlight; }));
 	CHECK(Actions(page) == std::vector<MenuAction>{MenuAction::JoinBlue, MenuAction::Spectate, MenuAction::MatchInfo,
 	                                               MenuAction::Close});
 }
