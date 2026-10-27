@@ -506,10 +506,10 @@ void Core_Match_Statusbar(statusbar_t &sb)
 	// clock in green, never both at once (Match::HudText). Stock tokens only,
 	// and no `ifbit`.
 	const player_stat_t status = StatusStat(), clock = ClockStat(), countdown = CountdownStat();
-	sb.ifstat(status).xv(0).yb(-58);
+	sb.ifstat(status).xv(0).yb(-61);
 	sb.sb << "loc_stat_cstring " << status << ' ';
 	sb.endifstat();
-	sb.ifstat(clock).xv(0).yb(-58);
+	sb.ifstat(clock).xv(0).yb(-61);
 	sb.sb << "loc_stat_cstring2 " << clock << ' ';
 	sb.endifstat();
 	// The countdown in big HUD digits, mid-screen (MuffMode's placement: num 3

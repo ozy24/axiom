@@ -22,8 +22,8 @@ void Core_IdView_Statusbar(statusbar_t &sb)
 	const player_stat_t stat = IdViewStat();
 	if (!stat)
 		return;
-	// One line above the match status (yb -58).
-	sb.ifstat(stat).xv(0).yb(-68);
+	// One line above the match status (yb -61).
+	sb.ifstat(stat).xv(0).yb(-71);
 	sb.sb << "loc_stat_cstring " << stat << ' ';
 	sb.endifstat();
 }
