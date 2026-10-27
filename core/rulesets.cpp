@@ -14,7 +14,8 @@ const RulesetDef core_rulesets[] = {
      "set match_overtime 0\n"
      "set match_rounds 0\n"
      "set match_round_countdown 5\n"
-     "set match_round_pause 2\n"},
+     "set match_round_pause 2\n"
+     "set match_suicide_point 0\n"},
     {"match", "free for all with warmup and ready-up, 10 minutes, sudden death on a tie",
      "set g_gametype ffa\n"
      "set ctf 0\n"
@@ -28,6 +29,7 @@ const RulesetDef core_rulesets[] = {
      "set match_rounds 0\n"
      "set match_round_countdown 5\n"
      "set match_round_pause 2\n"
+     "set match_suicide_point 0\n"
      "set timelimit 10\n"
      "set fraglimit 0\n"},
     {"duel", "one on one: warmup and ready-up, 10 minutes, sudden death on a tie, winner stays on",
@@ -43,6 +45,7 @@ const RulesetDef core_rulesets[] = {
      "set match_rounds 0\n"
      "set match_round_countdown 5\n"
      "set match_round_pause 2\n"
+     "set match_suicide_point 0\n"
      "set timelimit 10\n"
      "set fraglimit 0\n"},
     {"hoony", "HoonyMode duel: every frag ends a round and resets the arena; first to 7, sudden death on a tie",
@@ -58,6 +61,7 @@ const RulesetDef core_rulesets[] = {
      "set match_rounds 1\n"
      "set match_round_countdown 5\n"
      "set match_round_pause 2\n"
+     "set match_suicide_point 1\n"
      "set timelimit 15\n"
      "set fraglimit 7\n"},
     {"tdm", "team deathmatch: warmup and ready-up, 20 minutes, sudden death on a tie",
@@ -73,6 +77,7 @@ const RulesetDef core_rulesets[] = {
      "set match_rounds 0\n"
      "set match_round_countdown 5\n"
      "set match_round_pause 2\n"
+     "set match_suicide_point 0\n"
      "set timelimit 20\n"
      "set fraglimit 0\n"},
     {"ctf", "capture the flag: warmup and ready-up, 20 minutes or 8 captures, sudden death on a tie",
@@ -88,6 +93,7 @@ const RulesetDef core_rulesets[] = {
      "set match_rounds 0\n"
      "set match_round_countdown 5\n"
      "set match_round_pause 2\n"
+     "set match_suicide_point 0\n"
      "set timelimit 20\n"
      "set fraglimit 0\n"
      "set capturelimit 8\n"},

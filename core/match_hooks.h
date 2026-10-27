@@ -14,6 +14,11 @@ bool Core_Match_OwnsRules();
 // from ClientThink, which then neither moves it nor lets it fire.
 bool Core_Match_Frozen(const edict_t *ent);
 
+// A suicide (or a death to the world) with match_suicide_point 1 and exactly
+// one opponent, outside team modes: the point goes to the opponent instead of
+// off the player (HoonyMode). True if it did; false, and stock scoring runs.
+bool Core_Match_SuicidePoint(edict_t *self);
+
 // The scoreboard clock: true and the level time it reaches zero, or false for
 // no clock. Stock's timelimit from map load unless the match flow owns the
 // rules; then none in warmup, the countdown or sudden death.

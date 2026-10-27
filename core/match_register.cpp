@@ -33,7 +33,7 @@ gtime_t last_time;
 std::array<bool, MAX_CLIENTS> ready{};
 
 cvar_t *match_warmup, *match_ready, *match_minplayers, *match_warmup_time, *match_countdown, *match_overtime,
-    *match_rounds, *match_round_countdown, *match_round_pause;
+    *match_rounds, *match_round_countdown, *match_round_pause, *match_suicide_point;
 
 void RegisterCvars()
 {
@@ -48,6 +48,7 @@ void RegisterCvars()
 	match_rounds = gi.cvar("match_rounds", "0", CVAR_NOFLAGS);
 	match_round_countdown = gi.cvar("match_round_countdown", "5", CVAR_NOFLAGS);
 	match_round_pause = gi.cvar("match_round_pause", "2", CVAR_NOFLAGS);
+	match_suicide_point = gi.cvar("match_suicide_point", "0", CVAR_NOFLAGS);
 	// Where finished-match records go (relative to the server's working
 	// directory); empty = none.
 	g_matchlog_dir = gi.cvar("g_matchlog_dir", "", CVAR_NOFLAGS);
@@ -423,6 +424,18 @@ bool Core_Match_ServerCommand(const char *cmd)
 		gi.Com_PrintFmt("  {:4} {}{}\n", ent->client->resp.score, Core_PlayerName(ent).c_str(),
 		                Playing(ent) ? "" : " (not playing)");
 	}
+	return true;
+}
+
+bool Core_Match_SuicidePoint(edict_t *self)
+{
+	RegisterCvars();
+	if (!match_suicide_point->integer || !deathmatch->integer || G_TeamplayEnabled() || !self->client)
+		return false;
+	const int opponent = Core_SuicideOpponent(Snapshot().players, (int)(self - g_edicts) - 1);
+	if (opponent < 0)
+		return false;
+	ClientEdict((uint32_t)opponent)->client->resp.score++;
 	return true;
 }
 
