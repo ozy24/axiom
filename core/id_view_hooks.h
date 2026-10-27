@@ -16,5 +16,6 @@ void Core_IdView_Statusbar(statusbar_t &sb);
 void Core_IdView_SetStats(edict_t *ent);
 
 // From the end of G_SetSpectatorStats, after a chaser's stats were copied
-// from its target: the chased player's name.
+// from its target: the chased player's name, and no weapon icon (stock's
+// STAT_HELPICON for a centre-handed target).
 void Core_IdView_SetSpectatorStats(edict_t *ent);
