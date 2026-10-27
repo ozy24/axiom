@@ -560,7 +560,7 @@ TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
 	const int64_t live3 = ToLive(sudden);
 	sudden.Update(At(live3 + 60000, {P(1, true, 3), P(2, true, 3)}));
 	REQUIRE(sudden.State() == MatchState::Overtime);
-	CHECK(sudden.HudText(At(live3 + 61000, {P(1, true, 3), P(2, true, 3)})) == Hud("SUDDEN DEATH", ""));
+	CHECK(sudden.HudText(At(live3 + 61000, {P(1, true, 3), P(2, true, 3)})) == Hud("SUDDEN DEATH", "0:00"));
 }
 
 TEST_CASE("the HUD in rounds: the round above the clock, round over, next round")

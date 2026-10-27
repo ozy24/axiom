@@ -214,7 +214,7 @@ MatchHudText Match::HudText(const MatchInput &in) const
 		return {round, clock}; // just the clock: a running clock means the match is on
 	case MatchState::Overtime:
 		if (config_.overtime < 0)
-			return {"SUDDEN DEATH", ""}; // no clock: the next score ends it
+			return {"SUDDEN DEATH", Clock(0)}; // the clock stays at 0:00: the next score ends it
 		return {"OVERTIME", clock};
 	case MatchState::RoundOver:
 		return {"ROUND OVER", clock};
