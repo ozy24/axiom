@@ -38,8 +38,8 @@ cat >"$rig/baseq2/server.cfg" <<'CFG'
 set hostname "Playtest"
 set deathmatch 1
 set maxclients 8
-set g_ruleset duel
-// one bot to duel against; bot_count 0 for human-only
+set g_ruleset ffa
+// bots to play against; bot_count 0 for human-only
 set sv_bot_brain ozbot
 set bot_count 1
 set bot_skill 2

@@ -207,8 +207,8 @@ MatchHudText Match::HudText(const MatchInput &in) const
 {
 	if (!config_.enabled)
 		return {};
-	// Two texts on one row, at its two ends (Chris, 2026-10-27): the clock on
-	// the left, the status on the right. Status names are OpenTDM's
+	// Two texts in places of their own (Chris, 2026-10-27): the status top
+	// middle, the clock bottom middle. Status names are OpenTDM's
 	// (g_tdm_core.c), capitalised. The clock shows while the match is being
 	// played, round breaks and timed overtime included: down to the
 	// timelimit, else up from LIVE.

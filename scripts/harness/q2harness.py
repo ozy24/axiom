@@ -696,13 +696,13 @@ def embedded_tokens(tap):
 
 def state_line(tap):
     """The HUD's match status and clock, from the game tap: whether the status
-    bar draws both on the one line, and every text either showed, in order
+    bar draws both (status top middle, clock bottom middle), and every text either showed, in order
     (repeats collapsed).
     The status is the configstring that first says WARMUP; the clock is the
     next one (docs/design/hud.md)."""
     cs = [r for r in tap if r.get("type") == "configstring"]
     bars = [r["text"] for r in cs if "hnum" in r["text"]]
-    drawn = any("yt 41 loc_stat_cstring2 " in t and "yt 41 loc_stat_cstring " in t for t in bars)
+    drawn = any("yt 43 loc_stat_cstring " in t and "yb -61 loc_stat_cstring2 " in t for t in bars)
     status = next((r["index"] for r in cs if r["text"].startswith("WARMUP")), None)
     texts = []
     for r in cs:

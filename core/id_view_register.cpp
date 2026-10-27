@@ -22,8 +22,8 @@ void Core_IdView_Statusbar(statusbar_t &sb)
 	const player_stat_t stat = IdViewStat();
 	if (!stat)
 		return;
-	// Just above the stock HUD's top row, centred over the weapon icon at
-	// xv 150: cstring centres on xv + 160.
+	// Above the clock (yb -61), centred over the weapon icon at xv 150 like
+	// it: cstring centres on xv + 160.
 	sb.ifstat(stat).xv(2).yb(-71);
 	sb.sb << "loc_stat_cstring " << stat << ' ';
 	sb.endifstat();

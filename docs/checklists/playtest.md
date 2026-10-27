@@ -9,7 +9,7 @@ Duel, HoonyMode, TDM, CTF). About 20 minutes; better with a second human, fine w
 
 ```bash
 scripts/playtest/setup-local-rig.sh          # makes ~/q2playtest
-~/q2playtest/run.sh                         # Duel vs one bot on q2dm1
+~/q2playtest/run.sh                         # FFA with a bot on q2dm1
 ```
 
 In retail Quake II (normal launch), open the console and `connect 127.0.0.1:5073`.
