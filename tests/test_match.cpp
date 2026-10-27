@@ -616,3 +616,21 @@ TEST_CASE("overtime and sudden death are announced as MuffMode does, with the kl
 	CHECK(a.text == "Sudden Death!");
 	CHECK(a.value == kAnnounceKlaxon);
 }
+
+TEST_CASE("no firing in the match countdown; the round countdown freezes outright")
+{
+	Match m(Enabled());
+	m.Begin(0);
+	CHECK_FALSE(m.HoldFire()); // warmup is free play
+	m.Update(At(1000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Countdown);
+	CHECK(m.HoldFire());
+	CHECK_FALSE(m.Frozen()); // they can still move
+	m.Update(At(4000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK_FALSE(m.HoldFire());
+
+	Match stock; // match flow off: stock
+	stock.Begin(0);
+	CHECK_FALSE(stock.HoldFire());
+}

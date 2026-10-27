@@ -15,6 +15,10 @@ bool Core_Match_OwnsRules();
 // from ClientThink, which then neither moves it nor lets it fire.
 bool Core_Match_Frozen(const edict_t *ent);
 
+// Whether a client may move but not fire: the match countdown. From
+// ClientThink, which then drops the fire button.
+bool Core_Match_HoldFire(const edict_t *ent);
+
 // A suicide (or a death to the world) with match_suicide_point 1 and exactly
 // one opponent, outside team modes: the point goes to the opponent instead of
 // off the player (HoonyMode). True if it did; false, and stock scoring runs.

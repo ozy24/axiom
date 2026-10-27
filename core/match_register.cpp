@@ -524,6 +524,11 @@ void Core_Match_SetStats(edict_t *ent)
 		    Core_Match_OwnsRules() ? match.CountdownSeconds(level.time.milliseconds()) : 0;
 }
 
+bool Core_Match_HoldFire(const edict_t *ent)
+{
+	return Core_Match_OwnsRules() && match.HoldFire() && Playing(ent);
+}
+
 bool Core_Match_Frozen(const edict_t *ent)
 {
 	return Core_Match_OwnsRules() && match.Frozen() && Playing(ent);

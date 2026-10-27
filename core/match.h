@@ -144,6 +144,11 @@ class Match
 	{
 		return config_.enabled && state_ == MatchState::RoundCountdown;
 	}
+	// Whether playing clients may move but not fire: the match countdown.
+	bool HoldFire() const
+	{
+		return config_.enabled && state_ == MatchState::Countdown;
+	}
 	// The round being played (rounds_on_frag): 1 from LIVE, +1 each new round.
 	int Round() const
 	{

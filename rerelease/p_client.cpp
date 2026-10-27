@@ -3204,6 +3204,11 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 		client->buttons = client->latched_buttons = BUTTON_NONE; // [mod]
 		return; // [mod]
 	}
+	if (Core_Match_HoldFire(ent)) // [mod] the match countdown: move, but no firing
+	{
+		client->buttons &= ~BUTTON_ATTACK; // [mod]
+		client->latched_buttons &= ~BUTTON_ATTACK; // [mod]
+	}
 
 	if (ent->client->chase_target)
 	{
