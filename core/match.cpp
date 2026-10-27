@@ -208,11 +208,13 @@ MatchHudText Match::HudText(const MatchInput &in) const
 	if (!config_.enabled)
 		return {};
 	// Two texts in places of their own (Chris, 2026-10-27): the status top
-	// middle, the clock bottom middle. Status names are OpenTDM's
+	// middle, the clock bottom middle, so the clock always shows. Before the
+	// match it shows the match's length, so players see how long it is; Status names are OpenTDM's
 	// (g_tdm_core.c), capitalised. The clock shows while the match is being
-	// played, round breaks and timed overtime included: down to the
-	// timelimit, else up from LIVE.
+	// then, round breaks and timed overtime included, down to the timelimit,
+	// else up from LIVE; in sudden death it stays at 0:00.
 	const std::string clock = time_end_ms_ ? Clock(time_end_ms_ - in.now_ms) : Clock(in.now_ms - live_since_ms_);
+	const std::string length = Clock(config_.timelimit_ms); // 0:00 with no timelimit: it counts up
 	switch (state_)
 	{
 	case MatchState::Warmup:
@@ -220,17 +222,17 @@ MatchHudText Match::HudText(const MatchInput &in) const
 		// more players, then someone on each team, then WARMUP (ready-up or
 		// the warmup timer).
 		if (PlayingCount(in) < std::max(1, config_.min_players))
-			return {"WAITING FOR PLAYERS", ""};
+			return {"WAITING FOR PLAYERS", length};
 		if (!Staffed(config_, in))
-			return {"WAITING FOR TEAMS", ""};
-		return {"WARMUP", ""};
+			return {"WAITING FOR TEAMS", length};
+		return {"WARMUP", length};
 	case MatchState::Countdown:
-		return {"COUNTDOWN", ""}; // the seconds: the big digits (CountdownSeconds)
+		return {"COUNTDOWN", length}; // the seconds: the big digits (CountdownSeconds)
 	case MatchState::Live:
 		return {"", clock};
 	case MatchState::Overtime:
 		if (config_.overtime < 0)
-			return {"SUDDEN DEATH", ""}; // no clock: the next score ends it
+			return {"SUDDEN DEATH", "0:00"}; // the next score ends it
 		return {"OVERTIME", clock};
 	case MatchState::RoundOver:
 		return {"ROUND OVER", clock};

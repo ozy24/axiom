@@ -521,18 +521,20 @@ void Core_Match_Statusbar(statusbar_t &sb)
 	if (!deathmatch->integer || !StatusStat() || !ClockStat() || !CountdownStat())
 		return;
 	// Each in a place of its own (Chris, 2026-10-27), so either can show with
-	// the other. The status top middle, in white: the row under the client's
+	// the other. The status top middle, in green like the clock: the row under the client's
 	// 4 notify rows (10 units each from the top, scr_maxlines 4), above where
 	// centre prints start (20% down, 48 units at the least); yt 43, not 40,
 	// because the client draws this text about 2 units higher than the notify
-	// font. The clock bottom middle, in green, centred over the weapon icon at
-	// stock's xv 150 (cstring centres on xv + 160), just above the stock HUD.
+	// font. The clock bottom left of centre, in green, just above the stock
+	// HUD: centred halfway between the screen centre and the box's left edge
+	// (xv 80, over the gap between the health icon and the ammo; cstring
+	// centres on xv + 160).
 	// Stock tokens only, and no `ifbit`.
 	const player_stat_t status = StatusStat(), clock = ClockStat(), countdown = CountdownStat();
 	sb.ifstat(status).xv(0).yt(43);
-	sb.sb << "loc_stat_cstring " << status << ' ';
+	sb.sb << "loc_stat_cstring2 " << status << ' ';
 	sb.endifstat();
-	sb.ifstat(clock).xv(2).yb(-61);
+	sb.ifstat(clock).xv(-80).yb(-61);
 	sb.sb << "loc_stat_cstring2 " << clock << ' ';
 	sb.endifstat();
 	// The countdown in big HUD digits, between the centre prints and the
