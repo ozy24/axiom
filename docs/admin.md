@@ -75,5 +75,8 @@ Each switch starts clean: nothing a previous mode set carries over.
 | `g_vote_midgame` | 1 | also during a match; 0 = warmup only |
 | `g_map_list` | (stock maps) | maps a vote may pick; empty = q2dm1-8, or q2ctf1-5 in CTF |
 
+`sv callvote <map|gametype|restart> [choice]` puts a vote to the players
+from the console (the server casts no vote; the player limits don't apply).
+
 `g_map_list` is gameplay, so set it in a gametype's file. The rest is
 `server.cfg`. Details: docs/design/voting.md.
