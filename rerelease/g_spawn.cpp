@@ -1366,10 +1366,10 @@ static void G_InitStatusbar()
 		}
 
 		// id view state
-		sb.ifstat(STAT_CTF_ID_VIEW).xv(112).yb(-58).stat_pname(STAT_CTF_ID_VIEW).endifstat();
+		sb.ifstat(STAT_CTF_ID_VIEW).xv(112).yb(-100).stat_pname(STAT_CTF_ID_VIEW).endifstat(); // [mod] up from -58, clear of the match lines
 
 		// id view color
-		sb.ifstat(STAT_CTF_ID_VIEW_COLOR).xv(96).yb(-58).pic(STAT_CTF_ID_VIEW_COLOR).endifstat();
+		sb.ifstat(STAT_CTF_ID_VIEW_COLOR).xv(96).yb(-100).pic(STAT_CTF_ID_VIEW_COLOR).endifstat(); // [mod] up from -58, with the name
 
 		if (ctf->integer)
 		{
