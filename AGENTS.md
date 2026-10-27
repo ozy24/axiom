@@ -175,8 +175,10 @@ The stock reference is the `stock-reference` tag (pinned in
 Harness gotchas: coop save slots must be named `coop_*` or Q2RED reloads a
 fresh map instead of the save; rig paths must stay under 900 characters
 (Q2RED's `MAX_OSPATH`, 1024 since its A61); the engine binary is copied into each rig
-so its crash logs land there. Locally, pass `--engine ~/q2ra2 --retail
-"~/.local/share/Steam/steamapps/common/Quake 2/rerelease" --bots <dir>`.
+so its crash logs land there. Locally, `scripts/harness/setup-local-kit.sh`
+builds the pinned engines, bots, retail links and stock reference into
+`~/.cache/q2harness-kit` once, and the harness then needs only `--candidate`.
+**Never keep reusable kits in `/tmp`**: a reboot clears it.
 
 ## Hard rules
 

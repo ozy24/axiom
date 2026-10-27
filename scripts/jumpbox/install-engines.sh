@@ -10,13 +10,17 @@
 # are left alone, so a pin change never breaks a run that's already going.
 # Builds come from `git archive` of the pinned commit, never from the working
 # checkout, so local edits in ~/Code/Projects can't leak into CI.
+#
+# ENGINES=<dir> installs elsewhere and INSTALL_Q2REX=0 skips Q2REX: that is how
+# scripts/harness/setup-local-kit.sh builds a developer's local kit.
 set -euo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=../harness/pins.env
 source "$here/../harness/pins.env"
 
-ENGINES=/srv/q2ci/engines
+ENGINES=${ENGINES:-/srv/q2ci/engines}
+INSTALL_Q2REX=${INSTALL_Q2REX:-1}
 BUILD=${XDG_CACHE_HOME:-$HOME/.cache}/q2ci-build
 Q2RED_SRC=${Q2RED_SRC:-$HOME/Code/Projects/q2red}
 OZBOT_SRC=${OZBOT_SRC:-$HOME/Code/Projects/ozbot-re}
@@ -76,7 +80,10 @@ else
 fi
 
 q2rex_dest=$ENGINES/q2rex-$Q2REX_VERSION
-if [[ -f $q2rex_dest/quake2rex_server.exe ]]; then
+if [[ $INSTALL_Q2REX == 0 ]]; then
+	echo "== q2rex skipped (INSTALL_Q2REX=0)"
+	q2rex_dest=
+elif [[ -f $q2rex_dest/quake2rex_server.exe ]]; then
 	echo "== q2rex $Q2REX_VERSION already installed"
 else
 	echo "== q2rex $Q2REX_VERSION"
@@ -93,7 +100,7 @@ else
 	mv "$tmp" "$q2rex_dest"
 fi
 
-chmod -R g+rX "$q2red_dest" "$ozbot_dest" "$q2rex_dest"
+chmod -R g+rX "$q2red_dest" "$ozbot_dest" ${q2rex_dest:+"$q2rex_dest"}
 echo
 echo "Installed:"
-ls -la "$q2red_dest" "$ozbot_dest" "$q2rex_dest" | sed 's/^/  /'
+ls -la "$q2red_dest" "$ozbot_dest" ${q2rex_dest:+"$q2rex_dest"} | sed 's/^/  /'
