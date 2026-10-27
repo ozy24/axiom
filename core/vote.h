@@ -6,8 +6,9 @@
 // The caller's vote is a yes. A vote passes on a majority of the voters there
 // now, fails as soon as it can't pass or after the timeout, and runs a few
 // seconds after it passes. Each player calls at most a few votes per map and
-// waits after one of theirs fails. By default votes are only called outside a
-// live match (warmup, or with the match flow off).
+// waits after one of theirs fails. Votes can be called mid-match (a match
+// started with the wrong settings is voted away); every kind reloads a map,
+// so the match starts again from warmup.
 //
 // The adapter (core/vote_register.cpp) carries out the passed proposal and
 // shows the vote on the HUD's status line; the Tab menu issues the same
@@ -65,7 +66,7 @@ struct VoteConfig
 {
 	bool enabled = true;              // g_vote
 	std::set<VoteKind> allowed;       // g_vote_allow
-	bool midgame = false;             // g_vote_midgame: also during a live match
+	bool midgame = true;              // g_vote_midgame: also during a live match
 	int64_t timeout_ms = 30000;       // g_vote_time
 	int64_t pass_delay_ms = 3000;     // between "passed" and running it
 	int64_t fail_cooldown_ms = 30000; // g_vote_cooldown: after a caller's vote fails

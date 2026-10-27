@@ -32,7 +32,7 @@ void RegisterCvars()
 		return;
 	g_vote = gi.cvar("g_vote", "1", CVAR_NOFLAGS);
 	g_vote_allow = gi.cvar("g_vote_allow", "map gametype ruleset restart", CVAR_NOFLAGS);
-	g_vote_midgame = gi.cvar("g_vote_midgame", "0", CVAR_NOFLAGS);
+	g_vote_midgame = gi.cvar("g_vote_midgame", "1", CVAR_NOFLAGS);
 	g_vote_time = gi.cvar("g_vote_time", "30", CVAR_NOFLAGS);
 	g_vote_cooldown = gi.cvar("g_vote_cooldown", "30", CVAR_NOFLAGS);
 	g_vote_limit = gi.cvar("g_vote_limit", "3", CVAR_NOFLAGS);

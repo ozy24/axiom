@@ -169,11 +169,11 @@ TEST_CASE("vote: calls are refused for the right reasons")
 		CHECK(Core_Vote_ErrorText(VoteError::NotAllowed, config, p, Choices()) ==
 		      "Votes on restart are off. Allowed: map.");
 	}
-	SUBCASE("a live match, unless midgame")
+	SUBCASE("a live match: allowed by default (a wrong setting can be voted away), off with midgame 0")
 	{
-		CHECK(Vote(config).Call(0, Map("q2dm2"), Choices(), true, voters, 0) == VoteError::MatchLive);
-		config.midgame = true;
 		CHECK(Vote(config).Call(0, Map("q2dm2"), Choices(), true, voters, 0) == VoteError::None);
+		config.midgame = false;
+		CHECK(Vote(config).Call(0, Map("q2dm2"), Choices(), true, voters, 0) == VoteError::MatchLive);
 	}
 	SUBCASE("one at a time")
 	{

@@ -32,7 +32,7 @@ struct VoteMenuInfo
 	bool open = false;              // a vote is open
 	std::string proposal;           // "map q2dm3"
 	int answer = -1;                // this client's: -1 none, 0 no, 1 yes
-	bool can_call = false;          // voting on, a voter, nothing open, not a live match (or midgame)
+	bool can_call = false;          // voting on, a voter, nothing open, and midgame or not a live match
 	std::vector<std::string> kinds; // allowed: "map", "gametype", "ruleset", "restart"
 	std::vector<std::string> maps;
 	std::vector<std::pair<std::string, std::string>> gametypes; // (id, title)

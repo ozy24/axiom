@@ -32,8 +32,17 @@ list's first map (FFA on q2dm1 voted to CTF goes to q2ctf1).
   **fails** as soon as it can't pass, and **times out** after `g_vote_time`.
   A passed vote runs 3 seconds later.
 - One vote at a time; none during intermission.
-- Votes are called **outside a live match** only (warmup, or any time with
-  the match flow off), unless `g_vote_midgame 1`.
+- Votes can be called **during a live match** too (`g_vote_midgame 1`, the
+  default), so a match started with the wrong settings can be voted away.
+  `g_vote_midgame 0` limits them to warmup (and any time with the match flow
+  off).
+- Every kind ends in a full reload of a map, so a vote mid-match restarts
+  the match from warmup. Each kind needs it: a map change by definition;
+  `g_gametype` is latched; a ruleset can change the gametype, item settings
+  (spawned at load) and the match settings (read when the level starts);
+  and a reload is the restart that leaves nothing of the old match behind.
+  (MMREX also reloads for its powerups and techs votes, for the same
+  item-spawn reason; its restart resets the match in place.)
 - Each player calls at most `g_vote_limit` votes per map, and after one of
   theirs fails waits `g_vote_cooldown` seconds before calling another.
 
@@ -43,7 +52,7 @@ list's first map (FFA on q2dm1 voted to CTF goes to q2ctf1).
 |---|---|---|
 | `g_vote` | 1 | voting on |
 | `g_vote_allow` | `map gametype ruleset restart` | the kinds that can be called |
-| `g_vote_midgame` | 0 | also during a live match |
+| `g_vote_midgame` | 1 | also during a live match; 0 = warmup only |
 | `g_vote_time` | 30 | seconds to vote (minimum 5) |
 | `g_vote_cooldown` | 30 | seconds after a caller's failed vote |
 | `g_vote_limit` | 3 | calls per player per map; 0 = no limit |
@@ -71,7 +80,7 @@ MMREX (`match/vote.cpp`, `ui/vote_menu.cpp`, ~3,000 lines) has 17 vote
 kinds, a disable bitmask (`g_vote_flags`), two map cvars (`g_map_list`,
 `g_map_pool`), and forces a ballot menu onto every voter. Axiom keeps its
 rules (majority of eligible humans, caller votes yes, 30 s, 3 s delay,
-warmup only, per-map limit) and differs where noted above: four kinds
+per-map limit) and differs where noted above: four kinds
 (rulesets cover the limit and item toggles), an allow-list, one map list,
 no forced menu, a cooldown, and pure tested logic shared by menu and
 console.
