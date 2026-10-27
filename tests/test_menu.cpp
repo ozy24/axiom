@@ -164,12 +164,15 @@ TEST_CASE("menu: teams list both sides with counts; the cursor starts on the sma
 	v.red = v.blue = 2; // even: the first choice
 	CHECK(Core_Menu_MainCursor(Core_Menu_Main(v), v) == RowOf(Core_Menu_Main(v), MenuAction::JoinRed));
 
-	// On red: both teams still listed, spectate, no chase camera
+	// On red: red still listed, highlighted and skipped; switch to blue or spectate; no chase camera
 	v.team = 1;
 	v.playing = true;
-	CHECK(Actions(Core_Menu_Main(v)) == std::vector<MenuAction>{MenuAction::JoinRed, MenuAction::JoinBlue,
-	                                                            MenuAction::Spectate, MenuAction::MatchInfo,
-	                                                            MenuAction::Close});
+	page = Core_Menu_Main(v);
+	CHECK(Shows(page, "On Red (2)"));
+	CHECK(
+	    std::any_of(page.begin(), page.end(), [](const MenuRow &r) { return r.text == "On Red (2)" && r.highlight; }));
+	CHECK(Actions(page) == std::vector<MenuAction>{MenuAction::JoinBlue, MenuAction::Spectate, MenuAction::MatchInfo,
+	                                               MenuAction::Close});
 }
 
 TEST_CASE("menu: Duel offers the queue, never join or spectate (the queue decides)")
