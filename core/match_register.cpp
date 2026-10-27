@@ -504,12 +504,13 @@ void Core_Match_Statusbar(statusbar_t &sb)
 		return;
 	// One line centred above the stock HUD row: the status in white or the
 	// clock in green, never both at once (Match::HudText). Stock tokens only,
-	// and no `ifbit`.
+	// and no `ifbit`. xv 2: cstring centres on xv + 160, so the line sits over
+	// the centre of the weapon icon at stock's xv 150 (24 px wide).
 	const player_stat_t status = StatusStat(), clock = ClockStat(), countdown = CountdownStat();
-	sb.ifstat(status).xv(0).yb(-61);
+	sb.ifstat(status).xv(2).yb(-61);
 	sb.sb << "loc_stat_cstring " << status << ' ';
 	sb.endifstat();
-	sb.ifstat(clock).xv(0).yb(-61);
+	sb.ifstat(clock).xv(2).yb(-61);
 	sb.sb << "loc_stat_cstring2 " << clock << ' ';
 	sb.endifstat();
 	// The countdown in big HUD digits, mid-screen (MuffMode's placement: num 3
