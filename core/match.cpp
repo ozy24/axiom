@@ -16,6 +16,8 @@ const char *MatchStateName(MatchState state)
 		return "live";
 	case MatchState::Overtime:
 		return "overtime";
+	case MatchState::RoundOver:
+		return "round over";
 	case MatchState::RoundCountdown:
 		return "round countdown";
 	case MatchState::Intermission:
@@ -125,8 +127,9 @@ void Match::Baseline(const MatchInput &in)
 		round_scores_.emplace_back(p.id, p.score);
 }
 
-// HoonyMode: a score changed during a round, and the match isn't over: hold
-// everyone, reset the level, count down to the next round.
+// HoonyMode: a score changed during a round, and the match isn't over. The
+// round is over: the winner plays on while the dead stay dead; after the
+// pause everyone respawns, frozen, and counts down to the next round.
 bool Match::RoundBreak(const MatchInput &in, MatchState from, std::vector<MatchAction> &out)
 {
 	if (!config_.rounds_on_frag)
@@ -139,11 +142,10 @@ bool Match::RoundBreak(const MatchInput &in, MatchState from, std::vector<MatchA
 	if (!ScoreChanged(in))
 		return false;
 	round_return_ = from;
-	state_ = MatchState::RoundCountdown;
+	state_ = MatchState::RoundOver;
 	state_since_ms_ = in.now_ms;
 	last_countdown_s_ = -1;
 	out.push_back({MatchActionKind::RoundHold, "", 0});
-	out.push_back({MatchActionKind::ResetArena, "", 1});
 	return true;
 }
 
@@ -283,6 +285,32 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 			break;
 		}
 		RoundBreak(in, MatchState::Overtime, out);
+		break;
+	}
+	case MatchState::RoundOver:
+	{
+		if (in.gametype_over)
+		{
+			End(GametypeReason(in), out);
+			break;
+		}
+		const bool out_of_time = round_return_ == MatchState::Live && time_end_ms_ && in.now_ms >= time_end_ms_;
+		if (out_of_time || in.now_ms - state_since_ms_ >= config_.round_pause_ms)
+		{
+			// Items back, everyone back in at a spawn.
+			out.push_back({MatchActionKind::ResetArena, "", 1});
+			out.push_back({MatchActionKind::RoundRespawn, "", 0});
+			if (out_of_time)
+			{
+				// Time ran out: decide as LIVE would, on the next frame.
+				state_ = MatchState::Live;
+				out.push_back({MatchActionKind::RoundStart, "", 0});
+				break;
+			}
+			state_ = MatchState::RoundCountdown;
+			state_since_ms_ = in.now_ms;
+			last_countdown_s_ = -1;
+		}
 		break;
 	}
 	case MatchState::RoundCountdown:

@@ -18,7 +18,8 @@ enum class MatchState
 	Countdown,
 	Live,
 	Overtime,
-	RoundCountdown, // between rounds (rounds_on_frag): players held, the arena reset
+	RoundOver,      // a frag ended the round: the winner plays on, the dead stay dead
+	RoundCountdown, // then everyone respawned, frozen, counting down to the next round
 	Intermission,
 };
 
@@ -35,7 +36,8 @@ struct MatchConfig
 	int64_t timelimit_ms = 0;          // timelimit, from the start of LIVE; 0 = none
 	int fraglimit = 0;                 // 0 = none
 	bool rounds_on_frag = false;       // match_rounds 1: every score change ends a round (HoonyMode)
-	int64_t round_countdown_ms = 3000; // match_round_countdown
+	int64_t round_pause_ms = 2000;     // match_round_pause: after the frag, before the respawn
+	int64_t round_countdown_ms = 5000; // match_round_countdown: frozen at the spawns
 	bool teams = false;                // TDM, CTF: the lead and ties go by MatchInput::team_scores
 	bool fraglimit_on_teams = false;   // TDM: fraglimit applies to team totals (stock CheckEndTDMLevel)
 };
@@ -60,13 +62,14 @@ struct MatchInput
 
 enum class MatchActionKind
 {
-	Announce,   // text to every player (centre print)
-	Countdown,  // value = whole seconds left, sent once per second
-	ResetArena, // value 0: going LIVE - reset items, zero scores, respawn players
-	            // value 1: between rounds - reset items and projectiles only
-	RoundHold,  // between rounds: every player out of play, waiting
-	RoundStart, // a round begins: every playing client back in at a spawn
-	EndMatch,   // go to intermission
+	Announce,     // text to every player (centre print)
+	Countdown,    // value = whole seconds left, sent once per second
+	ResetArena,   // value 0: going LIVE - reset items, zero scores, respawn players
+	              // value 1: between rounds - reset items and projectiles only
+	RoundHold,    // the round is over: dead players stay dead (no respawn) until RoundRespawn
+	RoundRespawn, // every playing client back in at a spawn, frozen until RoundStart
+	RoundStart,   // the round begins: everyone released
+	EndMatch,     // go to intermission
 };
 
 struct MatchAction
@@ -119,10 +122,16 @@ class Match
 	// When the HUD clock reaches zero (level ms), or 0 for no clock: none in
 	// warmup, the countdown or sudden death; the timelimit from LIVE, then
 	// timed overtime. Only meaningful when OwnsRules().
+	// Whether playing clients are held in place (the round countdown): they can
+	// look around but not move or fire.
+	bool Frozen() const
+	{
+		return config_.enabled && state_ == MatchState::RoundCountdown;
+	}
 	int64_t ClockEndMs() const
 	{
-		const bool timed =
-		    state_ == MatchState::Live || state_ == MatchState::Overtime || state_ == MatchState::RoundCountdown;
+		const bool timed = state_ == MatchState::Live || state_ == MatchState::Overtime ||
+		                   state_ == MatchState::RoundOver || state_ == MatchState::RoundCountdown;
 		return timed ? time_end_ms_ : 0;
 	}
 

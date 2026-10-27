@@ -1,6 +1,7 @@
 // Copyright (c) ZeniMax Media Inc.
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
+#include "core/match_hooks.h" // [mod]
 #include "m_player.h"
 #include "bots/bot_includes.h"
 
@@ -3195,6 +3196,13 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 			client->ps.pmove.viewheight = ent->viewheight = 0;
 		ent->movetype = MOVETYPE_NOCLIP;
 		return;
+	}
+
+	if (Core_Match_Frozen(ent)) // [mod] the round countdown: look, but no moving or firing
+	{
+		client->ps.pmove.pm_type = PM_FREEZE; // [mod]
+		client->buttons = client->latched_buttons = BUTTON_NONE; // [mod]
+		return; // [mod]
 	}
 
 	if (ent->client->chase_target)
