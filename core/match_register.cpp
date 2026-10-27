@@ -500,13 +500,13 @@ void Core_Match_Statusbar(statusbar_t &sb)
 		return;
 	// Centred above the stock HUD row, as OpenTDM stacks them: the status in
 	// white, then the clock in green (the ready count in warmup) at the height
-	// of the stock "Press any button" prompt (yb -48). Stock tokens only, and
+	// of the stock "Press any button" prompt, raised 3 px (yb -51). Stock tokens only, and
 	// no `ifbit`.
 	const player_stat_t status = StatusStat(), clock = ClockStat(), countdown = CountdownStat();
-	sb.ifstat(status).xv(0).yb(-58);
+	sb.ifstat(status).xv(0).yb(-61);
 	sb.sb << "loc_stat_cstring " << status << ' ';
 	sb.endifstat();
-	sb.ifstat(clock).xv(0).yb(-48);
+	sb.ifstat(clock).xv(0).yb(-51);
 	sb.sb << "loc_stat_cstring2 " << clock << ' ';
 	sb.endifstat();
 	// The countdown in big HUD digits, mid-screen (MuffMode's placement: num 3
