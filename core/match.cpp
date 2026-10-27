@@ -187,39 +187,27 @@ MatchHudText Match::HudText(const MatchInput &in) const
 {
 	if (!config_.enabled)
 		return {};
-	// Status names are OpenTDM's (g_tdm_core.c), capitalised - WARMUP,
-	// COUNTDOWN, OVERTIME, MATCH END - but none during normal live play, where
-	// the running clock says it (Chris, 2026-10-27). The match clock, while one
-	// runs: down to the timelimit, else up from LIVE.
+	// One line, either a status or the clock, never both (Chris, 2026-10-27:
+	// two lines crowded the team modes' player ID). Status names are OpenTDM's
+	// (g_tdm_core.c), capitalised. The clock shows while the match is being
+	// played, overtime included: down to the timelimit, else up from LIVE.
 	const std::string clock = time_end_ms_ ? Clock(time_end_ms_ - in.now_ms) : Clock(in.now_ms - live_since_ms_);
-	const std::string round = config_.rounds_on_frag ? "ROUND " + std::to_string(round_) : "";
 	switch (state_)
 	{
 	case MatchState::Warmup:
-	{
-		if (!config_.ready_required)
-			return {"WARMUP", ""};
-		int playing = 0, ready = 0;
-		for (const MatchPlayer &p : in.players)
-		{
-			playing += p.playing;
-			ready += p.playing && p.ready;
-		}
-		// The ready count goes on the clock's line, free until the match starts.
-		return {"WARMUP", std::to_string(ready) + "/" + std::to_string(playing) + " READY"};
-	}
+		return {"WARMUP", ""};
 	case MatchState::Countdown:
 		return {"COUNTDOWN", ""}; // the seconds: the big digits (CountdownSeconds)
 	case MatchState::Live:
-		return {round, clock}; // just the clock: a running clock means the match is on
+		return {"", clock};
 	case MatchState::Overtime:
 		if (config_.overtime < 0)
-			return {"SUDDEN DEATH", Clock(0)}; // the clock stays at 0:00: the next score ends it
-		return {"OVERTIME", clock};
+			return {"SUDDEN DEATH", ""}; // no clock: the next score ends it
+		return {"", clock};
 	case MatchState::RoundOver:
-		return {"ROUND OVER", clock};
+		return {"ROUND OVER", ""};
 	case MatchState::RoundCountdown:
-		return {"COUNTDOWN", clock};
+		return {"COUNTDOWN", ""};
 	case MatchState::Intermission:
 		return {"MATCH END", ""};
 	}

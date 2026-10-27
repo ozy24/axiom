@@ -696,12 +696,13 @@ def embedded_tokens(tap):
 
 def state_line(tap):
     """The HUD's match status and clock, from the game tap: whether the status
-    bar draws both, and every text either showed, in order (repeats collapsed).
+    bar draws both on the one line, and every text either showed, in order
+    (repeats collapsed).
     The status is the configstring that first says WARMUP; the clock is the
     next one (docs/design/hud.md)."""
     cs = [r for r in tap if r.get("type") == "configstring"]
     bars = [r["text"] for r in cs if "hnum" in r["text"]]
-    drawn = any("yb -61 loc_stat_cstring " in t and "yb -51 loc_stat_cstring2 " in t for t in bars)
+    drawn = any("yb -61 loc_stat_cstring " in t and "yb -61 loc_stat_cstring2 " in t for t in bars)
     status = next((r["index"] for r in cs if r["text"].startswith("WARMUP")), None)
     texts = []
     for r in cs:
@@ -786,13 +787,13 @@ at 30 0 cmd score
     if not after or not any("time_limit" in r["text"] for r in after):
         detail.append("no clock on the scoreboard once the match was live")
 
-    # The HUD's state line: warmup with the ready count, the countdown, the clock.
+    # The HUD's state line: warmup, the countdown, the clock.
     drawn, texts = state_line(tap)
     if not drawn:
         detail.append("the status bar doesn't draw the match status and clock")
-    if "WARMUP" not in texts or not any(re.fullmatch(r"\d+/\d+ READY", t) for t in texts) or "COUNTDOWN" not in texts \
+    if "WARMUP" not in texts or "COUNTDOWN" not in texts \
             or not any(re.fullmatch(r"\d+:\d\d", t) for t in texts):
-        detail.append(f"state line texts {texts[:4]}...{texts[-3:]}, expected warmup with a ready count, "
+        detail.append(f"state line texts {texts[:4]}...{texts[-3:]}, expected WARMUP, "
                       "COUNTDOWN, then the clock")
 
     # A warmup suicide doesn't score (`sv match` during warmup).
@@ -924,8 +925,9 @@ at 40 1 cmd kill
     for want in ("ROUND OVER", "COUNTDOWN"):
         if want not in texts:
             detail.append(f"the state line never showed {want!r}")
-    if "ROUND 2" not in texts:
-        detail.append("the state line never showed round 2")
+    after_round = texts[texts.index("ROUND OVER"):] if "ROUND OVER" in texts else []
+    if not any(re.fullmatch(r"\d+:\d\d", t) for t in after_round):
+        detail.append("the clock never came back after a round")
     detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")

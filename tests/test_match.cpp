@@ -517,13 +517,12 @@ bool operator==(const MatchHudText &a, const MatchHudText &b)
 }
 } // namespace
 
-TEST_CASE("the HUD: warmup with the ready count, the countdown, then the clock")
+TEST_CASE("the HUD: warmup, the countdown, then the clock, one at a time")
 {
 	MatchConfig c = Enabled(); // countdown 3 s, timelimit 60 s
 	Match m(c);
 	m.Begin(0);
-	CHECK(m.HudText(At(500, {P(1, true), P(2, false)})) == Hud("WARMUP", "1/2 READY"));
-	CHECK(m.HudText(At(500, {P(1, true), P(2, true), P(3, false, 0, false)})) == Hud("WARMUP", "2/2 READY"));
+	CHECK(m.HudText(At(500, {P(1, true), P(2, false)})) == Hud("WARMUP", ""));
 	CHECK(m.CountdownSeconds(500) == 0);
 	m.Update(At(1000, {P(1, true), P(2, true)}));
 	REQUIRE(m.State() == MatchState::Countdown);
@@ -553,33 +552,33 @@ TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
 	const int64_t live2 = ToLive(timed);
 	timed.Update(At(live2 + 60000, {P(1, true, 3), P(2, true, 3)}));
 	REQUIRE(timed.State() == MatchState::Overtime);
-	CHECK(timed.HudText(At(live2 + 62000, {P(1, true, 3), P(2, true, 3)})) == Hud("OVERTIME", "1:58"));
+	CHECK(timed.HudText(At(live2 + 62000, {P(1, true, 3), P(2, true, 3)})) == Hud("", "1:58"));
 
 	o.overtime = -1;
 	Match sudden(o);
 	const int64_t live3 = ToLive(sudden);
 	sudden.Update(At(live3 + 60000, {P(1, true, 3), P(2, true, 3)}));
 	REQUIRE(sudden.State() == MatchState::Overtime);
-	CHECK(sudden.HudText(At(live3 + 61000, {P(1, true, 3), P(2, true, 3)})) == Hud("SUDDEN DEATH", "0:00"));
+	CHECK(sudden.HudText(At(live3 + 61000, {P(1, true, 3), P(2, true, 3)})) == Hud("SUDDEN DEATH", ""));
 }
 
-TEST_CASE("the HUD in rounds: the round above the clock, round over, next round")
+TEST_CASE("the HUD in rounds: the clock, round over, the countdown, the clock")
 {
 	Match m(Hoony()); // pause 1 s, countdown 2 s, timelimit 60 s
 	const int64_t live = ToLive(m);
 	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)}));
-	CHECK(m.HudText(At(live + 100, {P(1, true), P(2, true)})) == Hud("ROUND 1", "1:00"));
+	CHECK(m.HudText(At(live + 100, {P(1, true), P(2, true)})) == Hud("", "1:00"));
 	m.Update(At(live + 5000, {P(1, true, 1), P(2, true, 0)}));
 	REQUIRE(m.State() == MatchState::RoundOver);
-	CHECK(m.HudText(At(live + 5000, {})) == Hud("ROUND OVER", "0:55"));
+	CHECK(m.HudText(At(live + 5000, {})) == Hud("ROUND OVER", ""));
 	m.Update(At(live + 6000, {P(1, true, 1), P(2, true, 0)}));
 	REQUIRE(m.State() == MatchState::RoundCountdown);
-	CHECK(m.HudText(At(live + 6000, {})) == Hud("COUNTDOWN", "0:54"));
+	CHECK(m.HudText(At(live + 6000, {})) == Hud("COUNTDOWN", ""));
 	CHECK(m.CountdownSeconds(live + 6000) == 2);
 	CHECK(m.CountdownSeconds(live + 7500) == 1);
 	m.Update(At(live + 8000, {P(1, true, 1), P(2, true, 0)}));
 	REQUIRE(m.State() == MatchState::Live);
-	CHECK(m.HudText(At(live + 8000, {})) == Hud("ROUND 2", "0:52"));
+	CHECK(m.HudText(At(live + 8000, {})) == Hud("", "0:52"));
 	CHECK(m.CountdownSeconds(live + 8000) == 0);
 }
 
