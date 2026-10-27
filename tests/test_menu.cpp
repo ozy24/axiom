@@ -123,11 +123,10 @@ TEST_CASE("menu cursor: skips text rows and wraps, as stock's")
 TEST_CASE("menu: FFA spectator joins or chases; a player can spectate")
 {
 	MenuView v = Ffa();
-	v.players = 3;
 	MenuPage page = Core_Menu_Main(v);
 	CHECK(Actions(page) ==
 	      std::vector<MenuAction>{MenuAction::JoinGame, MenuAction::Chase, MenuAction::MatchInfo, MenuAction::Close});
-	CHECK(Shows(page, "Join the Match (3)"));
+	CHECK(Shows(page, "Join the Match"));
 	v.chasing = true;
 	CHECK(RowOf(Core_Menu_Main(v), MenuAction::StopChase) >= 0);
 	v.playing = true;

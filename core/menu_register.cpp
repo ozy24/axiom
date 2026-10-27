@@ -66,7 +66,6 @@ MenuView View(const edict_t *ent)
 		const edict_t *other = g_edicts + i;
 		if (!other->inuse || !other->client || !Core_Match_Playing(other))
 			continue;
-		++v.players;
 		v.red += other->client->resp.ctf_team == CTF_TEAM1;
 		v.blue += other->client->resp.ctf_team == CTF_TEAM2;
 	}

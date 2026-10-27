@@ -4,11 +4,6 @@
 
 namespace
 {
-std::string Count(int n)
-{
-	return " (" + std::to_string(n) + ")";
-}
-
 void Add(MenuPage &page, std::string text, MenuAction action = MenuAction::None, MenuAlign align = MenuAlign::Left,
          bool highlight = false)
 {
@@ -129,8 +124,8 @@ MenuPage Core_Menu_Main(const MenuView &v)
 
 	if (v.teams)
 	{
-		// No player counts: the client's proportional font can't line them up
-		// (Chris, 2026-10-27). Your own team stays listed, in the alternate
+		// No player counts, here or on Join the Match: the client's
+		// proportional font can't line them up (Chris, 2026-10-27). Your own team stays listed, in the alternate
 		// colour and skipped by the cursor: stock has no grey.
 		const auto team = [&](const char *name, int which, MenuAction join)
 		{
@@ -155,7 +150,7 @@ MenuPage Core_Menu_Main(const MenuView &v)
 	}
 	else
 	{
-		Add(page, "Join the Match" + Count(v.players), MenuAction::JoinGame);
+		Add(page, "Join the Match", MenuAction::JoinGame);
 	}
 
 	if (!v.playing)

@@ -84,8 +84,7 @@ struct MenuView
 	bool playing = false;  // in the match (on a team, in FFA, duelling)
 	bool chasing = false;  // a spectator following someone
 	int team = 0;          // teams: 0 none, 1 red, 2 blue
-	int red = 0, blue = 0; // teams: players on each
-	int players = 0;       // FFA, Duel: playing clients
+	int red = 0, blue = 0; // teams: players on each (the cursor's default)
 
 	bool ready_up = false; // warmup or countdown with ready-up: show Ready / Not Ready
 	bool ready = false;
