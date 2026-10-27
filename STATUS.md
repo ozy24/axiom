@@ -136,6 +136,9 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
   (the old hold overwrote svflags, dropping SVF_BOT).
 
 ## Known issues
+- One intermittent Q2RED segfault in a CTF server with simulated players
+  (tier 12, 2026-10-27, once under `--jobs 4`); not reproduced in 16 more
+  runs. CI now keeps CRASHLOG.TXT (collect-logs.sh); look there if it recurs.
 - Q2REX's built-in bots never enter a bot-only match (retail admits bots
   only after a human spawns), so tier 3 can't check frags on Q2REX.
 - `jumpbox.lan` returns a bogus AAAA record (`::`); use `ssh -4`.

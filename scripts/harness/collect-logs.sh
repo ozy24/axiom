@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Copies harness output into an artifact directory and removes the rigs.
-# Text only: console logs and the module's own save JSON (game.ssv, <map>.sav).
+# Text only: console logs, crash logs, the scenario tiers' game tap and sim
+# client logs, and the module's own save JSON (game.ssv, <map>.sav).
 # Retail data (paks, kpf) and the engine's binary save files never leave the box.
 #   scripts/harness/collect-logs.sh <rig-root> <out-dir>
 set -euo pipefail
@@ -11,6 +12,9 @@ for d in "$root"/*/; do
 	n=$(basename "$d")
 	mkdir -p "$out/$n"
 	cp "$d/console.log" "$out/$n/" 2>/dev/null || true
+	for f in CRASHLOG.TXT stderr.txt tap.jsonl sim.jsonl sim.out sim.script; do
+		cp "$d/$f" "$out/$n/" 2>/dev/null || true
+	done
 	# Q2RED: a directory per slot.
 	for s in "$d"/baseq2/save/coop_*; do
 		[[ -d $s ]] || continue
