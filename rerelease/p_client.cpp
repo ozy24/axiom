@@ -2,6 +2,7 @@
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
 #include "core/match_hooks.h" // [mod]
+#include "core/eyecam_hooks.h" // [mod]
 #include "m_player.h"
 #include "bots/bot_includes.h"
 
@@ -2933,6 +2934,8 @@ void ClientDisconnect(edict_t *ent)
 	if (!ent->client)
 		return;
 
+	Core_EyeCam_Disconnect(ent); // [mod]
+
 	// ZOID
 	CTFDeadDropFlag(ent);
 	CTFDeadDropTech(ent);
@@ -3397,7 +3400,11 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 		{
 			client->latched_buttons = BUTTON_NONE;
 
-			if (client->chase_target)
+			if (client->menu)
+			{
+				// [mod] fire is ignored under a menu (HandleMenuMovement), not a chase toggle
+			}
+			else if (client->chase_target)
 			{
 				client->chase_target = nullptr;
 				client->ps.pmove.pm_flags &= ~(PMF_NO_POSITIONAL_PREDICTION | PMF_NO_ANGULAR_PREDICTION);
@@ -3421,6 +3428,8 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 			}
 		}
 	}
+
+	Core_EyeCam_Use(ent); // [mod] +use flips first / third person while chasing
 
 	if (client->resp.spectator)
 	{

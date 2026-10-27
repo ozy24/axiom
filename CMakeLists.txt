@@ -89,6 +89,7 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     # depend on is unchanged (AGENTS.md hard rule 2).
     "${CMAKE_SOURCE_DIR}/checks/stock_client_contract.cpp"
     # The mod's own code (AGENTS.md: small focused files, not id's).
+    "${CMAKE_SOURCE_DIR}/core/eyecam_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/gametype.cpp"
     "${CMAKE_SOURCE_DIR}/core/gametype_register.cpp"
     ${GAME_GAMETYPE_SOURCES}
@@ -198,6 +199,7 @@ if(GAME_BUILD_TESTS)
         core/menu.cpp
         core/stat_slots.cpp
         tests/test_duel_queue.cpp
+        tests/test_eyecam.cpp
         core/gametype.cpp
         gametypes/ffa/gametype.cpp
         gametypes/duel/duel_queue.cpp)

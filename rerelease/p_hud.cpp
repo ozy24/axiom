@@ -4,6 +4,7 @@
 #include "g_statusbar.h"
 #include "core/match_hooks.h" // [mod]
 #include "core/id_view_hooks.h" // [mod]
+#include "core/eyecam_hooks.h" // [mod]
 
 /*
 ======================================================================
@@ -1137,4 +1138,5 @@ void G_SetSpectatorStats(edict_t *ent)
 	else
 		cl->ps.stats[STAT_CHASE] = 0;
 	Core_IdView_SetSpectatorStats(ent); // [mod] the chased name
+	Core_EyeCam_SpectatorView(ent); // [mod] a first-person chaser sees the target's gun and blends
 }

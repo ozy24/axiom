@@ -1,6 +1,7 @@
 // Copyright (c) ZeniMax Media Inc.
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
+#include "core/eyecam_hooks.h" // [mod]
 
 void UpdateChaseCam(edict_t *ent)
 {
@@ -25,6 +26,9 @@ void UpdateChaseCam(edict_t *ent)
 	}
 
 	targ = ent->client->chase_target;
+
+	if (Core_EyeCam_Place(ent, targ)) // [mod] first person: through the target's eyes
+		return;
 
 	ownerv = targ->s.origin;
 	oldgoal = ent->s.origin;
