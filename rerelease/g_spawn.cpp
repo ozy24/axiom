@@ -1314,7 +1314,7 @@ static void G_InitStatusbar()
 	sb.yb(-50);
 
 	// help / weapon icon
-	sb.ifstat(STAT_HELPICON).xv(deathmatch->integer ? 148 : 150).pic(STAT_HELPICON).endifstat(); // [mod] centred under the match line in deathmatch (24 px icon, 320 px screen)
+	sb.ifstat(STAT_HELPICON).xv(150).pic(STAT_HELPICON).endifstat();
 
 	// ---- gamemode-specific stuff ----
 	if (!deathmatch->integer)
