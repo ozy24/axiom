@@ -129,19 +129,19 @@ MenuPage Core_Menu_Main(const MenuView &v)
 
 	if (v.teams)
 	{
-		// The count first, so both line up in the client's proportional font.
-		// Your own team stays listed, in the alternate colour and skipped by
-		// the cursor: stock has no grey (Chris, 2026-10-27).
-		const auto team = [&](int n, const char *name, int which, MenuAction join)
+		// No player counts: the client's proportional font can't line them up
+		// (Chris, 2026-10-27). Your own team stays listed, in the alternate
+		// colour and skipped by the cursor: stock has no grey.
+		const auto team = [&](const char *name, int which, MenuAction join)
 		{
-			const std::string text = "(" + std::to_string(n) + ") Join " + name;
+			const std::string text = std::string("Join ") + name;
 			if (v.team == which)
 				Add(page, text, MenuAction::None, MenuAlign::Left, true);
 			else
 				Add(page, text, join);
 		};
-		team(v.red, "Red", 1, MenuAction::JoinRed);
-		team(v.blue, "Blue", 2, MenuAction::JoinBlue);
+		team("Red", 1, MenuAction::JoinRed);
+		team("Blue", 2, MenuAction::JoinBlue);
 		if (v.team != 0)
 			Add(page, "Spectate", MenuAction::Spectate);
 	}

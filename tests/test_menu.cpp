@@ -149,14 +149,14 @@ TEST_CASE("menu: ready-up only for a player, only while it's on")
 	CHECK(RowOf(Core_Menu_Main(v), MenuAction::NotReady) < 0);
 }
 
-TEST_CASE("menu: teams list both sides with counts; the cursor starts on the smaller team")
+TEST_CASE("menu: teams list both sides; the cursor starts on the smaller team")
 {
 	MenuView v = Teams();
 	v.red = 3;
 	v.blue = 1;
 	MenuPage page = Core_Menu_Main(v);
-	CHECK(Shows(page, "(3) Join Red"));
-	CHECK(Shows(page, "(1) Join Blue"));
+	CHECK(Shows(page, "Join Red"));
+	CHECK(Shows(page, "Join Blue"));
 	CHECK(RowOf(page, MenuAction::Spectate) < 0); // already not playing
 	CHECK(Core_Menu_MainCursor(page, v) == RowOf(page, MenuAction::JoinBlue));
 	v.red = 0;
@@ -168,9 +168,8 @@ TEST_CASE("menu: teams list both sides with counts; the cursor starts on the sma
 	v.team = 1;
 	v.playing = true;
 	page = Core_Menu_Main(v);
-	CHECK(Shows(page, "(2) Join Red"));
-	CHECK(std::any_of(page.begin(), page.end(),
-	                  [](const MenuRow &r) { return r.text == "(2) Join Red" && r.highlight; }));
+	CHECK(Shows(page, "Join Red"));
+	CHECK(std::any_of(page.begin(), page.end(), [](const MenuRow &r) { return r.text == "Join Red" && r.highlight; }));
 	CHECK(Actions(page) == std::vector<MenuAction>{MenuAction::JoinBlue, MenuAction::Spectate, MenuAction::MatchInfo,
 	                                               MenuAction::Close});
 }
