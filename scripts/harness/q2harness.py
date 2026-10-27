@@ -886,7 +886,7 @@ at 40 1 cmd kill
     breaks = sum(1 for i in range(len(centre) - 3)
                  if centre[i:i + 4] == ["Next round in 3", "Next round in 2", "Next round in 1", "FIGHT!"])
     seen = ["Match: " + l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
-    round_breaks = seen.count("Match: live -> round countdown")
+    round_breaks = seen.count("Match: live -> round over")
     # Bots fight too, so frags can add rounds; the two suicides make at least two.
     if breaks < 2 or round_breaks < 2:
         detail.append(f"{breaks} round countdowns shown, {round_breaks} round breaks logged; expected two "
