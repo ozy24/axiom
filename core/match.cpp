@@ -213,7 +213,7 @@ MatchHudText Match::HudText(const MatchInput &in) const
 		return {config_.rounds_on_frag ? round : "MATCH", clock};
 	case MatchState::Overtime:
 		if (config_.overtime < 0)
-			return {"OVERTIME", "SUDDEN DEATH"};
+			return {"SUDDEN DEATH", ""}; // no clock: the next score ends it
 		return {"OVERTIME", clock};
 	case MatchState::RoundOver:
 		return {"ROUND OVER", clock};

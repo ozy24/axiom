@@ -147,8 +147,8 @@ class Match
 	}
 	// The HUD's match status and clock (docs/design/hud.md): the status above
 	// (OpenTDM's names: WARMUP, COUNTDOWN, MATCH, OVERTIME, MATCH END; ROUND n
-	// in rounds), the line below ("9:42", "1/2 READY" in warmup, "SUDDEN
-	// DEATH"). Both empty with the match flow off.
+	// in rounds; SUDDEN DEATH, with no clock), the line below ("9:42", "1/2
+	// READY" in warmup). Both empty with the match flow off.
 	MatchHudText HudText(const MatchInput &in) const;
 	// The HUD's big countdown digits: whole seconds left in the match or round
 	// countdown, else 0 (hidden).
