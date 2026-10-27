@@ -1038,9 +1038,65 @@ def tier_rounds(args, results):
     results.append(("7 rounds", not detail, detail))
 
 
+def tier_human_vote(args, results):
+    """Voting through the human path (docs/design/voting.md): three simulated
+    players in an FFA warmup. A map vote two of them refuse fails; its caller
+    can't call again at once; a map off the list is refused with the list;
+    then a vote one other player answers with stock's `yes` passes, shows on
+    the HUD's status line, and loads the map. Q2RED only."""
+    rig, why = scenario_rig(args, "t14-vote")
+    if not rig:
+        results.append(("14 human-vote", True, [f"skipped: {why}"]))
+        return
+    script = """seconds 40
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Carol social=sim-carol puppet
+at 8 0 cmd callvote map q2dm2
+at 9 1 cmd vote no
+at 9 2 cmd vote no
+at 12 0 cmd callvote map q2dm3
+at 13 1 cmd callvote map q2dm9
+at 14 1 cmd callvote map q2dm3
+at 15 2 cmd yes
+"""
+    # match_minplayers 99: the warmup never ends, so votes stay open.
+    startup = scenario_startup(rig, ["+set", "g_gametype", "ffa", "+set", "match_warmup", "1",
+                                     "+set", "match_minplayers", "99", "+map", "q2dm1"])
+    log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 120)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    if set(humans) != {"Alice", "Bob", "Carol"}:
+        results.append(("14 human-vote", False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
+        return
+    seen = [l.split("Vote: ", 1)[1].strip() for l in log.splitlines() if "Vote: " in l]
+    want = ["Alice called map q2dm2", "map q2dm2 failed", "Bob called map q2dm3", "map q2dm3 passed",
+            "running map q2dm3"]
+    if seen != want:
+        detail.append(f"vote log {seen}, expected {want}")
+    locs = [r for r in tap if r.get("type") == "locprint"]
+    to = lambda name: [" ".join([r["base"]] + r.get("args", [])) for r in locs if r["to"] == humans[name]]
+    if not any("wait a little" in t for t in to("Alice")):
+        detail.append("Alice's second call wasn't refused for the cooldown")
+    if not any("Maps: q2dm1 q2dm2" in t for t in to("Bob")):
+        detail.append("Bob's call for q2dm9 wasn't answered with the map list")
+    texts = [r["text"] for r in tap if r.get("type") == "configstring" and r["text"].startswith("VOTE")]
+    for line in ("VOTE: MAP Q2DM2 (1/3)", "VOTE: MAP Q2DM3 (1/3)", "VOTE PASSED"):
+        if line not in texts:
+            detail.append(f"the status line never showed {line!r} (saw {sorted(set(texts))})")
+    if not re.search(r"Vote: running map q2dm3[\s\S]*InitGame[\s\S]*Gametype:", log):
+        detail.append("q2dm3 never loaded after the vote")
+    detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append(("14 human-vote", not detail, detail))
+
+
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_rounds, tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
-         tier_human_rounds)
+         tier_human_rounds, tier_human_vote)
 
 
 def run_tier(tier, args):
@@ -1138,7 +1194,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

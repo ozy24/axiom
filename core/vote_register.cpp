@@ -5,6 +5,7 @@
 
 #include "core/gametype.h"
 #include "core/match_hooks.h"
+#include "core/player_name.h"
 #include "core/rulesets.h"
 #include "core/vote.h"
 #include "core/vote_hooks.h"
@@ -192,7 +193,7 @@ void Call(edict_t *ent, std::string_view kind_name, std::string_view arg)
 	}
 	gi.LocBroadcast_Print(PRINT_HIGH, "{} called a vote: {}. Vote with `vote yes` / `vote no` or the Tab menu.\n",
 	                      ent->client->pers.netname, Core_Vote_Describe(vote.Proposal()).c_str());
-	gi.Com_PrintFmt("Vote: {} called {}\n", ent->client->pers.netname, Core_Vote_Describe(vote.Proposal()));
+	gi.Com_PrintFmt("Vote: {} called {}\n", Core_PlayerName(ent), Core_Vote_Describe(vote.Proposal()));
 	DirtyMenus();
 }
 

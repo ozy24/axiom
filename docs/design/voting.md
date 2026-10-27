@@ -1,0 +1,81 @@
+# Voting
+
+Players change the map, gametype or ruleset, or restart the match, by
+majority vote. Console commands are the interface; the Tab menu issues the
+same commands. Pure logic: `core/vote.{h,cpp}` (tests: `tests/test_vote.cpp`);
+engine side: `core/vote_register.cpp`; harness: tier 14.
+
+## Commands
+
+| Command | Does |
+|---|---|
+| `callvote map <name>` | a map on the map list |
+| `callvote gametype <id>` | `ffa`, `duel`, `tdm`, `ctf`: sets `g_gametype` and reloads, keeping the other settings |
+| `callvote ruleset <name>` | a built-in ruleset (`sv rulesets`), applied before the reload |
+| `callvote restart` | reloads the current map: a fresh warmup |
+| `vote yes` / `vote no` | answer the open vote; an answer can be changed |
+| `yes` / `no` | stock's commands: answer our vote while one is open, else stock's CTF elections as before |
+| `warp <map>` | stock's map election: the same as `callvote map` |
+
+Every passed vote ends in `map <name>` (a fresh load, so latched settings
+such as `g_gametype` apply), never through intermission: a warmup vote must
+not write a match record or rotate the Duel queue. A gametype or ruleset
+change keeps the current map if the new map list has it, else takes the
+list's first map (FFA on q2dm1 voted to CTF goes to q2ctf1).
+
+## Rules
+
+- **Who votes:** humans in the match (playing; in Duel, everyone in the
+  queue). Spectators and bots don't count and can't call.
+- The caller's vote is a yes. A vote **passes** on more than half the voters
+  there now, recounted every frame (leavers drop out, joiners count),
+  **fails** as soon as it can't pass, and **times out** after `g_vote_time`.
+  A passed vote runs 3 seconds later.
+- One vote at a time; none during intermission.
+- Votes are called **outside a live match** only (warmup, or any time with
+  the match flow off), unless `g_vote_midgame 1`.
+- Each player calls at most `g_vote_limit` votes per map, and after one of
+  theirs fails waits `g_vote_cooldown` seconds before calling another.
+
+## Settings
+
+| Cvar | Default | |
+|---|---|---|
+| `g_vote` | 1 | voting on |
+| `g_vote_allow` | `map gametype ruleset restart` | the kinds that can be called |
+| `g_vote_midgame` | 0 | also during a live match |
+| `g_vote_time` | 30 | seconds to vote (minimum 5) |
+| `g_vote_cooldown` | 30 | seconds after a caller's failed vote |
+| `g_vote_limit` | 3 | calls per player per map; 0 = no limit |
+| `g_map_list` | (empty) | maps a vote may pick; empty = q2dm1-8, or q2ctf1-5 under CTF |
+
+List words are lowercased and must be `[a-z0-9_-]`, up to 32 characters;
+anything else is dropped, so a list can't inject a console command.
+
+## What players see
+
+- The HUD's single status line (docs/design/hud.md) shows the vote instead
+  of the match status while it is open, `VOTE: MAP Q2DM3 (1/3)` (yes votes /
+  voters), then `VOTE PASSED`.
+- A broadcast when a vote is called, passes, fails or times out.
+- The Tab menu: while a vote is open, a voter's main page leads with the
+  proposal and **Vote Yes / Vote No** (the cursor starts on Vote Yes; their
+  current answer is marked and skipped). When they can call one, **Call a
+  Vote** opens Map / Gametype / Ruleset / Restart Match; the lists mark the
+  current choice. A list longer than the page (15 rows) ends in "More:
+  callvote <kind>".
+
+## Compared with MMREX
+
+MMREX (`match/vote.cpp`, `ui/vote_menu.cpp`, ~3,000 lines) has 17 vote
+kinds, a disable bitmask (`g_vote_flags`), two map cvars (`g_map_list`,
+`g_map_pool`), and forces a ballot menu onto every voter. Axiom keeps its
+rules (majority of eligible humans, caller votes yes, 30 s, 3 s delay,
+warmup only, per-map limit) and differs where noted above: four kinds
+(rulesets cover the limit and item toggles), an allow-list, one map list,
+no forced menu, a cooldown, and pure tested logic shared by menu and
+console.
+
+Later: an end-of-match map pick and map rotation (MMREX's `map_pick`,
+`map_rotation`); custom `rulesets/<name>.cfg` in the ruleset vote (the
+module can't list files, so it would need a list cvar).

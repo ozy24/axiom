@@ -163,6 +163,10 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   scripted suicide ends a round ("Next round in 3..1", FIGHT!) and the match
   still ends on its timelimit. Scenario settings go in an exec'd cfg: too
   many `+set`s pass the engine's argument limit.
+- **Tier 14 human-vote:** three simulated players in an FFA warmup: a
+  refused map vote fails, its caller waits out the cooldown, a map off the
+  list is answered with the list, then a vote answered with stock's `yes`
+  passes, shows on the HUD's status line and loads the map.
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.
