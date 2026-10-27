@@ -545,7 +545,7 @@ void Core_Match_Statusbar(statusbar_t &sb)
 		break;
 	case 4: // just above the stock row, centred
 		sb.xv(0).yb(-40 + dy);
-		sb.sb << "loc_stat_cstring " << clock << ' ';
+		sb.sb << "loc_stat_cstring2 " << clock << ' '; // green, like the end-of-level prompt
 		break;
 	default: // 5: top centre
 		sb.xv(0).yt(8 + dy);
