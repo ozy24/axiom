@@ -628,3 +628,75 @@ TEST_CASE("no firing in the match countdown; the round countdown freezes outrigh
 	stock.Begin(0);
 	CHECK_FALSE(stock.HoldFire());
 }
+
+// --- Stock sounds, as MuffMode plays them ------------------------------------
+
+namespace
+{
+std::vector<std::string> Sounds(const std::vector<MatchAction> &out)
+{
+	std::vector<std::string> sounds;
+	for (const MatchAction &a : out)
+		if (a.kind == MatchActionKind::Sound)
+			sounds.push_back(a.text);
+	return sounds;
+}
+} // namespace
+
+TEST_CASE("sounds: the countdown is spoken, FIGHT plays tele_up")
+{
+	MatchConfig c = Enabled();
+	c.countdown_ms = 12000;
+	Match m(c);
+	m.Begin(0);
+	std::vector<std::string> heard;
+	for (int64_t t = 1000; t < 13000; t += 100)
+		for (const std::string &s : Sounds(m.Update(At(t, {P(1, true), P(2, true)}))))
+			heard.push_back(s);
+	// 12 and 11 have no stock voice; 10 down to 1 do.
+	CHECK(heard == std::vector<std::string>{"world/10.wav", "world/9.wav", "world/8.wav", "world/7.wav",
+	                                        "world/6.wav", "world/5.wav", "world/4.wav", "world/3.wav",
+	                                        "world/2.wav", "world/1.wav"});
+	auto out = m.Update(At(13000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK(Sounds(out) == std::vector<std::string>{"misc/tele_up.wav"});
+}
+
+TEST_CASE("sounds: the last 30 and 20 seconds, then every second from 10")
+{
+	Match m(Enabled()); // timelimit 60 s
+	const int64_t live = ToLive(m);
+	std::vector<std::string> heard;
+	for (int64_t t = live + 100; t < live + 60000; t += 100)
+		for (const std::string &s : Sounds(m.Update(At(t, {P(1, true, 1), P(2, true, 0)}))))
+			heard.push_back(s);
+	REQUIRE(heard.size() == 12);
+	CHECK(heard[0] == "world/30sec.wav");
+	CHECK(heard[1] == "world/20sec.wav");
+	CHECK(heard[2] == "world/10.wav");
+	CHECK(heard[11] == "world/1.wav");
+}
+
+TEST_CASE("sounds: a won round plays flagcap; the next round's FIGHT plays tele_up")
+{
+	Match m(Hoony());
+	const int64_t live = ToLive(m);
+	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)})); // baseline
+	auto out = m.Update(At(live + 5000, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::RoundOver);
+	CHECK(Sounds(out) == std::vector<std::string>{"ctf/flagcap.wav"});
+	m.Update(At(live + 6000, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::RoundCountdown);
+	out = m.Update(At(live + 6100, {P(1, true, 1), P(2, true, 0)}));
+	CHECK(Sounds(out) == std::vector<std::string>{"world/2.wav"});
+	out = m.Update(At(live + 8000, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK(Sounds(out) == std::vector<std::string>{"misc/tele_up.wav"});
+}
+
+TEST_CASE("sounds: none with the match flow off (stock)")
+{
+	Match m;
+	m.Begin(0);
+	CHECK(Sounds(m.Update(At(1000, {P(1, true)}))).empty());
+}

@@ -161,6 +161,7 @@ bool Match::RoundBreak(const MatchInput &in, MatchState from, std::vector<MatchA
 	state_since_ms_ = in.now_ms;
 	last_countdown_s_ = -1;
 	out.push_back({MatchActionKind::RoundHold, "", 0});
+	out.push_back({MatchActionKind::Sound, "ctf/flagcap.wav", 0}); // round won, as MuffMode
 	return true;
 }
 
@@ -180,6 +181,25 @@ int SecondsLeft(int64_t total_ms, int64_t elapsed_ms)
 {
 	const int64_t left = total_ms - elapsed_ms;
 	return left <= 0 ? 0 : (int)((left + 999) / 1000);
+}
+
+// The stock voice for a number of seconds left, as MuffMode plays it:
+// world/1.wav to world/10.wav, then world/20sec, 30sec and 40sec (the ones
+// retail ships). Empty for any other number.
+std::string SpokenSeconds(int s)
+{
+	if (s >= 1 && s <= 10)
+		return "world/" + std::to_string(s) + ".wav";
+	if (s == 20 || s == 30 || s == 40)
+		return "world/" + std::to_string(s) + "sec.wav";
+	return "";
+}
+
+void Speak(int s, std::vector<MatchAction> &out)
+{
+	const std::string sound = SpokenSeconds(s);
+	if (!sound.empty())
+		out.push_back({MatchActionKind::Sound, sound, 0});
 }
 } // namespace
 
@@ -231,8 +251,10 @@ void Match::GoLive(int64_t now_ms, std::vector<MatchAction> &out)
 	state_ = MatchState::Live;
 	state_since_ms_ = live_since_ms_ = now_ms;
 	time_end_ms_ = config_.timelimit_ms > 0 ? now_ms + config_.timelimit_ms : 0;
+	last_warning_s_ = SecondsLeft(config_.timelimit_ms, 0); // nothing spoken for the full time
 	out.push_back({MatchActionKind::ResetArena, "", 0});
 	out.push_back({MatchActionKind::Announce, "FIGHT!", 0});
+	out.push_back({MatchActionKind::Sound, "misc/tele_up.wav", 0});
 	round_scores_.clear(); // scores are zeroed by the reset; filled on the next Update
 }
 
@@ -240,6 +262,20 @@ void Match::End(const char *why, std::vector<MatchAction> &out)
 {
 	state_ = MatchState::Intermission;
 	out.push_back({MatchActionKind::EndMatch, why, 0});
+}
+
+// LIVE with a timelimit: the stock voice at 30 and 20 seconds left, then every
+// second from 10, as MuffMode does.
+void Match::TimeWarning(int64_t now_ms, std::vector<MatchAction> &out)
+{
+	if (!time_end_ms_)
+		return;
+	const int left_s = SecondsLeft(time_end_ms_ - now_ms, 0);
+	if (left_s == last_warning_s_)
+		return;
+	last_warning_s_ = left_s;
+	if (left_s <= 10 || left_s == 20 || left_s == 30)
+		Speak(left_s, out);
 }
 
 std::vector<MatchAction> Match::Update(const MatchInput &in)
@@ -290,6 +326,8 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 		{
 			last_countdown_s_ = left_s;
 			out.push_back({MatchActionKind::Countdown, "", left_s});
+			if (left_s <= 10 || left_s % 10 == 0)
+				Speak(left_s, out);
 		}
 		break;
 	}
@@ -330,6 +368,7 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 		}
 		if (RoundBreak(in, MatchState::Live, out))
 			break;
+		TimeWarning(in.now_ms, out);
 		break;
 	}
 	case MatchState::Overtime:
@@ -413,6 +452,7 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 			Baseline(in);
 			out.push_back({MatchActionKind::RoundStart, "", 0});
 			out.push_back({MatchActionKind::Announce, "FIGHT!", 0});
+			out.push_back({MatchActionKind::Sound, "misc/tele_up.wav", 0});
 			break;
 		}
 		const int left_s = (int)((left_ms + 999) / 1000);
@@ -420,6 +460,8 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 		{
 			last_countdown_s_ = left_s;
 			out.push_back({MatchActionKind::Countdown, "", left_s});
+			if (left_s <= 10 || left_s % 10 == 0)
+				Speak(left_s, out);
 		}
 		break;
 	}

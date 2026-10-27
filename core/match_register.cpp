@@ -383,6 +383,10 @@ void Act(const std::vector<MatchAction> &actions)
 			gi.positioned_sound(world->s.origin, world, CHAN_AUTO | CHAN_RELIABLE, gi.soundindex("world/klaxon2.wav"),
 			                    1, ATTN_NONE, 0);
 			break;
+		case MatchActionKind::Sound:
+			gi.positioned_sound(world->s.origin, world, CHAN_AUTO | CHAN_RELIABLE, gi.soundindex(a.text.c_str()), 1,
+			                    ATTN_NONE, 0);
+			break;
 		case MatchActionKind::Countdown:
 			break; // shown by the HUD's big digits (Core_Match_SetStats)
 		case MatchActionKind::ResetArena:

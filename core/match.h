@@ -76,6 +76,7 @@ enum class MatchActionKind
 {
 	Announce,     // text to every player (centre print)
 	Klaxon,       // the stock klaxon, heard everywhere: overtime and sudden death begin
+	Sound,        // text = a stock sound, heard everywhere: the spoken countdown, FIGHT, round won
 	Countdown,    // value = whole seconds left, sent once per second
 	ResetArena,   // value 0: going LIVE - reset items, zero scores, respawn players
 	              // value 1: between rounds - reset items and projectiles only
@@ -174,6 +175,7 @@ class Match
 	void Baseline(const MatchInput &in);
 	void GoLive(int64_t now_ms, std::vector<MatchAction> &out);
 	void End(const char *why, std::vector<MatchAction> &out);
+	void TimeWarning(int64_t now_ms, std::vector<MatchAction> &out);
 
 	MatchConfig config_;
 	MatchState state_ = MatchState::Live;
@@ -181,6 +183,7 @@ class Match
 	int64_t live_since_ms_ = 0;
 	int64_t time_end_ms_ = 0; // LIVE/OVERTIME deadline (0 = none)
 	int last_countdown_s_ = -1;
+	int last_warning_s_ = 0; // LIVE: the seconds left last spoken for (timelimit warnings)
 	MatchState round_return_ = MatchState::Live; // where RoundCountdown goes back to
 	int round_ = 0;
 	std::vector<std::pair<int, int>> round_scores_; // (id, score) when the round began
