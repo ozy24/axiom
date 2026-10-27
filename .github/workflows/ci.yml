@@ -125,13 +125,36 @@ jobs:
           path: build/windows-msvc-release/game_x64.dll
           if-no-files-found: error
 
+  changes:
+    # Whether anything but docs changed: a docs-only change runs no game code,
+    # so it skips the Windows game tests (game-tests.yml skips likewise).
+    runs-on: ubuntu-latest
+    outputs:
+      game: ${{ steps.diff.outputs.game }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "game=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BASE" HEAD | grep -qvE '(\.md$|^docs/)'; then
+            echo "game=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "game=false" >> "$GITHUB_OUTPUT"
+          fi
+
   windows-game-tests:
     # Runs the MSVC DLL players actually get, under Q2REX and Wine on the
     # jumpbox runner. Same-repo only; never fork code on the self-hosted box.
-    needs: windows
+    needs: [windows, changes]
     if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      needs.changes.outputs.game == 'true' &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: [self-hosted, q2-game-tests]
     timeout-minutes: 40
     steps:

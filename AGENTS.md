@@ -118,6 +118,10 @@ data that exists only there. The same tiers run on two engines:
 python3 -I scripts/harness/q2harness.py test --stock STOCK.so --candidate build/linux-release/game_x64.so
 ```
 
+CI runs the Q2RED tiers four at a time (`--jobs 4`, each on its own ports:
+about 5 minutes); Q2REX stays one at a time (a shared Wine prefix). A change
+to docs alone (`*.md`, `docs/`) skips both game-test jobs.
+
 - **Tier 1 save-diff:** coop base1 saved by stock and by the candidate; the
   save JSON must match except fields in `docs/baselines/volatile-save-fields.<engine>.txt`
   (timing noise, measured per engine by `q2harness.py calibrate`) and intentional changes
@@ -208,6 +212,10 @@ These come from id's code and the engine; each was verified in source.
 ## Workflow
 
 - One branch and PR per change. CI must be green.
+- **Playtest feedback is batched** (Chris, 2026-10-27): while Chris is testing
+  on the playtest rig, fixes go onto one branch and onto the rig for him to
+  retest, with only the relevant tiers run locally. The PR - and the full CI
+  run - waits until he says he's done.
 - Every change to id's code is small and reviewable on its own, and every
   edited line in `rerelease/` carries a `// [mod]` comment, so
   `git grep -n "\[mod\]" rerelease/` lists every place we differ from stock.

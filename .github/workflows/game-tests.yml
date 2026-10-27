@@ -4,10 +4,13 @@
 # logs and save JSON only.
 name: game-tests
 
+# A change to docs alone runs no game code, so it runs no game tests.
 on:
   push:
     branches: [main]
+    paths-ignore: ["**/*.md", "docs/**"]
   pull_request:
+    paths-ignore: ["**/*.md", "docs/**"]
   workflow_dispatch:
 
 permissions:
@@ -61,7 +64,8 @@ jobs:
           mkdir -p harness-logs
           RIGS=$(mktemp -d /tmp/q2h-XXXX)
           echo "RIGS=$RIGS" >> "$GITHUB_ENV"
-          nice python3 -I scripts/harness/q2harness.py test --engine-kind q2red \
+          # Four tiers at once, each on its own ports: ~5 min instead of ~25.
+          nice python3 -I scripts/harness/q2harness.py test --engine-kind q2red --jobs 4 \
             --stock "$STOCK_SO" --candidate build/linux-release/game_x64.so \
             --workdir "$RIGS" --keep 2>&1 | tee harness-logs/summary.txt
           exit "${PIPESTATUS[0]}"

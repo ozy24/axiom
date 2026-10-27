@@ -47,6 +47,8 @@ share state.
 
 import argparse
 import collections
+import concurrent.futures
+import copy
 import gzip
 import json
 import os
@@ -993,18 +995,35 @@ def tier_rounds(args, results):
     results.append(("7 rounds", not detail, detail))
 
 
-def cmd_test(args):
+TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
+         tier_rounds, tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
+         tier_human_rounds)
+
+
+def run_tier(tier, args):
     results = []
-    for tier in (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
-                 tier_rounds, tier_teams, tier_warmup,
-                 tier_duel_rotation, tier_human_duel, tier_human_teams,
-                 tier_human_rounds):
-        if args.only and tier.__name__ != f"tier_{args.only}":
-            continue
-        try:
-            tier(args, results)
-        except Exception as e:  # a crashed tier is a failed tier, not a crashed harness
-            results.append((tier.__name__[5:], False, [str(e)]))
+    try:
+        tier(args, results)
+    except Exception as e:  # a crashed tier is a failed tier, not a crashed harness
+        results.append((tier.__name__[5:], False, [str(e)]))
+    return results
+
+
+def cmd_test(args):
+    tiers = [t for t in TIERS if not args.only or t.__name__ == f"tier_{args.only}"]
+    if args.jobs <= 1:
+        per_tier = [run_tier(t, args) for t in tiers]
+    else:
+        # Each tier is its own servers in its own rig directories; in parallel
+        # each also gets its own ports. Results print in tier order.
+        def tier_args(i):
+            a = copy.copy(args)
+            a.port, a.lobby_port = args.port + 20 * i, args.lobby_port + 20 * i
+            return a
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as pool:
+            futures = [pool.submit(run_tier, t, tier_args(i)) for i, t in enumerate(tiers)]
+            per_tier = [f.result() for f in futures]
+    results = [r for rs in per_tier for r in rs]
     failed = 0
     print(f"engine: {args.engine_kind}")
     for name, ok, detail in results:
@@ -1062,6 +1081,8 @@ def main():
                     help="shared Wine prefix, created on first use")
     ap.add_argument("--workdir", default=None, help="where rigs are created (default: a temp dir)")
     ap.add_argument("--keep", action="store_true", help="keep rig directories for inspection")
+    ap.add_argument("--jobs", type=int, default=1,
+                    help="tiers run at once, each on its own ports (Q2RED; keep 1 for Q2REX's shared Wine prefix)")
     ap.add_argument("--port", type=int, default=28010)
     ap.add_argument("--lobby-port", type=int, default=5150)
     ap.add_argument("--boot-timeout", type=float, default=None,
