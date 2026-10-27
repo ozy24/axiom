@@ -3,6 +3,7 @@
 
 #include "g_local.h"
 #include "core/match_hooks.h" // [mod]
+#include "core/id_view_hooks.h" // [mod]
 
 struct spawn_t
 {
@@ -1366,10 +1367,7 @@ static void G_InitStatusbar()
 		}
 
 		// id view state
-		sb.ifstat(STAT_CTF_ID_VIEW).xv(112).yb(-100).stat_pname(STAT_CTF_ID_VIEW).endifstat(); // [mod] up from -58, clear of the match lines
-
-		// id view color
-		sb.ifstat(STAT_CTF_ID_VIEW_COLOR).xv(96).yb(-100).pic(STAT_CTF_ID_VIEW_COLOR).endifstat(); // [mod] up from -58, with the name
+		Core_IdView_Statusbar(sb); // [mod] centred above the match status; was stat_pname and the team pic at yb -58
 
 		if (ctf->integer)
 		{

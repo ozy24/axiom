@@ -3,6 +3,7 @@
 #include "g_local.h"
 #include "g_statusbar.h"
 #include "core/match_hooks.h" // [mod]
+#include "core/id_view_hooks.h" // [mod]
 
 /*
 ======================================================================
@@ -1086,6 +1087,7 @@ void G_SetStats(edict_t *ent)
 	// ZOID
 	SetCTFStats(ent);
 	// ZOID
+	Core_IdView_SetStats(ent); // [mod] the centred player ID
 	Core_Match_SetStats(ent); // [mod] the match-state line
 }
 

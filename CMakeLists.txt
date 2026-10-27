@@ -97,6 +97,7 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/core/host_files_gi.cpp"
     "${CMAKE_SOURCE_DIR}/core/host_gi.cpp"
     "${CMAKE_SOURCE_DIR}/core/identity.cpp"
+    "${CMAKE_SOURCE_DIR}/core/id_view_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/identity_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/match.cpp"
     "${CMAKE_SOURCE_DIR}/core/match_record.cpp"
