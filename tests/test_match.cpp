@@ -493,3 +493,11 @@ TEST_CASE("scores only count from LIVE; the clock only runs from LIVE")
 	stock.Begin(0);
 	CHECK(stock.ScoresCount());
 }
+
+TEST_CASE("a suicide's point goes to the only opponent, or nobody")
+{
+	CHECK(Core_SuicideOpponent({P(1), P(2)}, 1) == 2);
+	CHECK(Core_SuicideOpponent({P(1), P(2), P(3, false, 0, false)}, 2) == 1); // a spectator isn't one
+	CHECK(Core_SuicideOpponent({P(1), P(2), P(3)}, 1) == -1);                 // FFA: whose point?
+	CHECK(Core_SuicideOpponent({P(1)}, 1) == -1);
+}

@@ -190,7 +190,7 @@ void ClientObituary(edict_t *self, edict_t *inflictor, edict_t *attacker, mod_t 
 	if (base)
 	{
 		gi.LocBroadcast_Print(PRINT_MEDIUM, base, self->client->pers.netname);
-		if (deathmatch->integer && !mod.no_point_loss)
+		if (deathmatch->integer && !mod.no_point_loss && !Core_Match_SuicidePoint(self)) // [mod]
 		{
 			self->client->resp.score--;
 
@@ -400,7 +400,7 @@ void ClientObituary(edict_t *self, edict_t *inflictor, edict_t *attacker, mod_t 
 			}
 			return;
 		}
-		else
+		else if (!Core_Match_SuicidePoint(self)) // [mod]
 		{
 			self->client->resp.score--;
 

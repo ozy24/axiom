@@ -74,6 +74,20 @@ const char *GametypeReason(const MatchInput &in)
 }
 } // namespace
 
+int Core_SuicideOpponent(const std::vector<MatchPlayer> &players, int self)
+{
+	int found = -1;
+	for (const MatchPlayer &p : players)
+	{
+		if (!p.playing || p.id == self)
+			continue;
+		if (found != -1)
+			return -1; // more than one opponent: whose point would it be?
+		found = p.id;
+	}
+	return found;
+}
+
 Match::Match(MatchConfig config) : config_(config) {}
 
 void Match::Begin(int64_t now_ms)

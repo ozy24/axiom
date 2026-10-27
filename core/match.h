@@ -25,6 +25,12 @@ enum class MatchState
 
 const char *MatchStateName(MatchState state);
 
+struct MatchPlayer;
+
+// The one playing client other than `self`, or -1 if there isn't exactly one
+// (match_suicide_point gives that opponent a suicide's point).
+int Core_SuicideOpponent(const std::vector<MatchPlayer> &players, int self);
+
 struct MatchConfig
 {
 	bool enabled = false;              // match_warmup: false = stock (live immediately)

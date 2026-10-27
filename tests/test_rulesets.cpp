@@ -12,7 +12,7 @@ static const std::set<std::string> kKnownCvars = {
     "g_gametype",        "match_warmup",    "match_ready",           "match_minplayers",
     "match_warmup_time", "match_countdown", "match_overtime",        "timelimit",
     "fraglimit",         "match_rounds",    "match_round_countdown", "ctf",
-    "teamplay",          "capturelimit",    "match_round_pause"};
+    "teamplay",          "capturelimit",    "match_round_pause",     "match_suicide_point"};
 
 TEST_CASE("built-in rulesets only set known cvars, one `set` per line")
 {
@@ -126,5 +126,16 @@ TEST_CASE("every built-in sets ctf and teamplay to match its gametype")
 		const bool is_tdm = cfg.find("set g_gametype tdm\n") != std::string::npos;
 		CHECK(cfg.find(is_ctf ? "set ctf 1\n" : "set ctf 0\n") != std::string::npos);
 		CHECK(cfg.find(is_tdm ? "set teamplay 1\n" : "set teamplay 0\n") != std::string::npos);
+	}
+}
+
+TEST_CASE("only hoony gives a suicide's point to the opponent")
+{
+	for (size_t i = 0; i < core_ruleset_count; ++i)
+	{
+		CAPTURE(core_rulesets[i].name);
+		const bool hoony = std::string(core_rulesets[i].name) == "hoony";
+		CHECK(std::string(core_rulesets[i].cfg)
+		          .find(hoony ? "set match_suicide_point 1\n" : "set match_suicide_point 0\n") != std::string::npos);
 	}
 }
