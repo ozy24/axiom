@@ -2,6 +2,7 @@
 #include "core/match.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <functional>
 
 const char *MatchStateName(MatchState state)
@@ -163,8 +164,65 @@ bool Match::RoundBreak(const MatchInput &in, MatchState from, std::vector<MatchA
 	return true;
 }
 
+namespace
+{
+// "M:SS" for a whole number of seconds, rounded up (a clock showing 0:00
+// has run out).
+std::string Clock(int64_t ms)
+{
+	const int64_t s = ms <= 0 ? 0 : (ms + 999) / 1000;
+	char buf[24];
+	std::snprintf(buf, sizeof(buf), "%lld:%02lld", (long long)(s / 60), (long long)(s % 60));
+	return buf;
+}
+
+int SecondsLeft(int64_t total_ms, int64_t elapsed_ms)
+{
+	const int64_t left = total_ms - elapsed_ms;
+	return left <= 0 ? 0 : (int)((left + 999) / 1000);
+}
+} // namespace
+
+std::string Match::StateText(const MatchInput &in) const
+{
+	if (!config_.enabled)
+		return {};
+	const std::string round = config_.rounds_on_frag ? "ROUND " + std::to_string(round_) + " - " : "";
+	switch (state_)
+	{
+	case MatchState::Warmup:
+	{
+		if (!config_.ready_required)
+			return "WARMUP";
+		int playing = 0, ready = 0;
+		for (const MatchPlayer &p : in.players)
+		{
+			playing += p.playing;
+			ready += p.playing && p.ready;
+		}
+		return "WARMUP - " + std::to_string(ready) + "/" + std::to_string(playing) + " READY";
+	}
+	case MatchState::Countdown:
+		return "MATCH STARTS IN " + std::to_string(SecondsLeft(config_.countdown_ms, in.now_ms - state_since_ms_));
+	case MatchState::Live:
+		return round + (time_end_ms_ ? Clock(time_end_ms_ - in.now_ms) : Clock(in.now_ms - live_since_ms_));
+	case MatchState::Overtime:
+		if (config_.overtime < 0)
+			return round + "SUDDEN DEATH";
+		return round + "OVERTIME " + Clock(time_end_ms_ - in.now_ms);
+	case MatchState::RoundOver:
+		return "ROUND OVER";
+	case MatchState::RoundCountdown:
+		return "NEXT ROUND IN " + std::to_string(SecondsLeft(config_.round_countdown_ms, in.now_ms - state_since_ms_));
+	case MatchState::Intermission:
+		return {};
+	}
+	return {};
+}
+
 void Match::GoLive(int64_t now_ms, std::vector<MatchAction> &out)
 {
+	round_ = 1;
 	state_ = MatchState::Live;
 	state_since_ms_ = live_since_ms_ = now_ms;
 	time_end_ms_ = config_.timelimit_ms > 0 ? now_ms + config_.timelimit_ms : 0;
@@ -346,6 +404,7 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 		{
 			state_ = round_return_;
 			state_since_ms_ = in.now_ms;
+			++round_;
 			Baseline(in);
 			out.push_back({MatchActionKind::RoundStart, "", 0});
 			out.push_back({MatchActionKind::Announce, "FIGHT!", 0});

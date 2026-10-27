@@ -2,6 +2,7 @@
 // Licensed under the GNU General Public License 2.0.
 
 #include "g_local.h"
+#include "core/match_hooks.h" // [mod]
 
 struct spawn_t
 {
@@ -1393,6 +1394,7 @@ static void G_InitStatusbar()
 	}
 
 	// ---- more shared stuff ----
+	Core_Match_Statusbar(sb); // [mod] the match-state line
 	if (deathmatch->integer)
 	{
 		// tech

@@ -8,10 +8,13 @@
 #include "core/host_files.h"
 #include "core/match_record.h"
 #include "core/player_name.h"
+#include "core/stat_slots.h"
+#include "g_statusbar.h"
 #include "mod_identity.h"
 #include "core/match_hooks.h"
 
 #include <array>
+#include <optional>
 #include <chrono>
 #include <ctime>
 #include <filesystem>
@@ -204,6 +207,28 @@ void ResetArena(bool players)
 
 // Warmup and the countdown are free play: every frag, suicide and capture is
 // undone in the frame it happens, before any client sees it.
+// The HUD's match-state line: its text lives in the first general configstring
+// stock leaves free; each player's stat points at it while there is text.
+constexpr int kStateConfigstring = CONFIG_LAST;
+static_assert(kStateConfigstring < CS_GENERAL + MAX_GENERAL, "no free general configstring");
+std::string state_text; // what the configstring holds now
+
+player_stat_t StateStat()
+{
+	static const std::optional<int> slot = Core_StatSlots().Allocate("match_state");
+	return (player_stat_t)(slot ? *slot : 0);
+}
+
+void PublishState()
+{
+	const std::string text = match.OwnsRules() && !level.intermissiontime ? match.StateText(Snapshot()) : "";
+	if (text != state_text)
+	{
+		state_text = text;
+		gi.configstring(kStateConfigstring, text.c_str());
+	}
+}
+
 void ZeroScores()
 {
 	for (uint32_t i = 0; i < game.maxclients; ++i)
@@ -370,6 +395,7 @@ void Core_Match_Frame()
 		begun = true;
 		ended_this_level = false;
 		end_reason.clear();
+		state_text.clear(); // configstrings start empty on a new level
 		if (match.OwnsRules())
 			gi.Com_PrintFmt("Match: {}\n", MatchStateName(match.State()));
 	}
@@ -388,7 +414,10 @@ void Core_Match_Frame()
 			gt->match_ended();
 	}
 	if (!match.OwnsRules() || level.intermissiontime)
+	{
+		PublishState();
 		return;
+	}
 
 	const MatchState before = match.State();
 	const std::vector<MatchAction> actions = match.Update(Snapshot());
@@ -399,6 +428,7 @@ void Core_Match_Frame()
 		ZeroScores();
 	if (match.State() == MatchState::RoundOver)
 		HoldDead();
+	PublishState();
 }
 
 bool Core_Match_OwnsRules()
@@ -437,6 +467,24 @@ bool Core_Match_SuicidePoint(edict_t *self)
 		return false;
 	ClientEdict((uint32_t)opponent)->client->resp.score++;
 	return true;
+}
+
+void Core_Match_Statusbar(statusbar_t &sb)
+{
+	if (!deathmatch->integer || !StateStat())
+		return;
+	// Bottom centre, above SPECTATOR MODE / CHASING (yb -58 / -68): centred
+	// text from a configstring. Stock tokens only, and no `ifbit`.
+	const player_stat_t stat = StateStat();
+	sb.ifstat(stat).xv(0).yb(-78);
+	sb.sb << "loc_stat_cstring " << stat << ' ';
+	sb.endifstat();
+}
+
+void Core_Match_SetStats(edict_t *ent)
+{
+	if (StateStat())
+		ent->client->ps.stats[StateStat()] = state_text.empty() ? 0 : kStateConfigstring;
 }
 
 bool Core_Match_Frozen(const edict_t *ent)

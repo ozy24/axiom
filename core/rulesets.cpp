@@ -48,7 +48,7 @@ const RulesetDef core_rulesets[] = {
      "set match_suicide_point 0\n"
      "set timelimit 10\n"
      "set fraglimit 0\n"},
-    {"hoony", "HoonyMode duel: every frag ends a round and resets the arena; first to 7, sudden death on a tie",
+    {"hoony", "HoonyMode duel: every frag ends a round and resets the arena; first to 5, sudden death on a tie",
      "set g_gametype duel\n"
      "set ctf 0\n"
      "set teamplay 0\n"
@@ -63,7 +63,7 @@ const RulesetDef core_rulesets[] = {
      "set match_round_pause 2\n"
      "set match_suicide_point 1\n"
      "set timelimit 15\n"
-     "set fraglimit 7\n"},
+     "set fraglimit 5\n"},
     {"tdm", "team deathmatch: warmup and ready-up, 20 minutes, sudden death on a tie",
      "set g_gametype tdm\n"
      "set ctf 0\n"

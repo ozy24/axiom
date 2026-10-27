@@ -694,6 +694,19 @@ def embedded_tokens(tap):
     return bad
 
 
+def state_line(tap):
+    """The HUD's match-state line, from the game tap: whether the status bar
+    draws it, and each text it showed, in order (repeats collapsed)."""
+    cs = [r for r in tap if r.get("type") == "configstring"]
+    drawn = any("loc_stat_cstring" in r["text"] and "yb -78" in r["text"] for r in cs if "hnum" in r["text"])
+    index = next((r["index"] for r in cs if r["text"].startswith("WARMUP")), None)
+    texts = []
+    for r in cs:
+        if r["index"] == index and (not texts or texts[-1] != r["text"]):
+            texts.append(r["text"])
+    return drawn, texts
+
+
 def tier_human_duel(args, results):
     """Duel through the human path: three simulated players (Alice, Bob,
     Carol), played by ozbot, join like retail clients and run the playtest's
@@ -768,6 +781,16 @@ at 30 0 cmd score
         detail.append("the warmup scoreboard shows a clock")
     if not after or not any("time_limit" in r["text"] for r in after):
         detail.append("no clock on the scoreboard once the match was live")
+
+    # The HUD's state line: warmup with the ready count, the countdown, the clock.
+    drawn, texts = state_line(tap)
+    if not drawn:
+        detail.append("the status bar doesn't draw the match-state line")
+    want_line = ["MATCH STARTS IN 10", "MATCH STARTS IN 1"]
+    if not any(re.fullmatch(r"WARMUP - \d+/\d+ READY", t) for t in texts) or \
+            not all(w in texts for w in want_line) or not any(re.fullmatch(r"\d+:\d\d", t) for t in texts):
+        detail.append(f"state line texts {texts[:4]}...{texts[-3:]}, expected warmup with a ready count, "
+                      "MATCH STARTS IN 10..1, then the clock")
 
     # A warmup suicide doesn't score (`sv match` during warmup).
     warmup_scores = [int(m) for m in re.findall(r"^\S*\s+(-?\d+) (?:Alice|Bob|Carol)", log, re.M)][:3]
@@ -895,6 +918,12 @@ at 40 1 cmd kill
                       "or more (two scripted suicides)")
     if seen[-1:] != ["Match: ended (timelimit)"]:
         detail.append(f"the match ended {seen[-1:]}, expected by the timelimit")
+    drawn, texts = state_line(tap)
+    for want in ("ROUND OVER", "NEXT ROUND IN 3"):
+        if want not in texts:
+            detail.append(f"the state line never showed {want!r}")
+    if not any(t.startswith("ROUND 2 - ") for t in texts):
+        detail.append("the state line never showed round 2")
     detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")

@@ -134,6 +134,16 @@ class Match
 	{
 		return config_.enabled && state_ == MatchState::RoundCountdown;
 	}
+	// The round being played (rounds_on_frag): 1 from LIVE, +1 each new round.
+	int Round() const
+	{
+		return round_;
+	}
+	// The HUD's match-state line (docs/design/hud.md): "WARMUP - 1/2 READY",
+	// "MATCH STARTS IN 7", the clock, "SUDDEN DEATH", "ROUND 3 - 9:42"... Empty
+	// when there is nothing to show: the match flow off, or intermission.
+	std::string StateText(const MatchInput &in) const;
+
 	int64_t ClockEndMs() const
 	{
 		const bool timed = state_ == MatchState::Live || state_ == MatchState::Overtime ||
@@ -155,6 +165,7 @@ class Match
 	int64_t live_since_ms_ = 0;
 	int64_t time_end_ms_ = 0; // LIVE/OVERTIME deadline (0 = none)
 	int last_countdown_s_ = -1;
-	MatchState round_return_ = MatchState::Live;    // where RoundCountdown goes back to
+	MatchState round_return_ = MatchState::Live; // where RoundCountdown goes back to
+	int round_ = 0;
 	std::vector<std::pair<int, int>> round_scores_; // (id, score) when the round began
 };

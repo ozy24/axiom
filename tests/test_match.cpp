@@ -501,3 +501,73 @@ TEST_CASE("a suicide's point goes to the only opponent, or nobody")
 	CHECK(Core_SuicideOpponent({P(1), P(2), P(3)}, 1) == -1);                 // FFA: whose point?
 	CHECK(Core_SuicideOpponent({P(1)}, 1) == -1);
 }
+
+// --- The HUD's match-state line ------------------------------------------------
+
+TEST_CASE("the state line: warmup with the ready count, countdown, clock, end")
+{
+	MatchConfig c = Enabled(); // countdown 3 s, timelimit 60 s
+	Match m(c);
+	m.Begin(0);
+	CHECK(m.StateText(At(500, {P(1, true), P(2, false)})) == "WARMUP - 1/2 READY");
+	CHECK(m.StateText(At(500, {P(1, true), P(2, true), P(3, false, 0, false)})) == "WARMUP - 2/2 READY");
+	m.Update(At(1000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Countdown);
+	CHECK(m.StateText(At(1000, {P(1, true), P(2, true)})) == "MATCH STARTS IN 3");
+	CHECK(m.StateText(At(3100, {P(1, true), P(2, true)})) == "MATCH STARTS IN 1");
+	m.Update(At(4000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK(m.StateText(At(4000, {P(1, true), P(2, true)})) == "1:00");
+	CHECK(m.StateText(At(4000 + 18500, {P(1, true), P(2, true)})) == "0:42");
+	m.Update(At(64000, {P(1, true, 2), P(2, true, 1)}));
+	REQUIRE(m.State() == MatchState::Intermission);
+	CHECK(m.StateText(At(64000, {})).empty());
+}
+
+TEST_CASE("the state line: no timelimit counts up; overtime and sudden death")
+{
+	MatchConfig c = Enabled();
+	c.timelimit_ms = 0;
+	Match up(c);
+	const int64_t live = ToLive(up);
+	CHECK(up.StateText(At(live + 75000, {P(1, true), P(2, true)})) == "1:15");
+
+	MatchConfig o = Enabled();
+	o.overtime = 2;
+	Match timed(o);
+	const int64_t live2 = ToLive(timed);
+	timed.Update(At(live2 + 60000, {P(1, true, 3), P(2, true, 3)}));
+	REQUIRE(timed.State() == MatchState::Overtime);
+	CHECK(timed.StateText(At(live2 + 62000, {P(1, true, 3), P(2, true, 3)})) == "OVERTIME 1:58");
+
+	o.overtime = -1;
+	Match sudden(o);
+	const int64_t live3 = ToLive(sudden);
+	sudden.Update(At(live3 + 60000, {P(1, true, 3), P(2, true, 3)}));
+	REQUIRE(sudden.State() == MatchState::Overtime);
+	CHECK(sudden.StateText(At(live3 + 61000, {P(1, true, 3), P(2, true, 3)})) == "SUDDEN DEATH");
+}
+
+TEST_CASE("the state line in rounds: the round number, round over, next round")
+{
+	Match m(Hoony()); // pause 1 s, countdown 2 s, timelimit 60 s
+	const int64_t live = ToLive(m);
+	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)}));
+	CHECK(m.StateText(At(live + 100, {P(1, true), P(2, true)})) == "ROUND 1 - 1:00");
+	m.Update(At(live + 5000, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::RoundOver);
+	CHECK(m.StateText(At(live + 5000, {})) == "ROUND OVER");
+	m.Update(At(live + 6000, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::RoundCountdown);
+	CHECK(m.StateText(At(live + 6000, {})) == "NEXT ROUND IN 2");
+	m.Update(At(live + 8000, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK(m.StateText(At(live + 8000, {})) == "ROUND 2 - 0:52");
+}
+
+TEST_CASE("the state line is empty with the match flow off (stock HUD)")
+{
+	Match m;
+	m.Begin(0);
+	CHECK(m.StateText(At(1000, {P(1, true)})).empty());
+}

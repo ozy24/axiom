@@ -1086,6 +1086,7 @@ void G_SetStats(edict_t *ent)
 	// ZOID
 	SetCTFStats(ent);
 	// ZOID
+	Core_Match_SetStats(ent); // [mod] the match-state line
 }
 
 /*

@@ -36,7 +36,7 @@ _Updated at the end of every session. Last update: 2026-10-26._
 - Rounds in the match flow (`match_rounds`, `match_round_countdown`): a
   frag ends the round, players are held, the level resets (scores kept),
   everyone respawns together. 14 more unit-test cases; harness tier 7.
-- Built-in ruleset `hoony`: Duel with rounds, first to 7, sudden death.
+- Built-in ruleset `hoony`: Duel with rounds, first to 5 (was 7; 2026-10-27), sudden death.
 - Every built-in ruleset now sets every match cvar (a unit test checks), so
   switching rulesets never leaves one behind.
 

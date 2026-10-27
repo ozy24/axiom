@@ -3,6 +3,7 @@
 
 struct edict_t;
 struct gtime_t;
+struct statusbar_t;
 
 // Every server frame, from G_RunFrame, before the rules check.
 void Core_Match_Frame();
@@ -18,6 +19,12 @@ bool Core_Match_Frozen(const edict_t *ent);
 // one opponent, outside team modes: the point goes to the opponent instead of
 // off the player (HoonyMode). True if it did; false, and stock scoring runs.
 bool Core_Match_SuicidePoint(edict_t *self);
+
+// The HUD's match-state line (docs/design/hud.md). Statusbar: from
+// G_InitStatusbar, adds the line to the deathmatch status bar. SetStats: from
+// G_SetStats, points the player's stat at the line's text while it shows.
+void Core_Match_Statusbar(statusbar_t &sb);
+void Core_Match_SetStats(edict_t *ent);
 
 // The scoreboard clock: true and the level time it reaches zero, or false for
 // no clock. Stock's timelimit from map load unless the match flow owns the
