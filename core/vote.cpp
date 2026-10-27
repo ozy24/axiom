@@ -171,21 +171,25 @@ VoteError Vote::Call(int caller, VoteProposal proposal, const VoteChoices &choic
                      const std::vector<int> &voters, int64_t now_ms)
 {
 	proposal.arg = Lower(proposal.arg);
-	if (!config_.enabled)
-		return VoteError::Disabled;
-	if (!config_.allowed.count(proposal.kind))
-		return VoteError::NotAllowed;
+	const bool server = caller == kServer;
 	if (state_ != State::Idle)
 		return VoteError::InProgress;
-	if (live && !config_.midgame)
-		return VoteError::MatchLive;
-	if (!IsVoter(voters, caller))
-		return VoteError::NotVoter;
-	if (config_.call_limit > 0 && calls_[caller] >= config_.call_limit)
-		return VoteError::LimitReached;
-	if (auto it = failed_at_ms_.find(caller);
-	    it != failed_at_ms_.end() && now_ms - it->second < config_.fail_cooldown_ms)
-		return VoteError::Cooldown;
+	if (!server)
+	{
+		if (!config_.enabled)
+			return VoteError::Disabled;
+		if (!config_.allowed.count(proposal.kind))
+			return VoteError::NotAllowed;
+		if (live && !config_.midgame)
+			return VoteError::MatchLive;
+		if (!IsVoter(voters, caller))
+			return VoteError::NotVoter;
+		if (config_.call_limit > 0 && calls_[caller] >= config_.call_limit)
+			return VoteError::LimitReached;
+		if (auto it = failed_at_ms_.find(caller);
+		    it != failed_at_ms_.end() && now_ms - it->second < config_.fail_cooldown_ms)
+			return VoteError::Cooldown;
+	}
 
 	bool arg_ok = false;
 	switch (proposal.kind)
@@ -208,8 +212,11 @@ VoteError Vote::Call(int caller, VoteProposal proposal, const VoteChoices &choic
 	caller_ = caller;
 	since_ms_ = now_ms;
 	answers_.clear();
-	answers_[caller] = true;
-	++calls_[caller];
+	if (!server)
+	{
+		answers_[caller] = true;
+		++calls_[caller];
+	}
 	Recount(voters);
 	return VoteError::None;
 }
@@ -242,7 +249,8 @@ void Vote::Recount(const std::vector<int> &voters)
 
 void Vote::Fail(int64_t now_ms)
 {
-	failed_at_ms_[caller_] = now_ms;
+	if (caller_ != kServer)
+		failed_at_ms_[caller_] = now_ms;
 	state_ = State::Idle;
 	answers_.clear();
 }

@@ -47,3 +47,7 @@ VoteMenuInfo Core_Vote_MenuInfo(const edict_t *ent);
 // same checks and messages as the console.
 void Core_Vote_Call(edict_t *ent, const std::string &args);
 void Core_Vote_Cast(edict_t *ent, bool yes);
+
+// `sv callvote <kind> [choice]`: the admin asks the players (no answer of
+// its own; the player limits and g_vote_allow don't apply). True if handled.
+bool Core_Vote_ServerCommand(const char *cmd);

@@ -156,6 +156,19 @@ void DirtyMenus()
 	}
 }
 
+// The vote sting, as MuffMode plays it (its announcer's backup for "vote
+// now"): to every human, wherever they are.
+void PlayCallSound()
+{
+	const int sound = gi.soundindex("misc/pc_up.wav");
+	for (uint32_t i = 1; i <= game.maxclients; ++i)
+	{
+		edict_t *ent = g_edicts + i;
+		if (ent->inuse && ent->client && ent->client->pers.connected && !(ent->svflags & SVF_BOT))
+			gi.local_sound(ent, CHAN_AUTO | CHAN_RELIABLE, sound, 1, ATTN_NONE, 0);
+	}
+}
+
 void Reply(edict_t *ent, VoteError e, const VoteProposal &p)
 {
 	const std::string text = Core_Vote_ErrorText(e, vote.Config(), p, Choices());
@@ -163,21 +176,33 @@ void Reply(edict_t *ent, VoteError e, const VoteProposal &p)
 		gi.LocClient_Print(ent, PRINT_HIGH, "{}\n", text.c_str());
 }
 
+// `callvote` from a player, or with ent null `sv callvote` from the admin
+// (Vote::kServer: no answer of its own, no player limits). Replies go to the
+// player, or the server console.
 void Call(edict_t *ent, std::string_view kind_name, std::string_view arg)
 {
+	const auto reply = [ent](const std::string &text)
+	{
+		if (ent)
+			gi.LocClient_Print(ent, PRINT_HIGH, "{}\n", text.c_str());
+		else
+			gi.Com_PrintFmt("{}\n", text);
+	};
 	const std::optional<VoteKind> kind = Core_Vote_ParseKind(kind_name);
 	if (!kind)
 	{
 		std::string kinds;
-		for (VoteKind k : vote.Config().allowed)
-			kinds += std::string(kinds.empty() ? "" : " ") + VoteKindName(k);
-		gi.LocClient_Print(ent, PRINT_HIGH, "Usage: callvote <{}> [choice]\n",
-		                   kinds.empty() ? "nothing" : kinds.c_str());
+		if (!ent)
+			kinds = "map gametype restart";
+		else
+			for (VoteKind k : vote.Config().allowed)
+				kinds += std::string(kinds.empty() ? "" : " ") + VoteKindName(k);
+		reply(fmt::format("Usage: {}callvote <{}> [choice]", ent ? "" : "sv ", kinds.empty() ? "nothing" : kinds));
 		return;
 	}
 	if (level.intermissiontime)
 	{
-		gi.LocClient_Print(ent, PRINT_HIGH, "Wait for the next map.\n");
+		reply("Wait for the next map.");
 		return;
 	}
 	VoteProposal p{*kind, std::string(arg), ""};
@@ -187,15 +212,19 @@ void Call(edict_t *ent, std::string_view kind_name, std::string_view arg)
 		if (const std::optional<Ruleset> r = Core_Rulesets_Find(p.arg))
 			p.label = Core_Rulesets_Title(*r);
 	}
-	const VoteError e = vote.Call(Slot(ent), p, Choices(), Live(), Voters(), level.time.milliseconds());
+	const VoteError e =
+	    vote.Call(ent ? Slot(ent) : Vote::kServer, p, Choices(), Live(), Voters(), level.time.milliseconds());
 	if (e != VoteError::None)
 	{
-		Reply(ent, e, p);
+		if (const std::string text = Core_Vote_ErrorText(e, vote.Config(), p, Choices()); !text.empty())
+			reply(text);
 		return;
 	}
+	const std::string what = Core_Vote_Describe(vote.Proposal());
 	gi.LocBroadcast_Print(PRINT_HIGH, "{} called a vote: {}. Vote with `vote yes` / `vote no` or the Tab menu.\n",
-	                      ent->client->pers.netname, Core_Vote_Describe(vote.Proposal()).c_str());
-	gi.Com_PrintFmt("Vote: {} called {}\n", Core_PlayerName(ent), Core_Vote_Describe(vote.Proposal()));
+	                      ent ? ent->client->pers.netname : "The server", what.c_str());
+	gi.Com_PrintFmt("Vote: {} called {}\n", ent ? Core_PlayerName(ent) : std::string("the server"), what);
+	PlayCallSound();
 	DirtyMenus();
 }
 
@@ -291,6 +320,23 @@ bool Core_Vote_ClientCommand(edict_t *ent, const char *cmd)
 		return true;
 	}
 	return false;
+}
+
+bool Core_Vote_ServerCommand(const char *cmd)
+{
+	if (Q_strcasecmp(cmd, "callvote"))
+		return false;
+	if (!Active())
+	{
+		gi.Com_Print("Voting needs a deathmatch gametype.\n");
+		return true;
+	}
+	RegisterCvars();
+	std::string arg;
+	for (int i = 3; i < gi.argc(); ++i)
+		arg += std::string(arg.empty() ? "" : " ") + gi.argv(i);
+	Call(nullptr, gi.argc() > 2 ? gi.argv(2) : "", arg);
+	return true;
 }
 
 void Core_Vote_Disconnect(edict_t *ent)

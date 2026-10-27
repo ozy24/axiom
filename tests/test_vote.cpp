@@ -233,3 +233,23 @@ TEST_CASE("vote: a gametype shows on the HUD by its name")
 	        VoteError::None);
 	CHECK(v.HudText() == "VOTE: DUEL: HOONYMODE (1/2)");
 }
+
+TEST_CASE("vote: the server's call has no answer of its own and skips the player limits")
+{
+	VoteConfig off; // nothing allowed, voting off: only the admin can call
+	off.enabled = false;
+	off.midgame = false;
+	Vote v(off);
+	const std::vector<int> voters{0, 1};
+	REQUIRE(v.Call(Vote::kServer, Map("q2dm2"), Choices(), true, voters, 0) == VoteError::None);
+	CHECK(v.HudText() == "VOTE: MAP Q2DM2 (0/2)");
+	CHECK(v.Call(Vote::kServer, Map("q2dm3"), Choices(), true, voters, 0) == VoteError::InProgress);
+	REQUIRE(v.Cast(0, false, voters) == VoteError::None);
+	CHECK(v.Update(voters, 10) == VoteEvent::Failed);
+	// No cooldown for the server; the lists still apply.
+	CHECK(v.Call(Vote::kServer, Map("nowhere"), Choices(), true, voters, 20) == VoteError::BadArg);
+	REQUIRE(v.Call(Vote::kServer, Map("q2dm3"), Choices(), true, voters, 20) == VoteError::None);
+	REQUIRE(v.Cast(0, true, voters) == VoteError::None);
+	REQUIRE(v.Cast(1, true, voters) == VoteError::None);
+	CHECK(v.Update(voters, 30) == VoteEvent::Passed);
+}

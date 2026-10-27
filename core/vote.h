@@ -135,6 +135,11 @@ class Vote
 	// A new level: any open vote is gone and the call limits start again.
 	void Reset();
 
+	// The caller of an admin's `sv callvote`: not a voter, so it has no answer,
+	// and g_vote, g_vote_allow, midgame, the call limit and the cooldown don't
+	// apply; it still needs no vote open and a choice on the lists.
+	static constexpr int kServer = -1;
+
 	// `callvote`: checks it and opens it with the caller's yes. `live`: a match
 	// is being played (votes then need midgame); `voters`: who counts now.
 	VoteError Call(int caller, VoteProposal proposal, const VoteChoices &choices, bool live,
