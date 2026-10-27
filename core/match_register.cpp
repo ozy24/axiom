@@ -518,32 +518,33 @@ void Core_Match_Statusbar(statusbar_t &sb)
 	const player_stat_t clock = ClockStat();
 	if (!clock || match_hud_clock->integer <= 0)
 		return;
+	// PLAYTEST ONLY: match_hud_clock_dy nudges any placement (negative = up).
+	const int dy = gi.cvar("match_hud_clock_dy", "0", CVAR_NOFLAGS)->integer;
 	sb.ifstat(clock);
 	switch (match_hud_clock->integer)
 	{
 	case 1: // bottom-right corner
-		sb.xr(-8).yb(-16);
+		sb.xr(-8).yb(-16 + dy);
 		sb.sb << "loc_stat_rstring " << clock << ' ';
 		break;
 	case 2: // bottom-left corner
-		sb.xl(8).yb(-16);
+		sb.xl(8).yb(-16 + dy);
 		sb.sb << "loc_stat_string " << clock << ' ';
 		break;
 	case 3: // top-right, under the frag counter
-		sb.xr(-8).yt(30);
+		sb.xr(-8).yt(30 + dy);
 		sb.sb << "loc_stat_rstring " << clock << ' ';
 		break;
 	case 6: // the pickup row, right of the item name, left of the powerup timer
-		// PLAYTEST ONLY: match_hud_clock_y nudges it to line up with the name.
-		sb.xv(254).yb(gi.cvar("match_hud_clock_y", "-42", CVAR_NOFLAGS)->integer);
+		sb.xv(254).yb(-42 + dy);
 		sb.sb << "loc_stat_rstring " << clock << ' ';
 		break;
 	case 4: // just above the stock row, centred
-		sb.xv(0).yb(-40);
+		sb.xv(0).yb(-40 + dy);
 		sb.sb << "loc_stat_cstring " << clock << ' ';
 		break;
 	default: // 5: top centre
-		sb.xv(0).yt(8);
+		sb.xv(0).yt(8 + dy);
 		sb.sb << "loc_stat_cstring " << clock << ' ';
 		break;
 	}
