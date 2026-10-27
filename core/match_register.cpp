@@ -534,7 +534,8 @@ void Core_Match_Statusbar(statusbar_t &sb)
 		sb.sb << "loc_stat_rstring " << clock << ' ';
 		break;
 	case 6: // the pickup row, right of the item name, left of the powerup timer
-		sb.xv(254).yb(-42);
+		// PLAYTEST ONLY: match_hud_clock_y nudges it to line up with the name.
+		sb.xv(254).yb(gi.cvar("match_hud_clock_y", "-42", CVAR_NOFLAGS)->integer);
 		sb.sb << "loc_stat_rstring " << clock << ' ';
 		break;
 	case 4: // just above the stock row, centred
