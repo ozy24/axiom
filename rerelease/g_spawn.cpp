@@ -1384,11 +1384,8 @@ static void G_InitStatusbar()
 		// frags
 		sb.xr(-50).yt(2).num(3, STAT_FRAGS);
 
-		// spectator
-		sb.ifstat(STAT_SPECTATOR).xv(0).yb(-58).string2("SPECTATOR MODE").endifstat();
-
-		// chase cam
-		sb.ifstat(STAT_CHASE).xv(0).yb(-68).string("CHASING").xv(64).stat_string(STAT_CHASE).endifstat();
+		// spectator, chase cam
+		Core_IdView_Statusbar(sb); // [mod] the chased name, centred above the match status; was SPECTATOR MODE at yb -58, CHASING at -68
 	}
 
 	// ---- more shared stuff ----

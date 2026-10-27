@@ -1136,4 +1136,5 @@ void G_SetSpectatorStats(edict_t *ent)
 								   (cl->chase_target - g_edicts) - 1;
 	else
 		cl->ps.stats[STAT_CHASE] = 0;
+	Core_IdView_SetSpectatorStats(ent); // [mod] the chased name
 }
