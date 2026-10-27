@@ -3,6 +3,7 @@
 #include "g_local.h"
 #include "core/match_hooks.h" // [mod]
 #include "core/eyecam_hooks.h" // [mod]
+#include "core/vote_hooks.h" // [mod]
 #include "m_player.h"
 #include "bots/bot_includes.h"
 
@@ -2935,6 +2936,7 @@ void ClientDisconnect(edict_t *ent)
 		return;
 
 	Core_EyeCam_Disconnect(ent); // [mod]
+	Core_Vote_Disconnect(ent);   // [mod]
 
 	// ZOID
 	CTFDeadDropFlag(ent);

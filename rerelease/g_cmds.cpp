@@ -4,6 +4,7 @@
 #include "core/match_hooks.h" // [mod]
 #include "core/menu_hooks.h" // [mod]
 #include "core/eyecam_hooks.h" // [mod]
+#include "core/vote_hooks.h" // [mod]
 #include "m_player.h"
 
 void SelectNextItem(edict_t *ent, item_flags_t itflags, bool menu = true)
@@ -1613,6 +1614,8 @@ void ClientCommand(edict_t *ent)
 		return; // [mod]
 	if (Core_Match_ClientCommand(ent, cmd)) // [mod] ready / notready
 		return;
+	if (Core_Vote_ClientCommand(ent, cmd)) // [mod] callvote / vote; yes, no, warp while ours
+		return; // [mod]
 
 	if (Q_strcasecmp(cmd, "players") == 0)
 	{

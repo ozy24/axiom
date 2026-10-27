@@ -2,12 +2,25 @@
 // No engine access.
 #include "core/menu.h"
 
+#include <algorithm>
+#include <tuple>
+
 namespace
 {
 void Add(MenuPage &page, std::string text, MenuAction action = MenuAction::None, MenuAlign align = MenuAlign::Left,
-         bool highlight = false)
+         bool highlight = false, std::string arg = {})
 {
-	page.push_back({std::move(text), align, action, highlight});
+	page.push_back({std::move(text), align, action, highlight, std::move(arg)});
+}
+
+// A choice that is already the case (your team, your answer, the current
+// map): listed, in the alternate colour, skipped by the cursor.
+void Choice(MenuPage &page, std::string text, MenuAction action, bool current, std::string arg = {})
+{
+	if (current)
+		Add(page, std::move(text), MenuAction::None, MenuAlign::Left, true);
+	else
+		Add(page, std::move(text), action, MenuAlign::Left, false, std::move(arg));
 }
 
 void Title(MenuPage &page, const std::string &text, bool highlight)
@@ -122,19 +135,21 @@ MenuPage Core_Menu_Main(const MenuView &v)
 	Title(page, v.map, true);
 	Add(page, "");
 
+	if (v.vote_open && v.voter)
+	{
+		Add(page, Core_Menu_Clean("Vote: " + v.vote_proposal), MenuAction::None, MenuAlign::Left, true);
+		Choice(page, "Vote Yes", MenuAction::VoteYes, v.vote_answer == 1);
+		Choice(page, "Vote No", MenuAction::VoteNo, v.vote_answer == 0);
+		Add(page, "");
+	}
+
 	if (v.teams)
 	{
 		// No player counts, here or on Join the Match: the client's
 		// proportional font can't line them up (Chris, 2026-10-27). Your own team stays listed, in the alternate
 		// colour and skipped by the cursor: stock has no grey.
 		const auto team = [&](const char *name, int which, MenuAction join)
-		{
-			const std::string text = std::string("Join ") + name;
-			if (v.team == which)
-				Add(page, text, MenuAction::None, MenuAlign::Left, true);
-			else
-				Add(page, text, join);
-		};
+		{ Choice(page, std::string("Join ") + name, join, v.team == which); };
 		team("Red", 1, MenuAction::JoinRed);
 		team("Blue", 2, MenuAction::JoinBlue);
 		if (v.team != 0)
@@ -160,14 +175,18 @@ MenuPage Core_Menu_Main(const MenuView &v)
 
 	Add(page, "");
 	Add(page, "Match Info", MenuAction::MatchInfo);
-	Footer(page, {"Close", MenuAlign::Left, MenuAction::Close, false});
+	if (v.vote_can_call)
+		Add(page, "Call a Vote", MenuAction::CallVote);
+	Footer(page, {"Close", MenuAlign::Left, MenuAction::Close, false, {}});
 	return page;
 }
 
 int Core_Menu_MainCursor(const MenuPage &page, const MenuView &v)
 {
 	MenuAction want = MenuAction::None;
-	if (v.teams && v.team == 0 && v.red != v.blue)
+	if (v.vote_open && v.voter && v.vote_answer < 0)
+		want = MenuAction::VoteYes;
+	else if (v.teams && v.team == 0 && v.red != v.blue)
 		want = v.red < v.blue ? MenuAction::JoinRed : MenuAction::JoinBlue;
 	for (int i = 0; i < (int)page.size(); ++i)
 	{
@@ -203,6 +222,67 @@ MenuPage Core_Menu_MatchInfo(const MenuView &v)
 		Add(page, "No warmup: stock rules");
 	}
 	// stock's localised "Return to Main Menu"
-	Footer(page, {"$g_pc_return", MenuAlign::Left, MenuAction::Back, false});
+	Footer(page, {"$g_pc_return", MenuAlign::Left, MenuAction::Back, false, {}});
+	return page;
+}
+
+MenuPage Core_Menu_CallVote(const MenuView &v)
+{
+	MenuPage page;
+	Title(page, "Call a Vote", true);
+	Add(page, "");
+	const auto allowed = [&](const char *kind)
+	{ return std::find(v.vote_kinds.begin(), v.vote_kinds.end(), kind) != v.vote_kinds.end(); };
+	if (allowed("map"))
+		Add(page, "Map", MenuAction::VoteMaps);
+	if (allowed("gametype"))
+		Add(page, "Gametype", MenuAction::VoteGametypes);
+	if (allowed("ruleset"))
+		Add(page, "Ruleset", MenuAction::VoteRulesets);
+	if (allowed("restart"))
+		Add(page, "Restart Match", MenuAction::VoteFor, MenuAlign::Left, false, "restart");
+	Footer(page, {"$g_pc_return", MenuAlign::Left, MenuAction::Back, false, {}});
+	return page;
+}
+
+MenuPage Core_Menu_VoteChoices(const MenuView &v, std::string_view kind)
+{
+	// (arg, text, current)
+	std::vector<std::tuple<std::string, std::string, bool>> items;
+	std::string title;
+	if (kind == "map")
+	{
+		title = "Vote: Map";
+		for (const std::string &m : v.vote_maps)
+			items.emplace_back(m, m, m == v.map_file);
+	}
+	else if (kind == "gametype")
+	{
+		title = "Vote: Gametype";
+		for (const auto &[id, name] : v.vote_gametypes)
+			items.emplace_back(id, name, id == v.gametype_id);
+	}
+	else
+	{
+		title = "Vote: Ruleset";
+		for (const std::string &r : v.vote_rulesets)
+			items.emplace_back(r, r, r == v.ruleset);
+	}
+
+	MenuPage page;
+	Title(page, title, true);
+	Add(page, "");
+	// Rows 2..16 hold choices; the bottom row is Back.
+	constexpr size_t kRoom = kMenuRows - 3;
+	const bool more = items.size() > kRoom;
+	const size_t shown = more ? kRoom - 1 : items.size();
+	for (size_t i = 0; i < shown; ++i)
+	{
+		const auto &[arg, text, current] = items[i];
+		Choice(page, Core_Menu_Clean(text), MenuAction::VoteFor, current, std::string(kind) + " " + arg);
+	}
+	if (more)
+		Add(page, Core_Menu_Clean("More: callvote " + std::string(kind)));
+	Footer(page, {"Back", MenuAlign::Left, MenuAction::CallVote, false, {}});
 	return page;
 }

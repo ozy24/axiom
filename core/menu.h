@@ -5,6 +5,7 @@
 
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 // What choosing a row does. Each runs an existing command's code: the menu
@@ -24,6 +25,13 @@ enum class MenuAction
 	MatchInfo,
 	Back, // to the main page
 	Close,
+	VoteYes, // the open vote (core/vote.h)
+	VoteNo,
+	CallVote, // the Call a Vote page; from a choice list, back to it
+	VoteMaps, // a choice list ...
+	VoteGametypes,
+	VoteRulesets,
+	VoteFor, // callvote with the row's arg ("map q2dm3", "restart")
 };
 
 enum class MenuAlign
@@ -39,6 +47,7 @@ struct MenuRow
 	MenuAlign align = MenuAlign::Left;
 	MenuAction action = MenuAction::None;
 	bool highlight = false; // drawn in the alternate colour
+	std::string arg;        // VoteFor: what to call
 };
 
 using MenuPage = std::vector<MenuRow>;
@@ -96,6 +105,18 @@ struct MenuView
 	int overtime = 0; // match_overtime: minutes, -1 sudden death, 0 none
 	bool rounds = false;
 	bool match_flow = false; // match_warmup: warmup, countdown and the HUD
+
+	// Voting (core/vote.h).
+	bool voter = false;                  // counts in a vote now
+	bool vote_open = false;              // a vote is open
+	std::string vote_proposal;           // "map q2dm3"
+	int vote_answer = -1;                // this player's: -1 none, 0 no, 1 yes
+	bool vote_can_call = false;          // Call a Vote shows
+	std::vector<std::string> vote_kinds; // allowed: "map", "gametype", "ruleset", "restart"
+	std::vector<std::string> vote_maps;
+	std::vector<std::pair<std::string, std::string>> vote_gametypes; // (id, title)
+	std::vector<std::string> vote_rulesets;
+	std::string gametype_id; // the current one, marked in its list
 };
 
 // The main page, and the row its cursor starts on (team modes: the team
@@ -105,3 +126,10 @@ int Core_Menu_MainCursor(const MenuPage &page, const MenuView &view);
 
 // The settings the match runs under.
 MenuPage Core_Menu_MatchInfo(const MenuView &view);
+
+// Call a Vote: the allowed kinds; restart is called from here, the others
+// open their choice list.
+MenuPage Core_Menu_CallVote(const MenuView &view);
+// A kind's choices ("map", "gametype", "ruleset"), the current one marked and
+// skipped. A list longer than the page ends in a row saying to use callvote.
+MenuPage Core_Menu_VoteChoices(const MenuView &view, std::string_view kind);

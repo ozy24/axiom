@@ -60,7 +60,37 @@ MenuView Longest()
 	v.overtime = -1;
 	v.capturelimit = v.fraglimit = 999;
 	v.timelimit_min = 999;
+	v.voter = true;
+	v.vote_proposal = std::string(60, 'W');
+	v.vote_kinds = {"map", "gametype", "ruleset", "restart"};
+	for (int i = 0; i < 40; ++i)
+	{
+		const std::string name = std::to_string(i) + std::string(30, 'W');
+		v.vote_maps.push_back(name);
+		v.vote_rulesets.push_back(name);
+		v.vote_gametypes.emplace_back(name, name);
+	}
 	return v;
+}
+
+MenuView Voting(MenuView v)
+{
+	v.voter = true;
+	v.vote_can_call = true;
+	v.vote_kinds = {"map", "gametype", "ruleset", "restart"};
+	v.vote_maps = {"q2dm1", "q2dm2", "q2dm3"};
+	v.vote_gametypes = {{"ffa", "Free For All"}, {"tdm", "Team Deathmatch"}};
+	v.vote_rulesets = {"stock", "match"};
+	v.gametype_id = "ffa";
+	return v;
+}
+
+const MenuRow *Row(const MenuPage &page, const std::string &text)
+{
+	for (const MenuRow &r : page)
+		if (r.text == text)
+			return &r;
+	return nullptr;
 }
 } // namespace
 
@@ -77,10 +107,10 @@ TEST_CASE("menu text: control bytes, quotes, braces, markers and length are made
 
 TEST_CASE("menu layout: stock's PMenu_Do_Update format")
 {
-	MenuPage page = {{"Title", MenuAlign::Center, MenuAction::None, true},
+	MenuPage page = {{"Title", MenuAlign::Center, MenuAction::None, true, {}},
 	                 {},
-	                 {"Go", MenuAlign::Left, MenuAction::Close, false},
-	                 {"R", MenuAlign::Right, MenuAction::None, false}};
+	                 {"Go", MenuAlign::Left, MenuAction::Close, false, {}},
+	                 {"R", MenuAlign::Right, MenuAction::None, false, {}}};
 	CHECK(Core_Menu_Layout(page, 2) == "xv 32 yv 8 picn inventory "
 	                                   "yv 32 xv 0 loc_cstring2 1 \"Title\" \"\" "
 	                                   "yv 48 xv 64 loc_string2 1 \"Go\" \"\" xv 56 string2 \">\" "
@@ -90,10 +120,14 @@ TEST_CASE("menu layout: stock's PMenu_Do_Update format")
 TEST_CASE("menu pages fit stock's 18 rows and the client's 1024-byte layout")
 {
 	MenuView v = Longest();
-	for (int playing = 0; playing < 2; ++playing)
+	for (int state = 0; state < 4; ++state)
 	{
-		v.playing = playing;
-		for (const MenuPage &page : {Core_Menu_Main(v), Core_Menu_MatchInfo(v)})
+		v.playing = state & 1;
+		v.vote_open = state & 2;
+		v.vote_can_call = !v.vote_open;
+		for (const MenuPage &page :
+		     {Core_Menu_Main(v), Core_Menu_MatchInfo(v), Core_Menu_CallVote(v), Core_Menu_VoteChoices(v, "map"),
+		      Core_Menu_VoteChoices(v, "gametype"), Core_Menu_VoteChoices(v, "ruleset")})
 		{
 			CHECK(page.size() == (size_t)kMenuRows);
 			for (const MenuRow &row : page)
@@ -200,4 +234,83 @@ TEST_CASE("menu: match info names the rules, and returns to the main page")
 
 	v.match_flow = false;
 	CHECK(Shows(Core_Menu_MatchInfo(v), "No warmup: stock rules"));
+}
+
+TEST_CASE("menu: an open vote leads the main page, the cursor on Vote Yes")
+{
+	MenuView v = Voting(Ffa());
+	v.playing = true;
+	v.vote_open = true;
+	v.vote_can_call = false;
+	v.vote_proposal = "map q2dm3";
+	MenuPage page = Core_Menu_Main(v);
+	CHECK(page[4].text == "Vote: map q2dm3");
+	CHECK(page[4].action == MenuAction::None);
+	CHECK(page[5].action == MenuAction::VoteYes);
+	CHECK(page[6].action == MenuAction::VoteNo);
+	CHECK(Core_Menu_MainCursor(page, v) == 5);
+	CHECK(RowOf(page, MenuAction::CallVote) < 0);
+
+	// Answered: that row is marked and skipped; the cursor goes to the other.
+	v.vote_answer = 1;
+	page = Core_Menu_Main(v);
+	CHECK(page[5].highlight);
+	CHECK(page[5].action == MenuAction::None);
+	CHECK(RowOf(page, MenuAction::VoteNo) == 6);
+
+	// Not a voter (a spectator): no vote rows.
+	v.voter = false;
+	CHECK_FALSE(Shows(Core_Menu_Main(v), "Vote Yes"));
+}
+
+TEST_CASE("menu: Call a Vote only when a vote can be called")
+{
+	MenuView v = Voting(Ffa());
+	CHECK(RowOf(Core_Menu_Main(v), MenuAction::CallVote) > RowOf(Core_Menu_Main(v), MenuAction::MatchInfo));
+	v.vote_can_call = false;
+	CHECK(RowOf(Core_Menu_Main(v), MenuAction::CallVote) < 0);
+}
+
+TEST_CASE("menu: Call a Vote lists the allowed kinds; restart is called from it")
+{
+	MenuView v = Voting(Ffa());
+	MenuPage page = Core_Menu_CallVote(v);
+	CHECK(Actions(page) == std::vector<MenuAction>{MenuAction::VoteMaps, MenuAction::VoteGametypes,
+	                                               MenuAction::VoteRulesets, MenuAction::VoteFor, MenuAction::Back});
+	CHECK(Row(page, "Restart Match")->arg == "restart");
+	v.vote_kinds = {"map"};
+	CHECK(Actions(Core_Menu_CallVote(v)) == std::vector<MenuAction>{MenuAction::VoteMaps, MenuAction::Back});
+}
+
+TEST_CASE("menu: vote choices call the vote; the current one is marked and skipped")
+{
+	const MenuView v = Voting(Ffa()); // on q2dm1, FFA, ruleset match
+	MenuPage maps = Core_Menu_VoteChoices(v, "map");
+	CHECK(maps[0].text == "Vote: Map");
+	CHECK(Row(maps, "q2dm1")->action == MenuAction::None);
+	CHECK(Row(maps, "q2dm1")->highlight);
+	CHECK(Row(maps, "q2dm2")->action == MenuAction::VoteFor);
+	CHECK(Row(maps, "q2dm2")->arg == "map q2dm2");
+	CHECK(maps.back().action == MenuAction::CallVote); // Back to Call a Vote
+
+	MenuPage gts = Core_Menu_VoteChoices(v, "gametype");
+	CHECK(Row(gts, "Free For All")->action == MenuAction::None);
+	CHECK(Row(gts, "Team Deathmatch")->arg == "gametype tdm");
+
+	MenuPage rs = Core_Menu_VoteChoices(v, "ruleset");
+	CHECK(Row(rs, "match")->action == MenuAction::None);
+	CHECK(Row(rs, "stock")->arg == "ruleset stock");
+}
+
+TEST_CASE("menu: a list longer than the page points to callvote")
+{
+	MenuView v = Voting(Ffa());
+	v.vote_maps.clear();
+	for (int i = 1; i <= 20; ++i)
+		v.vote_maps.push_back("map" + std::to_string(i));
+	const MenuPage page = Core_Menu_VoteChoices(v, "map");
+	CHECK(page.size() == (size_t)kMenuRows);
+	CHECK(Shows(page, "map14"));
+	CHECK_FALSE(Shows(page, "map15"));
+	CHECK(Shows(page, "More: callvote map"));
 }

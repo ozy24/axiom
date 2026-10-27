@@ -12,6 +12,7 @@
 #include "g_statusbar.h"
 #include "mod_identity.h"
 #include "core/match_hooks.h"
+#include "core/vote_hooks.h"
 
 #include <array>
 #include <optional>
@@ -243,7 +244,10 @@ void Publish(int configstring, std::string &published, const std::string &text)
 
 void PublishHud()
 {
-	const MatchHudText hud = match.OwnsRules() ? match.HudText(Snapshot()) : MatchHudText{};
+	MatchHudText hud = match.OwnsRules() ? match.HudText(Snapshot()) : MatchHudText{};
+	// An open vote takes the line (core/vote_register.cpp).
+	if (std::string vote = Core_Vote_HudText(); !vote.empty())
+		hud = {std::move(vote), {}};
 	Publish(kStatusConfigstring, status_text, hud.status);
 	Publish(kClockConfigstring, clock_text, hud.clock);
 }
@@ -429,6 +433,7 @@ void Core_Match_Frame()
 			gi.Com_PrintFmt("Match: {}\n", MatchStateName(match.State()));
 	}
 	last_time = level.time;
+	Core_Vote_Frame();
 
 	// The gametype's own per-frame work and end-of-match hook run whether or
 	// not the match flow owns the rules (stock rules can end the level too).
@@ -579,6 +584,11 @@ bool Core_Match_ReadyUp()
 {
 	return Core_Match_OwnsRules() && match.Config().ready_required &&
 	       (match.State() == MatchState::Warmup || match.State() == MatchState::Countdown);
+}
+
+bool Core_Match_Warmup()
+{
+	return Core_Match_OwnsRules() && match.State() == MatchState::Warmup;
 }
 
 bool Core_Match_IsReady(const edict_t *ent)

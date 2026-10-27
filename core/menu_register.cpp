@@ -9,6 +9,7 @@
 #include "core/match_hooks.h"
 #include "core/menu.h"
 #include "core/menu_hooks.h"
+#include "core/vote_hooks.h"
 
 #include <cstring>
 
@@ -23,6 +24,10 @@ enum class Page : int32_t
 {
 	Main,
 	MatchInfo,
+	CallVote,
+	VoteMaps,
+	VoteGametypes,
+	VoteRulesets,
 };
 
 // The menu's arg (PMenu_Open TagFrees it on close): which page, and what each
@@ -32,6 +37,7 @@ struct MenuState
 {
 	Page page;
 	MenuAction actions[kMenuRows];
+	char args[kMenuRows][64]; // VoteFor: "map q2dm3"
 };
 
 bool Active()
@@ -79,6 +85,18 @@ MenuView View(const edict_t *ent)
 	v.overtime = CvarInt("match_overtime");
 	v.rounds = CvarInt("match_rounds") != 0;
 	v.match_flow = Core_Match_OwnsRules();
+
+	const VoteMenuInfo vote = Core_Vote_MenuInfo(ent);
+	v.voter = vote.voter;
+	v.vote_open = vote.open;
+	v.vote_proposal = vote.proposal;
+	v.vote_answer = vote.answer;
+	v.vote_can_call = vote.can_call;
+	v.vote_kinds = vote.kinds;
+	v.vote_maps = vote.maps;
+	v.vote_gametypes = vote.gametypes;
+	v.vote_rulesets = vote.rulesets;
+	v.gametype_id = vote.gametype;
 	return v;
 }
 
@@ -99,13 +117,29 @@ void Fill(pmenu_t *entries, MenuState &state, const MenuPage &page)
 		entries[i].SelectFunc = row.action != MenuAction::None ? Select : nullptr;
 		entries[i].text_arg1[0] = '\0';
 		state.actions[i] = row.action;
+		Q_strlcpy(state.args[i], row.arg.c_str(), sizeof(state.args[i]));
 	}
 }
 
 MenuPage Build(const edict_t *ent, Page page)
 {
 	const MenuView view = View(ent);
-	return page == Page::Main ? Core_Menu_Main(view) : Core_Menu_MatchInfo(view);
+	switch (page)
+	{
+	case Page::Main:
+		return Core_Menu_Main(view);
+	case Page::MatchInfo:
+		return Core_Menu_MatchInfo(view);
+	case Page::CallVote:
+		return Core_Menu_CallVote(view);
+	case Page::VoteMaps:
+		return Core_Menu_VoteChoices(view, "map");
+	case Page::VoteGametypes:
+		return Core_Menu_VoteChoices(view, "gametype");
+	case Page::VoteRulesets:
+		return Core_Menu_VoteChoices(view, "ruleset");
+	}
+	return {};
 }
 
 // UpdateFunc: stock calls it before each redraw (a cursor move, a dirty menu,
@@ -220,6 +254,33 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 		PMenu_Close(ent);
 		ent->client->update_chase = true;
 		break;
+	case MenuAction::VoteYes:
+	case MenuAction::VoteNo:
+	{
+		const bool yes = state->actions[hnd->cur] == MenuAction::VoteYes;
+		PMenu_Close(ent);
+		Core_Vote_Cast(ent, yes);
+		break;
+	}
+	case MenuAction::CallVote:
+		Open(ent, Page::CallVote);
+		break;
+	case MenuAction::VoteMaps:
+		Open(ent, Page::VoteMaps);
+		break;
+	case MenuAction::VoteGametypes:
+		Open(ent, Page::VoteGametypes);
+		break;
+	case MenuAction::VoteRulesets:
+		Open(ent, Page::VoteRulesets);
+		break;
+	case MenuAction::VoteFor:
+	{
+		const std::string args = state->args[hnd->cur]; // the menu's arg goes on close
+		PMenu_Close(ent);
+		Core_Vote_Call(ent, args);
+		break;
+	}
 	}
 }
 } // namespace

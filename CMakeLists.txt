@@ -105,6 +105,8 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/core/match_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/menu.cpp"
     "${CMAKE_SOURCE_DIR}/core/menu_register.cpp"
+    "${CMAKE_SOURCE_DIR}/core/vote.cpp"
+    "${CMAKE_SOURCE_DIR}/core/vote_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/player_name_gi.cpp"
     "${CMAKE_SOURCE_DIR}/core/rulesets.cpp"
     "${CMAKE_SOURCE_DIR}/core/rulesets_register.cpp"
@@ -191,12 +193,14 @@ if(GAME_BUILD_TESTS)
         tests/test_rulesets.cpp
         tests/test_match_record.cpp
         tests/test_menu.cpp
+        tests/test_vote.cpp
         core/identity.cpp
         core/match_record.cpp
         core/host_files.cpp
         core/rulesets.cpp
         core/match.cpp
         core/menu.cpp
+        core/vote.cpp
         core/stat_slots.cpp
         tests/test_duel_queue.cpp
         tests/test_eyecam.cpp
