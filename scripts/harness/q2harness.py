@@ -790,10 +790,10 @@ at 30 0 cmd score
     drawn, texts = state_line(tap)
     if not drawn:
         detail.append("the status bar doesn't draw the match status and clock")
-    if not any(re.fullmatch(r"WARMUP\n\d+/\d+ READY", t) for t in texts) or "MATCH STARTING" not in texts \
+    if "WARMUP" not in texts or not any(re.fullmatch(r"\d+/\d+ READY", t) for t in texts) or "COUNTDOWN" not in texts \
             or not any(re.fullmatch(r"\d+:\d\d", t) for t in texts):
         detail.append(f"state line texts {texts[:4]}...{texts[-3:]}, expected warmup with a ready count, "
-                      "MATCH STARTING, then the clock")
+                      "COUNTDOWN, then the clock")
 
     # A warmup suicide doesn't score (`sv match` during warmup).
     warmup_scores = [int(m) for m in re.findall(r"^\S*\s+(-?\d+) (?:Alice|Bob|Carol)", log, re.M)][:3]
@@ -921,7 +921,7 @@ at 40 1 cmd kill
     if seen[-1:] != ["Match: ended (timelimit)"]:
         detail.append(f"the match ended {seen[-1:]}, expected by the timelimit")
     drawn, texts = state_line(tap)
-    for want in ("ROUND OVER", "NEXT ROUND"):
+    for want in ("ROUND OVER", "COUNTDOWN"):
         if want not in texts:
             detail.append(f"the state line never showed {want!r}")
     if "ROUND 2" not in texts:

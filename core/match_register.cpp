@@ -243,7 +243,7 @@ void Publish(int configstring, std::string &published, const std::string &text)
 
 void PublishHud()
 {
-	const MatchHudText hud = match.OwnsRules() && !level.intermissiontime ? match.HudText(Snapshot()) : MatchHudText{};
+	const MatchHudText hud = match.OwnsRules() ? match.HudText(Snapshot()) : MatchHudText{};
 	Publish(kStatusConfigstring, status_text, hud.status);
 	Publish(kClockConfigstring, clock_text, hud.clock);
 }
@@ -494,9 +494,9 @@ void Core_Match_Statusbar(statusbar_t &sb)
 	if (!deathmatch->integer || !StatusStat() || !ClockStat() || !CountdownStat())
 		return;
 	// Centred above the stock HUD row, as OpenTDM stacks them: the status in
-	// white (two lines in warmup: "WARMUP" / "1/2 READY", the second where the
-	// clock goes), then the clock in green at the height of the stock "Press
-	// any button" prompt (yb -48). Stock tokens only, and no `ifbit`.
+	// white, then the clock in green (the ready count in warmup) at the height
+	// of the stock "Press any button" prompt (yb -48). Stock tokens only, and
+	// no `ifbit`.
 	const player_stat_t status = StatusStat(), clock = ClockStat(), countdown = CountdownStat();
 	sb.ifstat(status).xv(0).yb(-58);
 	sb.sb << "loc_stat_cstring " << status << ' ';

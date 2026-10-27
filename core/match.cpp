@@ -187,7 +187,9 @@ MatchHudText Match::HudText(const MatchInput &in) const
 {
 	if (!config_.enabled)
 		return {};
-	// The match clock, while one runs: down to the timelimit, else up from LIVE.
+	// Status names are OpenTDM's (g_tdm_core.c), capitalised: WARMUP, COUNTDOWN,
+	// MATCH, OVERTIME, MATCH END. The match clock, while one runs: down to the
+	// timelimit, else up from LIVE.
 	const std::string clock = time_end_ms_ ? Clock(time_end_ms_ - in.now_ms) : Clock(in.now_ms - live_since_ms_);
 	const std::string round = config_.rounds_on_frag ? "ROUND " + std::to_string(round_) : "";
 	switch (state_)
@@ -202,22 +204,23 @@ MatchHudText Match::HudText(const MatchInput &in) const
 			playing += p.playing;
 			ready += p.playing && p.ready;
 		}
-		return {"WARMUP\n" + std::to_string(ready) + "/" + std::to_string(playing) + " READY", ""};
+		// The ready count goes on the clock's line, free until the match starts.
+		return {"WARMUP", std::to_string(ready) + "/" + std::to_string(playing) + " READY"};
 	}
 	case MatchState::Countdown:
-		return {"MATCH STARTING", ""}; // the seconds: the big digits (CountdownSeconds)
+		return {"COUNTDOWN", ""}; // the seconds: the big digits (CountdownSeconds)
 	case MatchState::Live:
-		return {round, clock};
+		return {config_.rounds_on_frag ? round : "MATCH", clock};
 	case MatchState::Overtime:
 		if (config_.overtime < 0)
-			return {"SUDDEN DEATH", ""};
+			return {"OVERTIME", "SUDDEN DEATH"};
 		return {"OVERTIME", clock};
 	case MatchState::RoundOver:
 		return {"ROUND OVER", clock};
 	case MatchState::RoundCountdown:
-		return {"NEXT ROUND", clock};
+		return {"COUNTDOWN", clock};
 	case MatchState::Intermission:
-		return {};
+		return {"MATCH END", ""};
 	}
 	return {};
 }

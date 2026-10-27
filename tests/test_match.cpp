@@ -522,21 +522,21 @@ TEST_CASE("the HUD: warmup with the ready count, the countdown, then the clock")
 	MatchConfig c = Enabled(); // countdown 3 s, timelimit 60 s
 	Match m(c);
 	m.Begin(0);
-	CHECK(m.HudText(At(500, {P(1, true), P(2, false)})) == Hud("WARMUP\n1/2 READY", ""));
-	CHECK(m.HudText(At(500, {P(1, true), P(2, true), P(3, false, 0, false)})) == Hud("WARMUP\n2/2 READY", ""));
+	CHECK(m.HudText(At(500, {P(1, true), P(2, false)})) == Hud("WARMUP", "1/2 READY"));
+	CHECK(m.HudText(At(500, {P(1, true), P(2, true), P(3, false, 0, false)})) == Hud("WARMUP", "2/2 READY"));
 	CHECK(m.CountdownSeconds(500) == 0);
 	m.Update(At(1000, {P(1, true), P(2, true)}));
 	REQUIRE(m.State() == MatchState::Countdown);
-	CHECK(m.HudText(At(1000, {P(1, true), P(2, true)})) == Hud("MATCH STARTING", ""));
+	CHECK(m.HudText(At(1000, {P(1, true), P(2, true)})) == Hud("COUNTDOWN", ""));
 	CHECK(m.CountdownSeconds(1000) == 3);
 	CHECK(m.CountdownSeconds(3100) == 1);
 	m.Update(At(4000, {P(1, true), P(2, true)}));
 	REQUIRE(m.State() == MatchState::Live);
-	CHECK(m.HudText(At(4000, {P(1, true), P(2, true)})) == Hud("", "1:00"));
-	CHECK(m.HudText(At(4000 + 18500, {P(1, true), P(2, true)})) == Hud("", "0:42"));
+	CHECK(m.HudText(At(4000, {P(1, true), P(2, true)})) == Hud("MATCH", "1:00"));
+	CHECK(m.HudText(At(4000 + 18500, {P(1, true), P(2, true)})) == Hud("MATCH", "0:42"));
 	m.Update(At(64000, {P(1, true, 2), P(2, true, 1)}));
 	REQUIRE(m.State() == MatchState::Intermission);
-	CHECK(m.HudText(At(64000, {})) == Hud("", ""));
+	CHECK(m.HudText(At(64000, {})) == Hud("MATCH END", ""));
 }
 
 TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
@@ -545,7 +545,7 @@ TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
 	c.timelimit_ms = 0;
 	Match up(c);
 	const int64_t live = ToLive(up);
-	CHECK(up.HudText(At(live + 75000, {P(1, true), P(2, true)})) == Hud("", "1:15"));
+	CHECK(up.HudText(At(live + 75000, {P(1, true), P(2, true)})) == Hud("MATCH", "1:15"));
 
 	MatchConfig o = Enabled();
 	o.overtime = 2;
@@ -560,7 +560,7 @@ TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
 	const int64_t live3 = ToLive(sudden);
 	sudden.Update(At(live3 + 60000, {P(1, true, 3), P(2, true, 3)}));
 	REQUIRE(sudden.State() == MatchState::Overtime);
-	CHECK(sudden.HudText(At(live3 + 61000, {P(1, true, 3), P(2, true, 3)})) == Hud("SUDDEN DEATH", ""));
+	CHECK(sudden.HudText(At(live3 + 61000, {P(1, true, 3), P(2, true, 3)})) == Hud("OVERTIME", "SUDDEN DEATH"));
 }
 
 TEST_CASE("the HUD in rounds: the round above the clock, round over, next round")
@@ -574,7 +574,7 @@ TEST_CASE("the HUD in rounds: the round above the clock, round over, next round"
 	CHECK(m.HudText(At(live + 5000, {})) == Hud("ROUND OVER", "0:55"));
 	m.Update(At(live + 6000, {P(1, true, 1), P(2, true, 0)}));
 	REQUIRE(m.State() == MatchState::RoundCountdown);
-	CHECK(m.HudText(At(live + 6000, {})) == Hud("NEXT ROUND", "0:54"));
+	CHECK(m.HudText(At(live + 6000, {})) == Hud("COUNTDOWN", "0:54"));
 	CHECK(m.CountdownSeconds(live + 6000) == 2);
 	CHECK(m.CountdownSeconds(live + 7500) == 1);
 	m.Update(At(live + 8000, {P(1, true, 1), P(2, true, 0)}));
