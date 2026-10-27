@@ -10,7 +10,7 @@ engine side: `core/vote_register.cpp`; harness: tier 14.
 | Command | Does |
 |---|---|
 | `callvote map <name>` | a map on the map list |
-| `callvote gametype <id>` | `ffa`, `duel`, `tdm`, `ctf`: sets `g_gametype` and reloads, keeping the other settings |
+| `callvote gametype <id>` | `ffa`, `duel`, `tdm`, `ctf`: applies that gametype's standard ruleset (`match`, `duel`, `tdm`, `ctf`) and reloads; the current settings don't carry over (HoonyMode's rounds don't follow a vote to TDM) |
 | `callvote ruleset <name>` | a built-in ruleset (`sv rulesets`), applied before the reload |
 | `callvote restart` | reloads the current map: a fresh warmup |
 | `vote yes` / `vote no` | answer the open vote; an answer can be changed |

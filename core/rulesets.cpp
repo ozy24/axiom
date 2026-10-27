@@ -31,7 +31,7 @@ const RulesetDef core_rulesets[] = {
      "set match_round_pause 2\n"
      "set match_suicide_point 0\n"
      "set timelimit 10\n"
-     "set fraglimit 0\n"},
+     "set fraglimit 0\n", true},
     {"duel", "one on one: warmup and ready-up, 10 minutes, sudden death on a tie, winner stays on",
      "set g_gametype duel\n"
      "set ctf 0\n"
@@ -47,7 +47,7 @@ const RulesetDef core_rulesets[] = {
      "set match_round_pause 2\n"
      "set match_suicide_point 0\n"
      "set timelimit 10\n"
-     "set fraglimit 0\n"},
+     "set fraglimit 0\n", true},
     {"hoony", "HoonyMode duel: every frag ends a round and resets the arena; first to 5, sudden death on a tie",
      "set g_gametype duel\n"
      "set ctf 0\n"
@@ -79,7 +79,7 @@ const RulesetDef core_rulesets[] = {
      "set match_round_pause 2\n"
      "set match_suicide_point 0\n"
      "set timelimit 20\n"
-     "set fraglimit 0\n"},
+     "set fraglimit 0\n", true},
     {"ctf", "capture the flag: warmup and ready-up, 20 minutes or 8 captures, sudden death on a tie",
      "set g_gametype ctf\n"
      "set ctf 1\n"
@@ -96,7 +96,7 @@ const RulesetDef core_rulesets[] = {
      "set match_suicide_point 0\n"
      "set timelimit 20\n"
      "set fraglimit 0\n"
-     "set capturelimit 8\n"},
+     "set capturelimit 8\n", true},
 };
 const size_t core_ruleset_count = sizeof(core_rulesets) / sizeof(core_rulesets[0]);
 
@@ -105,6 +105,27 @@ const RulesetDef *Core_Ruleset_Find(std::string_view name)
 	for (size_t i = 0; i < core_ruleset_count; ++i)
 	{
 		if (name == core_rulesets[i].name)
+			return &core_rulesets[i];
+	}
+	return nullptr;
+}
+
+std::string Core_Ruleset_Gametype(const RulesetDef &def)
+{
+	const std::string_view cfg = def.cfg;
+	const std::string_view key = "set g_gametype ";
+	const size_t at = cfg.find(key);
+	if (at == std::string_view::npos)
+		return {};
+	const size_t start = at + key.size();
+	return std::string(cfg.substr(start, cfg.find('\n', start) - start));
+}
+
+const RulesetDef *Core_Ruleset_Standard(std::string_view gametype)
+{
+	for (size_t i = 0; i < core_ruleset_count; ++i)
+	{
+		if (core_rulesets[i].standard && Core_Ruleset_Gametype(core_rulesets[i]) == gametype)
 			return &core_rulesets[i];
 	}
 	return nullptr;

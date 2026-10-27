@@ -110,17 +110,11 @@ bool Live()
 	return Core_Match_OwnsRules() && !Core_Match_Warmup();
 }
 
-// The gametype a ruleset selects ("set g_gametype tdm" in its text), or null.
+// The gametype a built-in ruleset selects, or null (a custom one: unknown).
 const GametypeDef *RulesetGametype(std::string_view name)
 {
 	const RulesetDef *def = Core_Ruleset_Find(name);
-	if (!def)
-		return nullptr;
-	const char *line = strstr(def->cfg, "set g_gametype ");
-	if (!line)
-		return nullptr;
-	line += strlen("set g_gametype ");
-	return GametypeById(std::string_view(line, strcspn(line, "\n")));
+	return def ? GametypeById(Core_Ruleset_Gametype(*def)) : nullptr;
 }
 
 // The console text that carries out a passed vote. Every kind ends in `map`,
@@ -136,7 +130,14 @@ std::string Commands(const VoteProposal &p)
 	case VoteKind::Restart:
 		return std::string("map ") + level.mapname + "\n";
 	case VoteKind::Gametype:
-		return "set g_gametype " + p.arg + "\nmap " + map_for(GametypeById(p.arg)) + "\n";
+	{
+		// The gametype's standard settings, not the current ones: HoonyMode's
+		// rounds must not follow a vote to TDM.
+		const RulesetDef *standard = Core_Ruleset_Standard(p.arg);
+		const std::string settings =
+		    standard ? Core_Ruleset_Commands(standard->name) : "set g_gametype " + p.arg + "\n";
+		return settings + "map " + map_for(GametypeById(p.arg)) + "\n";
+	}
 	case VoteKind::Ruleset:
 	{
 		const GametypeDef *gt = RulesetGametype(p.arg);

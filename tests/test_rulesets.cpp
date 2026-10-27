@@ -139,3 +139,20 @@ TEST_CASE("only hoony gives a suicide's point to the opponent")
 		          .find(hoony ? "set match_suicide_point 1\n" : "set match_suicide_point 0\n") != std::string::npos);
 	}
 }
+
+TEST_CASE("every gametype has exactly one standard ruleset, and it selects that gametype")
+{
+	for (const char *gt : {"ffa", "duel", "tdm", "ctf"})
+	{
+		CAPTURE(gt);
+		int standards = 0;
+		for (size_t i = 0; i < core_ruleset_count; ++i)
+			standards += core_rulesets[i].standard && Core_Ruleset_Gametype(core_rulesets[i]) == gt;
+		CHECK(standards == 1);
+		REQUIRE(Core_Ruleset_Standard(gt) != nullptr);
+		CHECK(Core_Ruleset_Gametype(*Core_Ruleset_Standard(gt)) == gt);
+	}
+	CHECK(std::string(Core_Ruleset_Standard("ffa")->name) == "match");
+	CHECK(std::string(Core_Ruleset_Standard("duel")->name) == "duel"); // not hoony
+	CHECK(Core_Ruleset_Standard("tag") == nullptr);
+}
