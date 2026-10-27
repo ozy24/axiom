@@ -207,10 +207,11 @@ MatchHudText Match::HudText(const MatchInput &in) const
 {
 	if (!config_.enabled)
 		return {};
-	// One line, either a status or the clock, never both (Chris, 2026-10-27:
-	// two lines crowded the team modes' player ID). Status names are OpenTDM's
+	// Two texts on one row, at its two ends (Chris, 2026-10-27): the clock on
+	// the left, the status on the right. Status names are OpenTDM's
 	// (g_tdm_core.c), capitalised. The clock shows while the match is being
-	// played, overtime included: down to the timelimit, else up from LIVE.
+	// played, round breaks and timed overtime included: down to the
+	// timelimit, else up from LIVE.
 	const std::string clock = time_end_ms_ ? Clock(time_end_ms_ - in.now_ms) : Clock(in.now_ms - live_since_ms_);
 	switch (state_)
 	{
@@ -230,11 +231,11 @@ MatchHudText Match::HudText(const MatchInput &in) const
 	case MatchState::Overtime:
 		if (config_.overtime < 0)
 			return {"SUDDEN DEATH", ""}; // no clock: the next score ends it
-		return {"", clock};
+		return {"OVERTIME", clock};
 	case MatchState::RoundOver:
-		return {"ROUND OVER", ""};
+		return {"ROUND OVER", clock};
 	case MatchState::RoundCountdown:
-		return {"COUNTDOWN", ""};
+		return {"COUNTDOWN", clock};
 	case MatchState::Intermission:
 		return {"MATCH END", ""};
 	}

@@ -221,6 +221,14 @@ player_stat_t StatusStat()
 	return (player_stat_t)(slot ? *slot : 0);
 }
 
+// The status again, drawn beside the clock instead of centred: used while
+// both show (overtime, round breaks, a vote mid-match).
+player_stat_t StatusBesideStat()
+{
+	static const std::optional<int> slot = Core_StatSlots().Allocate("match_status_beside");
+	return (player_stat_t)(slot ? *slot : 0);
+}
+
 player_stat_t ClockStat()
 {
 	static const std::optional<int> slot = Core_StatSlots().Allocate("match_clock");
@@ -245,9 +253,9 @@ void Publish(int configstring, std::string &published, const std::string &text)
 void PublishHud()
 {
 	MatchHudText hud = match.OwnsRules() ? match.HudText(Snapshot()) : MatchHudText{};
-	// An open vote takes the line (core/vote_register.cpp).
+	// An open vote takes the status's place; the clock stays (core/vote_register.cpp).
 	if (std::string vote = Core_Vote_HudText(); !vote.empty())
-		hud = {std::move(vote), {}};
+		hud.status = std::move(vote);
 	Publish(kStatusConfigstring, status_text, hud.status);
 	Publish(kClockConfigstring, clock_text, hud.clock);
 }
@@ -518,28 +526,39 @@ bool Core_Match_SuicidePoint(edict_t *self)
 
 void Core_Match_Statusbar(statusbar_t &sb)
 {
-	if (!deathmatch->integer || !StatusStat() || !ClockStat() || !CountdownStat())
+	if (!deathmatch->integer || !StatusStat() || !StatusBesideStat() || !ClockStat() || !CountdownStat())
 		return;
-	// One line centred above the stock HUD row: the status in white or the
-	// clock in green, never both at once (Match::HudText). Stock tokens only,
-	// and no `ifbit`. xv 2: cstring centres on xv + 160, so the line sits over
-	// the centre of the weapon icon at stock's xv 150 (24 px wide).
-	const player_stat_t status = StatusStat(), clock = ClockStat(), countdown = CountdownStat();
-	sb.ifstat(status).xv(2).yb(-61);
-	sb.sb << "loc_stat_cstring " << status << ' ';
-	sb.endifstat();
-	sb.ifstat(clock).xv(2).yb(-61);
+	// Top middle, the row under the obituaries (Chris, 2026-10-27): the client
+	// keeps 4 notify rows of 10 units from the top (scr_maxlines 4), and centre
+	// prints start 20% down (48 units at the least), so yt 41 fits one row
+	// between them. The clock centred in green, else the status centred in
+	// white; with both, the status beside the clock (Match::HudText). Stock
+	// tokens only, and no `ifbit`.
+	const player_stat_t status = StatusStat(), beside = StatusBesideStat(), clock = ClockStat(),
+	                    countdown = CountdownStat();
+	sb.ifstat(clock).xv(0).yt(41);
 	sb.sb << "loc_stat_cstring2 " << clock << ' ';
 	sb.endifstat();
-	// The countdown in big HUD digits, mid-screen (MuffMode's placement: num 3
-	// right-aligns in a 50 px field, so xv 118 centres one digit).
-	sb.ifstat(countdown).xv(118).yb(-256).num(3, countdown).endifstat();
+	sb.ifstat(status).xv(0).yt(41);
+	sb.sb << "loc_stat_cstring " << status << ' ';
+	sb.endifstat();
+	sb.ifstat(beside).xv(184).yt(41).loc_stat_string(beside).endifstat();
+	// The countdown in big HUD digits, between the centre prints and the
+	// crosshair. num 3 right-aligns in a 50 px field, so xv 118 centres one
+	// digit; yv counts from the centred 240-high box, so it lands the same
+	// distance above the crosshair at every resolution (yb -256 was off the
+	// top of a 240-unit-high screen: 1440p, 4K).
+	sb.ifstat(countdown).xv(118).yv(64).num(3, countdown).endifstat();
 }
 
 void Core_Match_SetStats(edict_t *ent)
 {
+	// Alone, the status is centred; with the clock, it sits beside it.
+	const bool both = !status_text.empty() && !clock_text.empty();
 	if (StatusStat())
-		ent->client->ps.stats[StatusStat()] = status_text.empty() ? 0 : kStatusConfigstring;
+		ent->client->ps.stats[StatusStat()] = status_text.empty() || both ? 0 : kStatusConfigstring;
+	if (StatusBesideStat())
+		ent->client->ps.stats[StatusBesideStat()] = both ? kStatusConfigstring : 0;
 	if (ClockStat())
 		ent->client->ps.stats[ClockStat()] = clock_text.empty() ? 0 : kClockConfigstring;
 	if (CountdownStat())
