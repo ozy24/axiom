@@ -66,6 +66,12 @@ struct MatchInput
 	std::array<int, 2> team_scores{}; // with MatchConfig::teams: team 1, team 2 (frags or captures)
 };
 
+struct MatchHudText
+{
+	std::string status;
+	std::string clock;
+};
+
 enum class MatchActionKind
 {
 	Announce,     // text to every player (centre print)
@@ -139,16 +145,11 @@ class Match
 	{
 		return round_;
 	}
-	// The HUD's match-state line (docs/design/hud.md): "WARMUP\n1/2 READY",
-	// "MATCH STARTING", the clock, "SUDDEN DEATH", "ROUND 3 - 9:42"... Empty
-	// when there is nothing to show: the match flow off, or intermission.
-	std::string StateText(const MatchInput &in) const;
-	// Whether the state line is showing the match clock (LIVE, OVERTIME), so
-	// a HUD that places the clock elsewhere can move it there.
-	bool ShowsClock() const
-	{
-		return config_.enabled && (state_ == MatchState::Live || state_ == MatchState::Overtime);
-	}
+	// The HUD's match status and clock (docs/design/hud.md): the status above
+	// ("WARMUP\n1/2 READY", "MATCH STARTING", "ROUND 3", "SUDDEN DEATH"...),
+	// the clock below ("9:42", while one runs). Both empty with the match flow
+	// off, or at intermission.
+	MatchHudText HudText(const MatchInput &in) const;
 	// The HUD's big countdown digits: whole seconds left in the match or round
 	// countdown, else 0 (hidden).
 	int CountdownSeconds(int64_t now_ms) const;

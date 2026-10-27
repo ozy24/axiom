@@ -205,26 +205,24 @@ void ResetArena(bool players)
 	}
 }
 
-// Warmup and the countdown are free play: every frag, suicide and capture is
-// undone in the frame it happens, before any client sees it.
-// The HUD's match-state line: its text lives in the first general configstring
-// stock leaves free; each player's stat points at it while there is text.
-constexpr int kStateConfigstring = CONFIG_LAST;
+// The HUD's match status and clock (docs/design/hud.md): each text lives in a
+// general configstring stock leaves free; a player's stat points at it while
+// there is text, so an empty one isn't drawn.
+constexpr int kStatusConfigstring = CONFIG_LAST;
 constexpr int kClockConfigstring = CONFIG_LAST + 1;
 static_assert(kClockConfigstring < CS_GENERAL + MAX_GENERAL, "no free general configstring");
-std::string state_text; // what the configstrings hold now
+std::string status_text; // what the configstrings hold now
 std::string clock_text;
 
-// PLAYTEST ONLY (2026-10-27): where the live clock goes, to compare on a real
-// client. 0 = in the state line; 1 bottom-right, 2 bottom-left, 3 top-right
-// under the frags, 4 above the stock row, 5 top centre, 6 the pickup row
-// (right of the item name). Read at map load.
-// Replaced by the chosen placement before this branch is merged.
-cvar_t *match_hud_clock;
-
-player_stat_t StateStat()
+player_stat_t StatusStat()
 {
-	static const std::optional<int> slot = Core_StatSlots().Allocate("match_state");
+	static const std::optional<int> slot = Core_StatSlots().Allocate("match_status");
+	return (player_stat_t)(slot ? *slot : 0);
+}
+
+player_stat_t ClockStat()
+{
+	static const std::optional<int> slot = Core_StatSlots().Allocate("match_clock");
 	return (player_stat_t)(slot ? *slot : 0);
 }
 
@@ -235,29 +233,23 @@ player_stat_t CountdownStat()
 	return (player_stat_t)(slot ? *slot : 0);
 }
 
-player_stat_t ClockStat()
+void Publish(int configstring, std::string &published, const std::string &text)
 {
-	static const std::optional<int> slot = Core_StatSlots().Allocate("match_clock");
-	return (player_stat_t)(slot ? *slot : 0);
+	if (text == published)
+		return;
+	published = text;
+	gi.configstring(configstring, text.c_str());
 }
 
-void PublishState()
+void PublishHud()
 {
-	const std::string text = match.OwnsRules() && !level.intermissiontime ? match.StateText(Snapshot()) : "";
-	const bool clock_apart = match_hud_clock && match_hud_clock->integer > 0 && match.ShowsClock();
-	const std::string state = clock_apart ? "" : text, clock = clock_apart ? text : "";
-	if (state != state_text)
-	{
-		state_text = state;
-		gi.configstring(kStateConfigstring, state.c_str());
-	}
-	if (clock != clock_text)
-	{
-		clock_text = clock;
-		gi.configstring(kClockConfigstring, clock.c_str());
-	}
+	const MatchHudText hud = match.OwnsRules() && !level.intermissiontime ? match.HudText(Snapshot()) : MatchHudText{};
+	Publish(kStatusConfigstring, status_text, hud.status);
+	Publish(kClockConfigstring, clock_text, hud.clock);
 }
 
+// Warmup and the countdown are free play: every frag, suicide and capture is
+// undone in the frame it happens, before any client sees it.
 void ZeroScores()
 {
 	for (uint32_t i = 0; i < game.maxclients; ++i)
@@ -422,7 +414,7 @@ void Core_Match_Frame()
 		begun = true;
 		ended_this_level = false;
 		end_reason.clear();
-		state_text.clear(); // configstrings start empty on a new level
+		status_text.clear(); // configstrings start empty on a new level
 		clock_text.clear();
 		if (match.OwnsRules())
 			gi.Com_PrintFmt("Match: {}\n", MatchStateName(match.State()));
@@ -443,7 +435,7 @@ void Core_Match_Frame()
 	}
 	if (!match.OwnsRules() || level.intermissiontime)
 	{
-		PublishState();
+		PublishHud();
 		return;
 	}
 
@@ -456,7 +448,7 @@ void Core_Match_Frame()
 		ZeroScores();
 	if (match.State() == MatchState::RoundOver)
 		HoldDead();
-	PublishState();
+	PublishHud();
 }
 
 bool Core_Match_OwnsRules()
@@ -499,66 +491,28 @@ bool Core_Match_SuicidePoint(edict_t *self)
 
 void Core_Match_Statusbar(statusbar_t &sb)
 {
-	if (!deathmatch->integer || !StateStat() || !CountdownStat())
+	if (!deathmatch->integer || !StatusStat() || !ClockStat() || !CountdownStat())
 		return;
-	// The state line, bottom centre: centred text from a configstring, two
-	// lines in warmup ("WARMUP" / "1/2 READY"), so it starts at -88 to stay
-	// clear of CHASING / SPECTATOR MODE (yb -68 / -58). Stock tokens only, and
-	// no `ifbit`.
-	const player_stat_t state = StateStat(), countdown = CountdownStat();
-	sb.ifstat(state).xv(0).yb(-88);
-	sb.sb << "loc_stat_cstring " << state << ' ';
+	// Centred above the stock HUD row, as OpenTDM stacks them: the status in
+	// white (two lines in warmup: "WARMUP" / "1/2 READY", the second where the
+	// clock goes), then the clock in green at the height of the stock "Press
+	// any button" prompt (yb -48). Stock tokens only, and no `ifbit`.
+	const player_stat_t status = StatusStat(), clock = ClockStat(), countdown = CountdownStat();
+	sb.ifstat(status).xv(0).yb(-58);
+	sb.sb << "loc_stat_cstring " << status << ' ';
+	sb.endifstat();
+	sb.ifstat(clock).xv(0).yb(-48);
+	sb.sb << "loc_stat_cstring2 " << clock << ' ';
 	sb.endifstat();
 	// The countdown in big HUD digits, mid-screen (MuffMode's placement: num 3
 	// right-aligns in a 50 px field, so xv 118 centres one digit).
 	sb.ifstat(countdown).xv(118).yb(-256).num(3, countdown).endifstat();
-
-	// PLAYTEST ONLY: the live clock's trial placements (match_hud_clock).
-	match_hud_clock = gi.cvar("match_hud_clock", "0", CVAR_NOFLAGS);
-	const player_stat_t clock = ClockStat();
-	if (!clock || match_hud_clock->integer <= 0)
-		return;
-	// PLAYTEST ONLY: match_hud_clock_dy nudges any placement (negative = up).
-	const int dy = gi.cvar("match_hud_clock_dy", "0", CVAR_NOFLAGS)->integer;
-	sb.ifstat(clock);
-	switch (match_hud_clock->integer)
-	{
-	case 1: // bottom-right corner
-		sb.xr(-8).yb(-16 + dy);
-		sb.sb << "loc_stat_rstring " << clock << ' ';
-		break;
-	case 2: // bottom-left corner
-		sb.xl(8).yb(-16 + dy);
-		sb.sb << "loc_stat_string " << clock << ' ';
-		break;
-	case 3: // top-right, under the frag counter
-		sb.xr(-8).yt(30 + dy);
-		sb.sb << "loc_stat_rstring " << clock << ' ';
-		break;
-	case 6: // the pickup row, right of the item name, left of the powerup timer
-		sb.xv(254).yb(-42 + dy);
-		sb.sb << "loc_stat_rstring " << clock << ' ';
-		break;
-	case 7: // MuffMode's place: xv 0 yb -78, left-aligned (mm_statusbar.cpp)
-		sb.xv(0).yb(-78 + dy);
-		sb.sb << "loc_stat_string " << clock << ' ';
-		break;
-	case 4: // just above the stock row, centred
-		sb.xv(0).yb(-40 + dy);
-		sb.sb << "loc_stat_cstring2 " << clock << ' '; // green, like the end-of-level prompt
-		break;
-	default: // 5: top centre
-		sb.xv(0).yt(8 + dy);
-		sb.sb << "loc_stat_cstring " << clock << ' ';
-		break;
-	}
-	sb.endifstat();
 }
 
 void Core_Match_SetStats(edict_t *ent)
 {
-	if (StateStat())
-		ent->client->ps.stats[StateStat()] = state_text.empty() ? 0 : kStateConfigstring;
+	if (StatusStat())
+		ent->client->ps.stats[StatusStat()] = status_text.empty() ? 0 : kStatusConfigstring;
 	if (ClockStat())
 		ent->client->ps.stats[ClockStat()] = clock_text.empty() ? 0 : kClockConfigstring;
 	if (CountdownStat())

@@ -695,14 +695,18 @@ def embedded_tokens(tap):
 
 
 def state_line(tap):
-    """The HUD's match-state line, from the game tap: whether the status bar
-    draws it, and each text it showed, in order (repeats collapsed)."""
+    """The HUD's match status and clock, from the game tap: whether the status
+    bar draws both, and every text either showed, in order (repeats collapsed).
+    The status is the configstring that first says WARMUP; the clock is the
+    next one (docs/design/hud.md)."""
     cs = [r for r in tap if r.get("type") == "configstring"]
-    drawn = any("loc_stat_cstring" in r["text"] and "yb -88" in r["text"] for r in cs if "hnum" in r["text"])
-    index = next((r["index"] for r in cs if r["text"].startswith("WARMUP")), None)
+    bars = [r["text"] for r in cs if "hnum" in r["text"]]
+    drawn = any("yb -58 loc_stat_cstring " in t and "yb -48 loc_stat_cstring2 " in t for t in bars)
+    status = next((r["index"] for r in cs if r["text"].startswith("WARMUP")), None)
     texts = []
     for r in cs:
-        if r["index"] == index and (not texts or texts[-1] != r["text"]):
+        if status is not None and r["index"] in (status, status + 1) and r["text"] and \
+                (not texts or texts[-1] != r["text"]):
             texts.append(r["text"])
     return drawn, texts
 
@@ -785,7 +789,7 @@ at 30 0 cmd score
     # The HUD's state line: warmup with the ready count, the countdown, the clock.
     drawn, texts = state_line(tap)
     if not drawn:
-        detail.append("the status bar doesn't draw the match-state line")
+        detail.append("the status bar doesn't draw the match status and clock")
     if not any(re.fullmatch(r"WARMUP\n\d+/\d+ READY", t) for t in texts) or "MATCH STARTING" not in texts \
             or not any(re.fullmatch(r"\d+:\d\d", t) for t in texts):
         detail.append(f"state line texts {texts[:4]}...{texts[-3:]}, expected warmup with a ready count, "
@@ -920,7 +924,7 @@ at 40 1 cmd kill
     for want in ("ROUND OVER", "NEXT ROUND"):
         if want not in texts:
             detail.append(f"the state line never showed {want!r}")
-    if not any(t.startswith("ROUND 2 - ") for t in texts):
+    if "ROUND 2" not in texts:
         detail.append("the state line never showed round 2")
     detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
     if rig.returncode != 0:

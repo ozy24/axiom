@@ -183,37 +183,39 @@ int SecondsLeft(int64_t total_ms, int64_t elapsed_ms)
 }
 } // namespace
 
-std::string Match::StateText(const MatchInput &in) const
+MatchHudText Match::HudText(const MatchInput &in) const
 {
 	if (!config_.enabled)
 		return {};
-	const std::string round = config_.rounds_on_frag ? "ROUND " + std::to_string(round_) + " - " : "";
+	// The match clock, while one runs: down to the timelimit, else up from LIVE.
+	const std::string clock = time_end_ms_ ? Clock(time_end_ms_ - in.now_ms) : Clock(in.now_ms - live_since_ms_);
+	const std::string round = config_.rounds_on_frag ? "ROUND " + std::to_string(round_) : "";
 	switch (state_)
 	{
 	case MatchState::Warmup:
 	{
 		if (!config_.ready_required)
-			return "WARMUP";
+			return {"WARMUP", ""};
 		int playing = 0, ready = 0;
 		for (const MatchPlayer &p : in.players)
 		{
 			playing += p.playing;
 			ready += p.playing && p.ready;
 		}
-		return "WARMUP\n" + std::to_string(ready) + "/" + std::to_string(playing) + " READY";
+		return {"WARMUP\n" + std::to_string(ready) + "/" + std::to_string(playing) + " READY", ""};
 	}
 	case MatchState::Countdown:
-		return "MATCH STARTING"; // the seconds: the big digits (CountdownSeconds)
+		return {"MATCH STARTING", ""}; // the seconds: the big digits (CountdownSeconds)
 	case MatchState::Live:
-		return round + (time_end_ms_ ? Clock(time_end_ms_ - in.now_ms) : Clock(in.now_ms - live_since_ms_));
+		return {round, clock};
 	case MatchState::Overtime:
 		if (config_.overtime < 0)
-			return round + "SUDDEN DEATH";
-		return round + "OVERTIME " + Clock(time_end_ms_ - in.now_ms);
+			return {"SUDDEN DEATH", ""};
+		return {"OVERTIME", clock};
 	case MatchState::RoundOver:
-		return "ROUND OVER";
+		return {"ROUND OVER", clock};
 	case MatchState::RoundCountdown:
-		return "NEXT ROUND";
+		return {"NEXT ROUND", clock};
 	case MatchState::Intermission:
 		return {};
 	}
