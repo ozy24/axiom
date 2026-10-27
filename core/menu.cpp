@@ -136,7 +136,11 @@ MenuPage Core_Menu_Main(const MenuView &v)
 
 	if (v.vote_open && v.voter)
 	{
-		Add(page, Core_Menu_Clean("Vote: " + v.vote_proposal), MenuAction::None, MenuAlign::Left, true);
+		std::string what = v.vote_proposal; // "map q2dm3": shown "Vote: Map q2dm3"
+		if (!what.empty())
+			what[0] = (char)toupper((unsigned char)what[0]);
+		Add(page, Core_Menu_Clean("Vote: " + what), MenuAction::None, MenuAlign::Left, true);
+		Add(page, "");
 		Choice(page, "Vote Yes", MenuAction::VoteYes, v.vote_answer == 1);
 		Choice(page, "Vote No", MenuAction::VoteNo, v.vote_answer == 0);
 		Add(page, "");

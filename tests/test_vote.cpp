@@ -66,14 +66,14 @@ TEST_CASE("vote: a lone voter's call passes, then runs after the delay")
 	REQUIRE(v.Call(0, Map("Q2DM3"), Choices(), false, voters, 1000) == VoteError::None);
 	CHECK(v.Open());
 	CHECK(v.Proposal() == Map("q2dm3"));
-	CHECK(v.HudText() == "VOTE: MAP Q2DM3 (1/1)");
+	CHECK(v.HudText(1000) == "VOTE: MAP Q2DM3 - YES 1/1 - 30s");
 	CHECK(v.Update(voters, 1050) == VoteEvent::Passed);
-	CHECK(v.HudText() == "VOTE PASSED");
+	CHECK(v.HudText(1050) == "VOTE PASSED");
 	CHECK(v.Update(voters, 3000) == VoteEvent::None);
 	CHECK(v.Update(voters, 4050) == VoteEvent::Execute);
 	CHECK_FALSE(v.Open());
 	CHECK_FALSE(v.Passed());
-	CHECK(v.HudText().empty());
+	CHECK(v.HudText(4050).empty());
 }
 
 TEST_CASE("vote: a majority of the voters there now decides")
@@ -231,7 +231,7 @@ TEST_CASE("vote: a gametype shows on the HUD by its name")
 	Vote v(AllKinds());
 	REQUIRE(v.Call(0, {VoteKind::Gametype, "hoony", "Duel: HoonyMode"}, Choices(), false, {0, 1}, 0) ==
 	        VoteError::None);
-	CHECK(v.HudText() == "VOTE: DUEL: HOONYMODE (1/2)");
+	CHECK(v.HudText(2500) == "VOTE: DUEL: HOONYMODE - YES 1/2 - 28s");
 }
 
 TEST_CASE("vote: the server's call has no answer of its own and skips the player limits")
@@ -242,7 +242,7 @@ TEST_CASE("vote: the server's call has no answer of its own and skips the player
 	Vote v(off);
 	const std::vector<int> voters{0, 1};
 	REQUIRE(v.Call(Vote::kServer, Map("q2dm2"), Choices(), true, voters, 0) == VoteError::None);
-	CHECK(v.HudText() == "VOTE: MAP Q2DM2 (0/2)");
+	CHECK(v.HudText(0) == "VOTE: MAP Q2DM2 - YES 0/2 - 30s");
 	CHECK(v.Call(Vote::kServer, Map("q2dm3"), Choices(), true, voters, 0) == VoteError::InProgress);
 	REQUIRE(v.Cast(0, false, voters) == VoteError::None);
 	CHECK(v.Update(voters, 10) == VoteEvent::Failed);

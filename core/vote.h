@@ -180,10 +180,10 @@ class Vote
 	// Seconds left to vote (rounded up); 0 when not open.
 	int SecondsLeft(int64_t now_ms) const;
 
-	// The HUD status line: "VOTE: MAP Q2DM3 (1/2)", "VOTE: DUEL: HOONYMODE
-	// (1/2)", "VOTE PASSED"; empty
-	// with no vote.
-	std::string HudText() const;
+	// The HUD status line: "VOTE: MAP Q2DM3 - YES 1/2 - 27s" (yes answers of
+	// the voters there, seconds left), "VOTE: DUEL: HOONYMODE - YES 1/2 - 27s",
+	// "VOTE PASSED"; empty with no vote.
+	std::string HudText(int64_t now_ms) const;
 
   private:
 	enum class State

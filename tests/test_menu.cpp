@@ -247,19 +247,20 @@ TEST_CASE("menu: an open vote leads the main page, the cursor on Vote Yes")
 	v.vote_can_call = false;
 	v.vote_proposal = "map q2dm3";
 	MenuPage page = Core_Menu_Main(v);
-	CHECK(page[4].text == "Vote: map q2dm3");
+	CHECK(page[4].text == "Vote: Map q2dm3");
+	CHECK(page[5].text.empty());
 	CHECK(page[4].action == MenuAction::None);
-	CHECK(page[5].action == MenuAction::VoteYes);
-	CHECK(page[6].action == MenuAction::VoteNo);
-	CHECK(Core_Menu_MainCursor(page, v) == 5);
+	CHECK(page[6].action == MenuAction::VoteYes);
+	CHECK(page[7].action == MenuAction::VoteNo);
+	CHECK(Core_Menu_MainCursor(page, v) == 6);
 	CHECK(RowOf(page, MenuAction::CallVote) < 0);
 
 	// Answered: that row is marked and skipped; the cursor goes to the other.
 	v.vote_answer = 1;
 	page = Core_Menu_Main(v);
-	CHECK(page[5].highlight);
-	CHECK(page[5].action == MenuAction::None);
-	CHECK(RowOf(page, MenuAction::VoteNo) == 6);
+	CHECK(page[6].highlight);
+	CHECK(page[6].action == MenuAction::None);
+	CHECK(RowOf(page, MenuAction::VoteNo) == 7);
 
 	// Not a voter (a spectator): no vote rows.
 	v.voter = false;

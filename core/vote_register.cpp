@@ -346,7 +346,7 @@ void Core_Vote_Disconnect(edict_t *ent)
 
 std::string Core_Vote_HudText()
 {
-	return Active() ? vote.HudText() : std::string();
+	return Active() ? vote.HudText(level.time.milliseconds()) : std::string();
 }
 
 VoteMenuInfo Core_Vote_MenuInfo(const edict_t *ent)

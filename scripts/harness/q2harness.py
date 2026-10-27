@@ -1089,8 +1089,8 @@ at 15 2 cmd yes
     if not any("Maps: q2dm1 q2dm2" in t for t in to("Bob")):
         detail.append("Bob's call for q2dm9 wasn't answered with the map list")
     texts = [r["text"] for r in tap if r.get("type") == "configstring" and r["text"].startswith("VOTE")]
-    for line in ("VOTE: MAP Q2DM2 (1/3)", "VOTE: MAP Q2DM3 (1/3)", "VOTE PASSED"):
-        if line not in texts:
+    for line in ("VOTE: MAP Q2DM2 - YES 1/3 - ", "VOTE: MAP Q2DM3 - YES 1/3 - ", "VOTE PASSED"):
+        if not any(t.startswith(line) for t in texts):
             detail.append(f"the status line never showed {line!r} (saw {sorted(set(texts))})")
     if not re.search(r"Vote: running map q2dm3[\s\S]*InitGame[\s\S]*Gametype:", log):
         detail.append("q2dm3 never loaded after the vote")

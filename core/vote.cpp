@@ -306,7 +306,7 @@ int Vote::SecondsLeft(int64_t now_ms) const
 	return left <= 0 ? 0 : (int)((left + 999) / 1000);
 }
 
-std::string Vote::HudText() const
+std::string Vote::HudText(int64_t now_ms) const
 {
 	if (state_ == State::Passed)
 		return "VOTE PASSED";
@@ -316,5 +316,6 @@ std::string Vote::HudText() const
 	const std::string what = proposal_.kind == VoteKind::Gametype && !proposal_.label.empty()
 	                             ? proposal_.label
 	                             : Core_Vote_Describe(proposal_);
-	return "VOTE: " + Upper(what) + " (" + std::to_string(tally_.yes) + "/" + std::to_string(tally_.voters) + ")";
+	return "VOTE: " + Upper(what) + " - YES " + std::to_string(tally_.yes) + "/" + std::to_string(tally_.voters) +
+	       " - " + std::to_string(SecondsLeft(now_ms)) + "s";
 }
