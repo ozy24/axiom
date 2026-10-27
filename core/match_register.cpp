@@ -217,7 +217,8 @@ std::string clock_text;
 
 // PLAYTEST ONLY (2026-10-27): where the live clock goes, to compare on a real
 // client. 0 = in the state line; 1 bottom-right, 2 bottom-left, 3 top-right
-// under the frags, 4 above the stock row, 5 top centre. Read at map load.
+// under the frags, 4 above the stock row, 5 top centre, 6 the pickup row
+// (right of the item name). Read at map load.
 // Replaced by the chosen placement before this branch is merged.
 cvar_t *match_hud_clock;
 
@@ -530,6 +531,10 @@ void Core_Match_Statusbar(statusbar_t &sb)
 		break;
 	case 3: // top-right, under the frag counter
 		sb.xr(-8).yt(30);
+		sb.sb << "loc_stat_rstring " << clock << ' ';
+		break;
+	case 6: // the pickup row, right of the item name, left of the powerup timer
+		sb.xv(254).yb(-42);
 		sb.sb << "loc_stat_rstring " << clock << ' ';
 		break;
 	case 4: // just above the stock row, centred
