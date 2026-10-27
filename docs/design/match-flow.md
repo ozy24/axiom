@@ -103,13 +103,15 @@ isn't a spectator. Every transition prints a `Match:` console line.
 | `match_suicide_point` | `0` | 1: a suicide or death to the world is a point to the only opponent, not -1 (HoonyMode; not in team modes or with more than one opponent) |
 | `match_round_pause` | `2` | seconds after the round-ending frag before the respawn (rounds on) |
 
-Rulesets (`.cfg`, decision 0003) set these; built-in defaults are stock.
-`sv ruleset <name>` applies one (`core/rulesets.h`): the built-ins `stock`
-and `match` are compiled in, any other name runs `exec rulesets/<name>.cfg`.
-Names are `[a-z0-9_-]` so an exec can't leave `rulesets/`. `g_ruleset`
-(serverinfo) records the last ruleset applied; the module can't see whether
-an exec found its file, so a missing file shows only the engine's
-`couldn't exec` warning.
+Rulesets set these (decisions 0003 and 0013, `core/rulesets.h`, the admin's
+view in docs/admin.md). The compiled defaults are stock; each gametype's
+built-in ruleset (`ffa`, `duel`, `tdm`, `ctf`) turns the match flow on, and
+`rulesets/<gametype>.cfg` changes it. `sv ruleset <name>` (or `set g_ruleset`
+in server.cfg) switches: every gameplay cvar back to its default, the
+gametype's settings and cfg, then a variant's (`hoony`). `g_ruleset`
+(serverinfo) names the mode; empty means server.cfg set everything itself.
+The module can't see whether an exec found its file, so a missing one shows
+only the engine's `couldn't exec` warning.
 
 ## Implementation split
 

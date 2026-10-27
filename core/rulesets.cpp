@@ -1,23 +1,11 @@
-// Pure part of the rulesets: the built-ins and name handling. No engine access.
+// Pure part of the rulesets: the built-ins, names and the switch's console
+// text (docs/decisions/0013). No engine access.
 #include "core/rulesets.h"
 
+#include <algorithm>
+
 const RulesetDef core_rulesets[] = {
-    {"stock", "stock deathmatch: the match flow off, every mod setting at its default",
-     "set g_gametype ffa\n"
-     "set ctf 0\n"
-     "set teamplay 0\n"
-     "set match_warmup 0\n"
-     "set match_ready 1\n"
-     "set match_minplayers 2\n"
-     "set match_warmup_time 0\n"
-     "set match_countdown 10\n"
-     "set match_overtime 0\n"
-     "set match_rounds 0\n"
-     "set match_round_countdown 5\n"
-     "set match_round_pause 2\n"
-     "set match_suicide_point 0\n",
-     "Stock"},
-    {"match", "free for all with warmup and ready-up, 10 minutes, sudden death on a tie",
+    {"ffa", "ffa", "free for all with warmup and ready-up, 10 minutes, sudden death on a tie",
      "set g_gametype ffa\n"
      "set ctf 0\n"
      "set teamplay 0\n"
@@ -33,7 +21,7 @@ const RulesetDef core_rulesets[] = {
      "set match_suicide_point 0\n"
      "set timelimit 10\n"
      "set fraglimit 0\n"},
-    {"duel", "one on one: warmup and ready-up, 10 minutes, sudden death on a tie, winner stays on",
+    {"duel", "duel", "one on one: warmup and ready-up, 10 minutes, sudden death on a tie, winner stays on",
      "set g_gametype duel\n"
      "set ctf 0\n"
      "set teamplay 0\n"
@@ -49,24 +37,7 @@ const RulesetDef core_rulesets[] = {
      "set match_suicide_point 0\n"
      "set timelimit 10\n"
      "set fraglimit 0\n"},
-    {"hoony", "HoonyMode duel: every frag ends a round and resets the arena; first to 5, sudden death on a tie",
-     "set g_gametype duel\n"
-     "set ctf 0\n"
-     "set teamplay 0\n"
-     "set match_warmup 1\n"
-     "set match_ready 1\n"
-     "set match_minplayers 2\n"
-     "set match_warmup_time 0\n"
-     "set match_countdown 10\n"
-     "set match_overtime -1\n"
-     "set match_rounds 1\n"
-     "set match_round_countdown 5\n"
-     "set match_round_pause 2\n"
-     "set match_suicide_point 1\n"
-     "set timelimit 15\n"
-     "set fraglimit 5\n",
-     "HoonyMode"},
-    {"tdm", "team deathmatch: warmup and ready-up, 20 minutes, sudden death on a tie",
+    {"tdm", "tdm", "team deathmatch: warmup and ready-up, 20 minutes, sudden death on a tie",
      "set g_gametype tdm\n"
      "set ctf 0\n"
      "set teamplay 1\n"
@@ -82,7 +53,7 @@ const RulesetDef core_rulesets[] = {
      "set match_suicide_point 0\n"
      "set timelimit 20\n"
      "set fraglimit 0\n"},
-    {"ctf", "capture the flag: warmup and ready-up, 20 minutes or 8 captures, sudden death on a tie",
+    {"ctf", "ctf", "capture the flag: warmup and ready-up, 20 minutes or 8 captures, sudden death on a tie",
      "set g_gametype ctf\n"
      "set ctf 1\n"
      "set teamplay 0\n"
@@ -99,35 +70,44 @@ const RulesetDef core_rulesets[] = {
      "set timelimit 20\n"
      "set fraglimit 0\n"
      "set capturelimit 8\n"},
+    {"hoony", "duel", "HoonyMode: every frag ends a round and resets the arena; first to 5, 15 minutes",
+     "set match_rounds 1\n"
+     "set match_suicide_point 1\n"
+     "set timelimit 15\n"
+     "set fraglimit 5\n",
+     "HoonyMode"},
 };
 const size_t core_ruleset_count = sizeof(core_rulesets) / sizeof(core_rulesets[0]);
+
+// The defaults their modules register: g_gametype (core/gametype_register.cpp),
+// match_* (core/match_register.cpp), the limits (rerelease/g_main.cpp),
+// g_map_list (core/vote_register.cpp).
+const GameplayCvar core_gameplay_cvars[] = {
+    {"g_gametype", "ffa"},
+    {"ctf", "0"},
+    {"teamplay", "0"},
+    {"match_warmup", "0"},
+    {"match_ready", "1"},
+    {"match_minplayers", "2"},
+    {"match_warmup_time", "0"},
+    {"match_countdown", "10"},
+    {"match_overtime", "0"},
+    {"match_rounds", "0"},
+    {"match_round_countdown", "5"},
+    {"match_round_pause", "2"},
+    {"match_suicide_point", "0"},
+    {"timelimit", "0"},
+    {"fraglimit", "0"},
+    {"capturelimit", "0"},
+    {"g_map_list", ""},
+};
+const size_t core_gameplay_cvar_count = sizeof(core_gameplay_cvars) / sizeof(core_gameplay_cvars[0]);
 
 const RulesetDef *Core_Ruleset_Find(std::string_view name)
 {
 	for (size_t i = 0; i < core_ruleset_count; ++i)
 	{
 		if (name == core_rulesets[i].name)
-			return &core_rulesets[i];
-	}
-	return nullptr;
-}
-
-std::string Core_Ruleset_Gametype(const RulesetDef &def)
-{
-	const std::string_view cfg = def.cfg;
-	const std::string_view key = "set g_gametype ";
-	const size_t at = cfg.find(key);
-	if (at == std::string_view::npos)
-		return {};
-	const size_t start = at + key.size();
-	return std::string(cfg.substr(start, cfg.find('\n', start) - start));
-}
-
-const RulesetDef *Core_Ruleset_Standard(std::string_view gametype)
-{
-	for (size_t i = 0; i < core_ruleset_count; ++i)
-	{
-		if (!core_rulesets[i].variant && Core_Ruleset_Gametype(core_rulesets[i]) == gametype)
 			return &core_rulesets[i];
 	}
 	return nullptr;
@@ -145,15 +125,156 @@ bool Core_Ruleset_ValidName(std::string_view name)
 	return true;
 }
 
-std::string Core_Ruleset_Commands(std::string_view name)
+namespace
 {
-	if (!Core_Ruleset_ValidName(name))
-		return {};
-	std::string text;
+const RulesetDef *Own(std::string_view gametype)
+{
+	for (size_t i = 0; i < core_ruleset_count; ++i)
+	{
+		if (!core_rulesets[i].variant && gametype == core_rulesets[i].gametype)
+			return &core_rulesets[i];
+	}
+	return nullptr;
+}
+
+std::vector<std::string_view> Words(std::string_view text)
+{
+	std::vector<std::string_view> out;
+	size_t i = 0;
+	while (i < text.size())
+	{
+		while (i < text.size() && (text[i] == ' ' || text[i] == '\t' || text[i] == ','))
+			++i;
+		const size_t start = i;
+		while (i < text.size() && text[i] != ' ' && text[i] != '\t' && text[i] != ',')
+			++i;
+		if (i > start)
+			out.push_back(text.substr(start, i - start));
+	}
+	return out;
+}
+
+// "rocket_arena" -> "Rocket Arena"
+std::string Label(std::string_view words)
+{
+	std::string out;
+	bool start = true;
+	for (char c : words)
+	{
+		if (c == '_' || c == '-')
+		{
+			out += ' ';
+			start = true;
+			continue;
+		}
+		out += start && c >= 'a' && c <= 'z' ? (char)(c - 'a' + 'A') : c;
+		start = false;
+	}
+	return out;
+}
+
+// An admin's variant: listed in g_rulesets, named <gametype>_<variant>.
+std::optional<Ruleset> Custom(std::string_view name, std::string_view g_rulesets,
+                              const std::vector<std::string> &gametypes)
+{
+	if (!Core_Ruleset_ValidName(name) || Core_Ruleset_Find(name))
+		return std::nullopt;
+	bool listed = false;
+	for (std::string_view w : Words(g_rulesets))
+		listed |= w == name;
+	if (!listed)
+		return std::nullopt;
+	for (const std::string &gt : gametypes)
+	{
+		if (name.size() > gt.size() + 1 && name.substr(0, gt.size()) == gt && name[gt.size()] == '_')
+			return Ruleset{std::string(name), gt, Label(name.substr(gt.size() + 1)), nullptr};
+	}
+	return std::nullopt;
+}
+} // namespace
+
+std::optional<Ruleset> Core_Ruleset_Resolve(std::string_view name, std::string_view g_rulesets,
+                                            const std::vector<std::string> &gametypes)
+{
 	if (const RulesetDef *def = Core_Ruleset_Find(name))
-		text = def->cfg;
+		return Ruleset{def->name, def->gametype, def->variant ? def->variant : "", def};
+	return Custom(name, g_rulesets, gametypes);
+}
+
+std::vector<Ruleset> Core_Ruleset_All(std::string_view g_rulesets, const std::vector<std::string> &gametypes)
+{
+	std::vector<Ruleset> out;
+	for (const std::string &gt : gametypes)
+	{
+		if (const RulesetDef *own = Own(gt))
+			out.push_back(*Core_Ruleset_Resolve(own->name, g_rulesets, gametypes));
+		for (size_t i = 0; i < core_ruleset_count; ++i)
+			if (core_rulesets[i].variant && gt == core_rulesets[i].gametype)
+				out.push_back(*Core_Ruleset_Resolve(core_rulesets[i].name, g_rulesets, gametypes));
+		for (std::string_view w : Words(g_rulesets))
+		{
+			const std::optional<Ruleset> custom = Custom(w, g_rulesets, gametypes);
+			const bool dup = std::any_of(out.begin(), out.end(), [&](const Ruleset &r) { return r.name == w; });
+			if (custom && custom->gametype == gt && !dup)
+				out.push_back(*custom);
+		}
+	}
+	return out;
+}
+
+std::vector<std::pair<std::string, std::string>> Core_Ruleset_Settings(const Ruleset &r)
+{
+	std::vector<std::pair<std::string, std::string>> out;
+	for (size_t i = 0; i < core_gameplay_cvar_count; ++i)
+		out.emplace_back(core_gameplay_cvars[i].name, core_gameplay_cvars[i].value);
+	const auto lines = [&](std::string_view cfg)
+	{
+		// Our own text: `set <name> <value>` per line.
+		size_t at = 0;
+		while (at < cfg.size())
+		{
+			size_t end = cfg.find('\n', at);
+			if (end == std::string_view::npos)
+				end = cfg.size();
+			const std::string_view line = cfg.substr(at, end - at);
+			at = end + 1;
+			if (line.substr(0, 4) != "set ")
+				continue;
+			const size_t space = line.find(' ', 4);
+			if (space == std::string_view::npos)
+				continue;
+			std::string value(line.substr(space + 1));
+			if (value.size() >= 2 && value.front() == '"' && value.back() == '"')
+				value = value.substr(1, value.size() - 2);
+			out.emplace_back(std::string(line.substr(4, space - 4)), value);
+		}
+	};
+	if (const RulesetDef *own = Own(r.gametype))
+		lines(own->cfg);
 	else
-		text = "exec rulesets/" + std::string(name) + ".cfg\n";
-	text += "set g_ruleset " + std::string(name) + "\n";
+		out.emplace_back("g_gametype", r.gametype);
+	if (!r.variant.empty() && r.builtin)
+		lines(r.builtin->cfg);
+	return out;
+}
+
+std::string Core_Ruleset_Commands(const Ruleset &r)
+{
+	std::string text;
+	for (size_t i = 0; i < core_gameplay_cvar_count; ++i)
+		text += std::string("set ") + core_gameplay_cvars[i].name + " \"" + core_gameplay_cvars[i].value + "\"\n";
+	if (const RulesetDef *own = Own(r.gametype))
+		text += own->cfg;
+	else
+		text += "set g_gametype " + r.gametype + "\n";
+	text += "exec rulesets/" + r.gametype + ".cfg\n";
+	if (!r.variant.empty())
+	{
+		if (r.builtin)
+			text += r.builtin->cfg;
+		text += "exec rulesets/" + r.name + ".cfg\n";
+	}
+	text += "set g_ruleset " + r.name + "\n";
+	text += "set g_ruleset_applied " + r.name + "\n";
 	return text;
 }

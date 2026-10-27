@@ -46,6 +46,15 @@ struct MatchConfig
 	int64_t round_countdown_ms = 5000; // match_round_countdown: frozen at the spawns
 	bool teams = false;                // TDM, CTF: the lead and ties go by MatchInput::team_scores
 	bool fraglimit_on_teams = false;   // TDM: fraglimit applies to team totals (stock CheckEndTDMLevel)
+
+	bool operator==(const MatchConfig &o) const
+	{
+		return enabled == o.enabled && ready_required == o.ready_required && min_players == o.min_players &&
+		       warmup_time_ms == o.warmup_time_ms && countdown_ms == o.countdown_ms && overtime == o.overtime &&
+		       timelimit_ms == o.timelimit_ms && fraglimit == o.fraglimit && rounds_on_frag == o.rounds_on_frag &&
+		       round_pause_ms == o.round_pause_ms && round_countdown_ms == o.round_countdown_ms && teams == o.teams &&
+		       fraglimit_on_teams == o.fraglimit_on_teams;
+	}
 };
 
 struct MatchPlayer

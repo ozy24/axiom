@@ -96,9 +96,8 @@ VoteChoices Choices()
 {
 	VoteChoices c;
 	c.maps = Core_Vote_MapList(g_map_list->string, ctf->integer != 0);
-	for (size_t i = 0; i < core_ruleset_count; ++i)
-		if (GametypeById(Core_Ruleset_Gametype(core_rulesets[i])))
-			c.gametypes.push_back(core_rulesets[i].name);
+	for (const Ruleset &r : Core_Rulesets_Available())
+		c.gametypes.push_back(r.name);
 	return c;
 }
 
@@ -109,30 +108,12 @@ bool Live()
 	return Core_Match_OwnsRules() && !Core_Match_Warmup();
 }
 
-// The gametype a built-in ruleset selects, or null (a custom one: unknown).
-const GametypeDef *RulesetGametype(std::string_view name)
-{
-	const RulesetDef *def = Core_Ruleset_Find(name);
-	return def ? GametypeById(Core_Ruleset_Gametype(*def)) : nullptr;
-}
-
-// A built-in ruleset as a gametype vote names it: "Duel", "Duel: HoonyMode".
-std::string RulesetLabel(const RulesetDef &def)
-{
-	const GametypeDef *gt = GametypeById(Core_Ruleset_Gametype(def));
-	const std::string title = gt ? gt->title : def.name;
-	return def.variant ? title + ": " + def.variant : title;
-}
-
-// A gametype vote's argument as a ruleset name: a gametype id means its
-// standard ruleset (`callvote gametype ffa` is "match").
+// A gametype vote's argument as a ruleset name: a gametype id means its own
+// ruleset (they share names), and anything else a ruleset by name.
 std::string GametypeVoteRuleset(std::string arg)
 {
 	for (char &c : arg)
 		c = (char)tolower((unsigned char)c);
-	if (!Core_Ruleset_Find(arg))
-		if (const RulesetDef *standard = Core_Ruleset_Standard(arg))
-			return standard->name;
 	return arg;
 }
 
@@ -150,10 +131,12 @@ std::string Commands(const VoteProposal &p)
 		return std::string("map ") + level.mapname + "\n";
 	case VoteKind::Gametype:
 	{
-		// The whole ruleset, not just g_gametype: HoonyMode's rounds must not
-		// follow a vote to TDM.
-		const GametypeDef *gt = RulesetGametype(p.arg);
-		return Core_Ruleset_Commands(p.arg) + "map " + map_for(gt ? gt : Core_Gametype_Active()) + "\n";
+		// The whole ruleset, from the gametype's defaults (decision 0013):
+		// HoonyMode's rounds must not follow a vote to TDM.
+		const std::optional<Ruleset> r = Core_Rulesets_Find(p.arg);
+		if (!r)
+			return {};
+		return Core_Ruleset_Commands(*r) + "map " + map_for(GametypeById(r->gametype)) + "\n";
 	}
 	}
 	return {};
@@ -201,8 +184,8 @@ void Call(edict_t *ent, std::string_view kind_name, std::string_view arg)
 	if (p.kind == VoteKind::Gametype)
 	{
 		p.arg = GametypeVoteRuleset(p.arg);
-		if (const RulesetDef *def = Core_Ruleset_Find(p.arg))
-			p.label = RulesetLabel(*def);
+		if (const std::optional<Ruleset> r = Core_Rulesets_Find(p.arg))
+			p.label = Core_Rulesets_Title(*r);
 	}
 	const VoteError e = vote.Call(Slot(ent), p, Choices(), Live(), Voters(), level.time.milliseconds());
 	if (e != VoteError::None)
@@ -340,16 +323,14 @@ VoteMenuInfo Core_Vote_MenuInfo(const edict_t *ent)
 	for (size_t i = 0; i < core_gametype_count; ++i)
 	{
 		MenuVoteGametype gt{core_gametypes[i]->id, core_gametypes[i]->title, {}};
-		if (const RulesetDef *standard = Core_Ruleset_Standard(gt.id))
-			gt.rulesets.emplace_back(standard->name, gt.title);
-		for (size_t r = 0; r < core_ruleset_count; ++r)
-			if (core_rulesets[r].variant && Core_Ruleset_Gametype(core_rulesets[r]) == gt.id)
-				gt.rulesets.emplace_back(core_rulesets[r].name, core_rulesets[r].variant);
+		for (const Ruleset &r : Core_Rulesets_Available())
+			if (r.gametype == gt.id)
+				gt.rulesets.emplace_back(r.name, r.variant.empty() ? gt.title : r.variant);
 		info.gametypes.push_back(std::move(gt));
 	}
 	const GametypeDef *gt = Core_Gametype_Active();
 	info.gametype = gt ? gt->id : "";
-	info.ruleset = gi.cvar("g_ruleset", "stock", CVAR_SERVERINFO)->string;
+	info.ruleset = gi.cvar("g_ruleset", "", CVAR_SERVERINFO)->string;
 	return info;
 }
 

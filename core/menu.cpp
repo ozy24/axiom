@@ -201,7 +201,8 @@ MenuPage Core_Menu_MatchInfo(const MenuView &v)
 	Title(page, "Match Info", true);
 	Add(page, "");
 	Add(page, Core_Menu_Clean(v.gametype));
-	Add(page, Core_Menu_Clean("Ruleset: " + v.ruleset));
+	if (!v.ruleset.empty())
+		Add(page, Core_Menu_Clean("Ruleset: " + v.ruleset));
 	Add(page, Core_Menu_Clean("Map: " + v.map_file));
 	Add(page, "");
 	Add(page, "Timelimit: " + Minutes(v.timelimit_min));

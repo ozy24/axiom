@@ -60,7 +60,7 @@ MenuView View(const edict_t *ent)
 	v.gametype = gt ? gt->title : "";
 	v.map = *level.level_name ? level.level_name : level.mapname;
 	v.map_file = level.mapname;
-	v.ruleset = gi.cvar("g_ruleset", "stock", CVAR_SERVERINFO)->string;
+	v.ruleset = gi.cvar("g_ruleset", "", CVAR_SERVERINFO)->string;
 	v.teams = G_TeamplayEnabled();
 	v.ctf = ctf->integer != 0;
 	v.duel = gt && !strcmp(gt->id, "duel");

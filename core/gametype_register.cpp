@@ -2,6 +2,7 @@
 #include "g_local.h"
 
 #include "core/gametype.h"
+#include "core/rulesets.h"
 
 #include <string>
 #include <utility>
@@ -42,6 +43,7 @@ void Core_Gametype_PreInit()
 		return;
 	if (gi.cvar("gamerules", "0", CVAR_LATCH)->integer)
 		return;
+	Core_Rulesets_PreInit(); // server.cfg's starting mode (docs/decisions/0013)
 	cvar_t *g_gametype = gi.cvar("g_gametype", "ffa", CVAR_SERVERINFO | CVAR_LATCH);
 	const GametypeDef *def = Core_Gametype_Find(core_gametypes, core_gametype_count, g_gametype->string);
 	if (!def || !strcmp(def->id, "ffa"))

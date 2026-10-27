@@ -10,7 +10,7 @@ engine side: `core/vote_register.cpp`; harness: tier 14.
 | Command | Does |
 |---|---|
 | `callvote map <name>` | a map on the map list |
-| `callvote gametype <name>` | a gametype's standard settings (`ffa`, `duel`, `tdm`, `ctf`) or a variant (`hoony`, `stock`): applies that built-in ruleset, then reloads. The current settings don't carry over (HoonyMode's rounds don't follow a vote to TDM). `callvote ruleset` is the same command. |
+| `callvote gametype <name>` | a gametype (`ffa`, `duel`, `tdm`, `ctf`) or a variant (`hoony`, or an admin's own listed in `g_rulesets`): switches to that ruleset as `sv ruleset` does (decision 0013), then reloads. The current settings don't carry over (HoonyMode's rounds don't follow a vote to TDM). `callvote ruleset` is the same command. |
 | `callvote restart` | reloads the current map: a fresh warmup |
 | `vote yes` / `vote no` | answer the open vote; an answer can be changed |
 | `yes` / `no` | stock's commands: answer our vote while one is open, else stock's CTF elections as before |
@@ -26,11 +26,11 @@ list's first map (FFA on q2dm1 voted to CTF goes to q2ctf1).
 
 Players vote on gametypes; rulesets are the settings behind them, not a
 separate vote. Each built-in ruleset belongs to the gametype it selects:
-the one with no `variant` is the gametype's standard settings (`match` for
-FFA, `duel`, `tdm`, `ctf`); the others are its variants, named in
-`RulesetDef::variant` (`stock`: "Free For All: Stock"; `hoony`: "Duel:
-HoonyMode"). A future Clan Arena is a TDM variant the same way. Custom
-`rulesets/<name>.cfg` aren't votable (the module can't list files).
+each gametype has its own (`ffa`, `duel`, `tdm`, `ctf`), and variants
+play on top of one: the built-in `hoony` ("Duel: HoonyMode"), or an admin's
+`rulesets/<gametype>_<name>.cfg` listed in `g_rulesets` ("ctf_instagib" is
+"Capture The Flag: Instagib"). A future Clan Arena is a TDM variant the
+same way. docs/admin.md has the admin's side.
 
 ## Rules
 
@@ -97,5 +97,4 @@ no forced menu, a cooldown, and pure tested logic shared by menu and
 console.
 
 Later: an end-of-match map pick and map rotation (MMREX's `map_pick`,
-`map_rotation`); custom `rulesets/<name>.cfg` in the gametype vote (it
-would need a list cvar naming them and their gametype).
+`map_rotation`).

@@ -1040,7 +1040,8 @@ def tier_rounds(args, results):
 
 def tier_human_vote(args, results):
     """Voting through the human path (docs/design/voting.md): three simulated
-    players in an FFA warmup. A map vote two of them refuse fails; its caller
+    players in an FFA warmup, started the admin's way (g_ruleset, with a
+    rulesets/ffa.cfg that holds the warmup open). A map vote two of them refuse fails; its caller
     can't call again at once; a map off the list is refused with the list;
     then a vote one other player answers with stock's `yes` passes, shows on
     the HUD's status line, and loads the map. Q2RED only."""
@@ -1060,9 +1061,13 @@ at 13 1 cmd callvote map q2dm9
 at 14 1 cmd callvote map q2dm3
 at 15 2 cmd yes
 """
-    # match_minplayers 99: the warmup never ends, so votes stay open.
-    startup = scenario_startup(rig, ["+set", "g_gametype", "ffa", "+set", "match_warmup", "1",
-                                     "+set", "match_minplayers", "99", "+map", "q2dm1"])
+    # The server starts its mode the admin's way (docs/admin.md): server.cfg
+    # names it, and rulesets/ffa.cfg changes it - match_minplayers 99, so the
+    # warmup never ends and votes stay open.
+    rulesets = rig.dir / "baseq2" / "rulesets"
+    rulesets.mkdir(parents=True, exist_ok=True)
+    (rulesets / "ffa.cfg").write_text("set match_minplayers 99\n")
+    startup = scenario_startup(rig, ["+set", "g_ruleset", "ffa", "+map", "q2dm1"])
     log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 120)
     tap = read_jsonl(rig.dir / "tap.jsonl")
     detail = []
@@ -1070,6 +1075,8 @@ at 15 2 cmd yes
     if set(humans) != {"Alice", "Bob", "Carol"}:
         results.append(("14 human-vote", False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
         return
+    if "Ruleset: starting ffa (Free For All)" not in log:
+        detail.append("server.cfg's g_ruleset ffa was never applied at startup")
     seen = [l.split("Vote: ", 1)[1].strip() for l in log.splitlines() if "Vote: " in l]
     want = ["Alice called map q2dm2", "map q2dm2 failed", "Bob called map q2dm3", "map q2dm3 passed",
             "running map q2dm3"]

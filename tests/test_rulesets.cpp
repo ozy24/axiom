@@ -2,17 +2,29 @@
 
 #include "core/rulesets.h"
 
+#include <algorithm>
 #include <set>
 #include <sstream>
 #include <string>
 
-// Every cvar a built-in ruleset may set. A typo, or a mod-prefixed name
-// (decision 0004), fails here instead of silently doing nothing.
-static const std::set<std::string> kKnownCvars = {
-    "g_gametype",        "match_warmup",    "match_ready",           "match_minplayers",
-    "match_warmup_time", "match_countdown", "match_overtime",        "timelimit",
-    "fraglimit",         "match_rounds",    "match_round_countdown", "ctf",
-    "teamplay",          "capturelimit",    "match_round_pause",     "match_suicide_point"};
+// Every cvar a built-in may set is a gameplay cvar, which a switch resets
+// (decision 0013). A typo, a mod-prefixed name (decision 0004), or a setting
+// that would leak into the next mode fails here.
+static std::set<std::string> GameplayCvars()
+{
+	std::set<std::string> out;
+	for (size_t i = 0; i < core_gameplay_cvar_count; ++i)
+		out.insert(core_gameplay_cvars[i].name);
+	return out;
+}
+static const std::set<std::string> kKnownCvars = GameplayCvars();
+
+static const std::vector<std::string> kGametypes = {"ffa", "duel", "tdm", "ctf"};
+
+static size_t Find(const std::string &text, const std::string &what)
+{
+	return text.find(what);
+}
 
 TEST_CASE("built-in rulesets only set known cvars, one `set` per line")
 {
@@ -41,55 +53,54 @@ TEST_CASE("built-in rulesets only set known cvars, one `set` per line")
 	}
 }
 
-TEST_CASE("duel selects the duel gametype with the match flow on")
+TEST_CASE("each gametype has one built-in of its own, named after it, that selects it")
 {
-	const RulesetDef *duel = Core_Ruleset_Find("duel");
-	REQUIRE(duel);
-	CHECK(std::string(duel->cfg).find("set g_gametype duel\n") != std::string::npos);
-	CHECK(std::string(duel->cfg).find("set match_warmup 1\n") != std::string::npos);
-}
-
-TEST_CASE("every built-in is a complete profile: it sets the same cvars")
-{
-	auto cvars_of = [](const char *cfg)
+	for (const std::string &gt : kGametypes)
 	{
-		std::set<std::string> out;
-		std::istringstream lines(cfg);
-		std::string line, verb, cvar;
-		while (std::getline(lines, line))
-		{
-			std::istringstream words(line);
-			words >> verb >> cvar;
-			out.insert(cvar);
-		}
-		return out;
-	};
-	const std::set<std::string> first = cvars_of(core_rulesets[0].cfg);
-	for (size_t i = 1; i < core_ruleset_count; ++i)
-	{
-		CAPTURE(core_rulesets[i].name);
-		std::set<std::string> these = cvars_of(core_rulesets[i].cfg);
-		// stock leaves the server's own limits alone; the others set them
-		these.erase("timelimit");
-		these.erase("fraglimit");
-		these.erase("capturelimit"); // only CTF has one
-		CHECK(these == first);
+		CAPTURE(gt);
+		int own = 0;
+		for (size_t i = 0; i < core_ruleset_count; ++i)
+			own += !core_rulesets[i].variant && gt == core_rulesets[i].gametype;
+		CHECK(own == 1);
+		const RulesetDef *def = Core_Ruleset_Find(gt);
+		REQUIRE(def);
+		CHECK_FALSE(def->variant);
+		CHECK(Find(def->cfg, "set g_gametype " + gt + "\n") != std::string::npos);
+		CHECK(Find(def->cfg, "set match_warmup 1\n") != std::string::npos);
 	}
 }
 
-TEST_CASE("hoony is a duel with rounds on")
+TEST_CASE("every built-in sets ctf and teamplay to match its gametype")
+{
+	// Core_Gametype_PreInit lets `ctf 1` / `teamplay 1` pick CTF / TDM when
+	// g_gametype is ffa (stock configs), so a gametype's own settings must
+	// never leave one on.
+	for (size_t i = 0; i < core_ruleset_count; ++i)
+	{
+		if (core_rulesets[i].variant)
+			continue;
+		const std::string cfg = core_rulesets[i].cfg;
+		const std::string gt = core_rulesets[i].gametype;
+		CAPTURE(gt);
+		CHECK(Find(cfg, gt == "ctf" ? "set ctf 1\n" : "set ctf 0\n") != std::string::npos);
+		CHECK(Find(cfg, gt == "tdm" ? "set teamplay 1\n" : "set teamplay 0\n") != std::string::npos);
+	}
+}
+
+TEST_CASE("a variant states only its differences, never its gametype")
 {
 	const RulesetDef *hoony = Core_Ruleset_Find("hoony");
 	REQUIRE(hoony);
-	CHECK(std::string(hoony->cfg).find("set g_gametype duel\n") != std::string::npos);
-	CHECK(std::string(hoony->cfg).find("set match_rounds 1\n") != std::string::npos);
-}
-
-TEST_CASE("stock puts the match flow off")
-{
-	const RulesetDef *stock = Core_Ruleset_Find("stock");
-	REQUIRE(stock);
-	CHECK(std::string(stock->cfg).find("set match_warmup 0\n") != std::string::npos);
+	CHECK(std::string(hoony->gametype) == "duel");
+	CHECK(std::string(hoony->variant) == "HoonyMode");
+	CHECK(Find(hoony->cfg, "set match_rounds 1\n") != std::string::npos);
+	CHECK(Find(hoony->cfg, "set match_suicide_point 1\n") != std::string::npos);
+	for (size_t i = 0; i < core_ruleset_count; ++i)
+	{
+		CAPTURE(core_rulesets[i].name);
+		if (core_rulesets[i].variant)
+			CHECK(Find(core_rulesets[i].cfg, "g_gametype") == std::string::npos);
+	}
 }
 
 TEST_CASE("names are restricted so exec can't leave rulesets/")
@@ -104,29 +115,67 @@ TEST_CASE("names are restricted so exec can't leave rulesets/")
 	CHECK_FALSE(Core_Ruleset_ValidName(std::string(33, 'a')));
 }
 
-TEST_CASE("commands: a built-in's cfg, else exec from rulesets/, then g_ruleset")
+TEST_CASE("resolve: built-ins, and an admin's variants listed in g_rulesets")
 {
-	const std::string match = Core_Ruleset_Commands("match");
-	CHECK(match.find("set match_warmup 1\n") != std::string::npos);
-	CHECK(match.find("exec") == std::string::npos);
-	CHECK(match.substr(match.size() - std::string("set g_ruleset match\n").size()) == "set g_ruleset match\n");
-	CHECK(Core_Ruleset_Commands("clan") == "exec rulesets/clan.cfg\nset g_ruleset clan\n");
-	CHECK(Core_Ruleset_Commands("../x").empty());
+	const auto hoony = Core_Ruleset_Resolve("hoony", "", kGametypes);
+	REQUIRE(hoony);
+	CHECK(hoony->gametype == "duel");
+	CHECK(hoony->variant == "HoonyMode");
+	CHECK(hoony->builtin == Core_Ruleset_Find("hoony"));
+
+	const auto insta = Core_Ruleset_Resolve("ctf_instagib", "ffa_rocket_arena, ctf_instagib", kGametypes);
+	REQUIRE(insta);
+	CHECK(insta->gametype == "ctf");
+	CHECK(insta->variant == "Instagib");
+	CHECK(insta->builtin == nullptr);
+	CHECK(Core_Ruleset_Resolve("ffa_rocket_arena", "ffa_rocket_arena", kGametypes)->variant == "Rocket Arena");
+
+	CHECK_FALSE(Core_Ruleset_Resolve("ctf_instagib", "", kGametypes));           // not listed
+	CHECK_FALSE(Core_Ruleset_Resolve("instagib", "instagib", kGametypes));       // no gametype in its name
+	CHECK_FALSE(Core_Ruleset_Resolve("tag_x", "tag_x", kGametypes));             // not a gametype
+	CHECK_FALSE(Core_Ruleset_Resolve("ctf_", "ctf_", kGametypes));               // no variant
+	CHECK_FALSE(Core_Ruleset_Resolve("../ctf_x", "../ctf_x", kGametypes));       // unsafe
+	CHECK(Core_Ruleset_Resolve("duel", "duel", kGametypes)->builtin != nullptr); // a built-in stays one
 }
 
-TEST_CASE("every built-in sets ctf and teamplay to match its gametype")
+TEST_CASE("all: by gametype, its own first, then built-in variants, then the admin's")
 {
-	// Core_Gametype_PreInit lets `ctf 1` / `teamplay 1` pick CTF / TDM when
-	// g_gametype is ffa (stock configs), so a ruleset must never leave one on.
-	for (size_t i = 0; i < core_ruleset_count; ++i)
+	std::vector<std::string> names;
+	for (const Ruleset &r : Core_Ruleset_All("ctf_instagib duel_x duel_x junk", kGametypes))
+		names.push_back(r.name);
+	CHECK(names == std::vector<std::string>{"ffa", "duel", "hoony", "duel_x", "tdm", "ctf", "ctf_instagib"});
+}
+
+TEST_CASE("a switch resets every gameplay cvar, then the gametype, then the variant")
+{
+	const std::string text = Core_Ruleset_Commands(*Core_Ruleset_Resolve("hoony", "", kGametypes));
+	// 1. every gameplay cvar to its default, before anything else
+	for (size_t i = 0; i < core_gameplay_cvar_count; ++i)
 	{
-		const std::string cfg = core_rulesets[i].cfg;
-		CAPTURE(core_rulesets[i].name);
-		const bool is_ctf = cfg.find("set g_gametype ctf\n") != std::string::npos;
-		const bool is_tdm = cfg.find("set g_gametype tdm\n") != std::string::npos;
-		CHECK(cfg.find(is_ctf ? "set ctf 1\n" : "set ctf 0\n") != std::string::npos);
-		CHECK(cfg.find(is_tdm ? "set teamplay 1\n" : "set teamplay 0\n") != std::string::npos);
+		const std::string reset =
+		    std::string("set ") + core_gameplay_cvars[i].name + " \"" + core_gameplay_cvars[i].value + "\"\n";
+		CAPTURE(reset);
+		CHECK(Find(text, reset) < Find(text, "set g_gametype duel\n"));
 	}
+	// 2. the gametype's own settings, then the admin's cfg for it
+	CHECK(Find(text, "set g_gametype duel\n") < Find(text, "exec rulesets/duel.cfg\n"));
+	// 3. the variant's settings, then the admin's cfg for it
+	CHECK(Find(text, "exec rulesets/duel.cfg\n") < Find(text, "set match_rounds 1\n"));
+	CHECK(Find(text, "set match_rounds 1\n") < Find(text, "exec rulesets/hoony.cfg\n"));
+	const std::string tail = "set g_ruleset hoony\nset g_ruleset_applied hoony\n";
+	CHECK(text.substr(text.size() - tail.size()) == tail);
+}
+
+TEST_CASE("a gametype's own switch has no variant step; an admin's variant execs its file")
+{
+	const std::string tdm = Core_Ruleset_Commands(*Core_Ruleset_Resolve("tdm", "", kGametypes));
+	CHECK(Find(tdm, "exec rulesets/tdm.cfg\n") != std::string::npos);
+	CHECK(Find(tdm, "exec") == Find(tdm, "exec rulesets/tdm.cfg\n")); // the only exec
+	CHECK(Find(tdm, "set match_rounds 0\n") != std::string::npos);    // a duel's rounds don't follow
+
+	const std::string insta = Core_Ruleset_Commands(*Core_Ruleset_Resolve("ctf_instagib", "ctf_instagib", kGametypes));
+	CHECK(Find(insta, "set g_gametype ctf\n") < Find(insta, "exec rulesets/ctf.cfg\n"));
+	CHECK(Find(insta, "exec rulesets/ctf.cfg\n") < Find(insta, "exec rulesets/ctf_instagib.cfg\n"));
 }
 
 TEST_CASE("only hoony gives a suicide's point to the opponent")
@@ -135,24 +184,30 @@ TEST_CASE("only hoony gives a suicide's point to the opponent")
 	{
 		CAPTURE(core_rulesets[i].name);
 		const bool hoony = std::string(core_rulesets[i].name) == "hoony";
-		CHECK(std::string(core_rulesets[i].cfg)
-		          .find(hoony ? "set match_suicide_point 1\n" : "set match_suicide_point 0\n") != std::string::npos);
+		const bool sets = Find(core_rulesets[i].cfg, "set match_suicide_point 1\n") != std::string::npos;
+		CHECK(sets == hoony);
 	}
 }
 
-TEST_CASE("every gametype has exactly one standard ruleset, and it selects that gametype")
+TEST_CASE("the settings set at load: the reset, then the gametype's and the variant's own, in order")
 {
-	for (const char *gt : {"ffa", "duel", "tdm", "ctf"})
+	const auto settings = Core_Ruleset_Settings(*Core_Ruleset_Resolve("hoony", "", kGametypes));
+	auto last = [&](const std::string &cvar)
 	{
-		CAPTURE(gt);
-		int standards = 0;
-		for (size_t i = 0; i < core_ruleset_count; ++i)
-			standards += !core_rulesets[i].variant && Core_Ruleset_Gametype(core_rulesets[i]) == gt;
-		CHECK(standards == 1);
-		REQUIRE(Core_Ruleset_Standard(gt) != nullptr);
-		CHECK(Core_Ruleset_Gametype(*Core_Ruleset_Standard(gt)) == gt);
-	}
-	CHECK(std::string(Core_Ruleset_Standard("ffa")->name) == "match");
-	CHECK(std::string(Core_Ruleset_Standard("duel")->name) == "duel"); // not hoony
-	CHECK(Core_Ruleset_Standard("tag") == nullptr);
+		std::string value = "(unset)";
+		for (const auto &[name, v] : settings)
+			if (name == cvar)
+				value = v;
+		return value;
+	};
+	CHECK(settings.front().first == core_gameplay_cvars[0].name); // the reset comes first
+	CHECK(last("g_gametype") == "duel");
+	CHECK(last("match_warmup") == "1"); // the duel's own
+	CHECK(last("match_rounds") == "1"); // hoony over it
+	CHECK(last("fraglimit") == "5");
+	CHECK(last("g_map_list") == ""); // reset, quotes stripped
+
+	// An admin's variant: the gametype's own settings; its file is queued.
+	const auto insta = Core_Ruleset_Settings(*Core_Ruleset_Resolve("ctf_instagib", "ctf_instagib", kGametypes));
+	CHECK(std::find(insta.begin(), insta.end(), std::make_pair(std::string("ctf"), std::string("1"))) != insta.end());
 }

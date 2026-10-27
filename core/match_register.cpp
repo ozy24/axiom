@@ -325,7 +325,7 @@ void WriteMatchRecord()
 		r.gametype = gt->id;
 	else
 		r.gametype = G_Fmt("stock gamerules {}", gamerules->integer).data();
-	r.ruleset = gi.cvar("g_ruleset", "stock", CVAR_SERVERINFO)->string;
+	r.ruleset = gi.cvar("g_ruleset", "", CVAR_SERVERINFO)->string;
 	r.map = level.mapname;
 	r.ended_at_utc = UtcNow();
 	r.reason = end_reason.empty() ? "rules" : end_reason;
@@ -434,6 +434,19 @@ void Core_Match_Frame()
 	}
 	last_time = level.time;
 	Core_Vote_Frame();
+	// Settings that change before the match starts take effect: an admin's
+	// rulesets/<gametype>.cfg lands after the level has begun (the engine runs
+	// queued commands when it gets to them), and so does a `set` in warmup.
+	if (match.OwnsRules() && match.State() == MatchState::Warmup && !level.intermissiontime)
+	{
+		const MatchConfig config = ReadConfig();
+		if (!(config == match.Config()))
+		{
+			match = Match(config);
+			match.Begin(level.time.milliseconds());
+			gi.Com_PrintFmt("Match: settings changed; {}\n", MatchStateName(match.State()));
+		}
+	}
 
 	// The gametype's own per-frame work and end-of-match hook run whether or
 	// not the match flow owns the rules (stock rules can end the level too).

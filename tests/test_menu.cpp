@@ -81,7 +81,7 @@ MenuView Voting(MenuView v)
 	v.vote_can_call = true;
 	v.vote_kinds = {"map", "gametype", "restart"};
 	v.vote_maps = {"q2dm1", "q2dm2", "q2dm3"};
-	v.vote_gametypes = {{"ffa", "Free For All", {{"match", "Free For All"}, {"stock", "Stock"}}},
+	v.vote_gametypes = {{"ffa", "Free For All", {{"ffa", "Free For All"}, {"ffa_casual", "Casual"}}},
 	                    {"duel", "Duel", {{"duel", "Duel"}, {"hoony", "HoonyMode"}}},
 	                    {"tdm", "Team Deathmatch", {{"tdm", "Team Deathmatch"}}}};
 	v.gametype_id = "ffa";
@@ -299,8 +299,8 @@ TEST_CASE("menu: vote maps call the vote; the current one is marked and skipped"
 
 TEST_CASE("menu: a gametype with variants opens them; one with a single ruleset is voted from the list")
 {
-	MenuView v = Voting(Ffa()); // FFA, ruleset match
-	v.ruleset = "match";
+	MenuView v = Voting(Ffa()); // FFA, ruleset ffa
+	v.ruleset = "ffa";
 	const MenuPage gts = Core_Menu_VoteGametypes(v);
 	CHECK(gts[0].text == "Vote: Gametype");
 	CHECK(Row(gts, "Free For All")->action == MenuAction::VoteVariants); // still selectable: pick Stock
@@ -320,7 +320,7 @@ TEST_CASE("menu: a gametype with variants opens them; one with a single ruleset 
 
 	const MenuPage ffa = Core_Menu_VoteVariants(v, "ffa");
 	CHECK(Row(ffa, "Free For All")->action == MenuAction::None); // the current ruleset
-	CHECK(Row(ffa, "Stock")->arg == "gametype stock");
+	CHECK(Row(ffa, "Casual")->arg == "gametype ffa_casual");
 
 	// Playing TDM: its single row is the current one.
 	v.gametype_id = "tdm";
