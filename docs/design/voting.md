@@ -73,9 +73,14 @@ anything else is dropped, so a list can't inject a console command.
 ## What players see
 
 - The HUD's single status line (docs/design/hud.md) shows the vote instead
-  of the match status while it is open, `VOTE: MAP Q2DM3 (1/3)` or `VOTE:
-  DUEL: HOONYMODE (1/3)` (yes votes / voters), then `VOTE PASSED`.
-- A broadcast when a vote is called, passes, fails or times out.
+  of the match status while it is open, `VOTE: MAP Q2DM3 - YES 1/3 - 27s`
+  or `VOTE: DUEL: HOONYMODE - YES 1/3 - 27s` (yes votes / voters, seconds
+  left), then `VOTE PASSED`.
+- A broadcast when a vote is called, passes, fails or times out; the call
+  plays `misc/pc_up.wav` to every player (MuffMode's vote sound).
+- `sv callvote <kind> [choice]`: the admin puts a vote to the players. The
+  server has no answer of its own; g_vote, g_vote_allow, the midgame rule,
+  the call limit and the cooldown don't apply; the lists still do.
 - The Tab menu: while a vote is open, a voter's main page leads with the
   proposal and **Vote Yes / Vote No** (the cursor starts on Vote Yes; their
   current answer is marked and skipped). When they can call one, **Call a
