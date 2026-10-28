@@ -27,6 +27,12 @@ const char *MatchStateName(MatchState state)
 	return "?";
 }
 
+bool MatchStateInPlay(MatchState state)
+{
+	return state == MatchState::Live || state == MatchState::Overtime || state == MatchState::RoundOver ||
+	       state == MatchState::RoundCountdown;
+}
+
 namespace
 {
 int PlayingCount(const MatchInput &in)
@@ -209,6 +215,13 @@ void Speak(int s, std::vector<MatchAction> &out)
 		out.push_back({MatchActionKind::Sound, sound, 0});
 }
 } // namespace
+
+MatchHudText Core_Match_StockHudText(int64_t now_ms, int64_t timelimit_ms)
+{
+	if (timelimit_ms <= 0)
+		return {};
+	return {"", Clock(timelimit_ms - now_ms)};
+}
 
 MatchHudText Match::HudText(const MatchInput &in) const
 {

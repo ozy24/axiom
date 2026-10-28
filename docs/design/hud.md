@@ -27,8 +27,9 @@ element has one fixed place so players learn where to look.
 | Element | Where | Token | Shows |
 |---|---|---|---|
 | Match status | top middle, just under the 4 notify lines | `xv 0 yt 43 loc_stat_cstring2` | WAITING FOR PLAYERS / TEAMS, WARMUP, COUNTDOWN, OVERTIME, SUDDEN DEATH, ROUND OVER, MATCH END; nothing in normal live play. An open vote replaces it: `VOTE: MAP Q2DM3 - YES 1/3 - 27s`, then `VOTE PASSED` |
-| Clock | bottom, half way from the 320 box's edge to the centre, above the stock HUD | `xv -80 yb -61 loc_stat_cstring2` (centred on xv 80) | always: the match length before it starts (0:00 with no timelimit), then the time left (or up from LIVE with no timelimit), 0:00 in sudden death |
+| Clock | bottom, half way from the 320 box's edge to the centre, above the stock HUD | `xv -80 yb -61 loc_stat_cstring2` (centred on xv 80) | always: the match length before it starts (0:00 with no timelimit), then the time left (or up from LIVE with no timelimit), 0:00 in sudden death. With the match flow off (`match_warmup 0`, stock's rules): the time left on stock's timelimit from the level's start, and no clock with `timelimit 0` |
 | Countdown digits | the screen centre, below the crosshair | `xv 118 yv 64 num 3` | the match or round countdown's seconds; hidden otherwise |
+| Miniscore | bottom right, where team modes show their team scores | `yb -116` / `yb -83`, faces at `xr -34`, `num 3` at `xr -86` | outside team modes, while the match is in play (not warmup, the countdown or the intermission): the top two players' faces (their skin's 32×32 icon) and scores, the same for everyone (ties to the lower slot). Not MuffMode's "leader and you": with no highlight, a row of your own only repeated the frag counter. No "you" highlight (stock's 28×28 frame doesn't fit a 32×32 face, and pictures can't be scaled); stock's frag counter top right still shows your own score (`core/miniscore*`) |
 | Name line | above the clock | `xv 2 yb -71` | the player a spectator chases; in team modes the player under the crosshair (`core/id_view*`). Replaces stock's CHASING / SPECTATOR MODE and left-aligned ID lines |
 
 Code: `Match::HudText` / `CountdownSeconds` (`core/match.*`, unit-tested),
@@ -52,5 +53,14 @@ the klaxon (`world/klaxon2.wav`) marks overtime and sudden death, the jingle
   up with the ammo icon. The text was moved to fit around it, not the icon.
 - Stock draws the pickup name over the helpicon. That's stock behaviour and
   is left as it is.
+- Stock draws a layout picture at its own size; the server can't scale it.
+  Skin icons are 32×32, the team pictures 24×24, so the miniscore is spaced
+  for faces rather than reusing the team rows' spacing.
+- The miniscore reuses stock's CTF team-score stats (18..21) outside team
+  modes rather than taking 4 of the 10 free slots. It writes them after
+  `SetCTFStats`, which fills them in every mode.
+- A face takes an image configstring for the rest of the level. At most 32
+  distinct faces per level; past that, and for an odd skin name, a row
+  shows stock's default `male/grunt` face.
 - Obituaries need `cl_notifytime` above 0 on the client. Some installs reset
   it to 0 (fix: `set cl_notifytime 5` in the client's `autoexec.cfg`).

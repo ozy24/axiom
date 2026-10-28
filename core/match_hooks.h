@@ -43,7 +43,8 @@ bool Core_Match_ServerCommand(const char *cmd);
 // now (warmup or the countdown, with match_ready), a client's state, and
 // setting it as `ready` / `notready` do.
 bool Core_Match_ReadyUp();
-bool Core_Match_Warmup();                    // the match flow is in warmup (votes are open there by default)
+bool Core_Match_Warmup(); // the match flow is in warmup (votes are open there by default)
+bool Core_Match_InPlay(); // being played: live or between rounds; with the flow off, until the intermission
 bool Core_Match_Playing(const edict_t *ent); // in the match: begun, not a spectator, on a team in team modes
 bool Core_Match_IsReady(const edict_t *ent);
 void Core_Match_SetReady(edict_t *ent, bool ready);

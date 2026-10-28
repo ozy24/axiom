@@ -13,6 +13,11 @@ exactly as stock. The comparison tests (tiers 1-3) run with defaults, so they
 keep proving stock behaviour. Everything below happens only when a ruleset
 turns it on.
 
+Off means stock *rules*. The HUD additions (the clock, on stock's
+timelimit; the miniscore; the name line, `docs/design/hud.md`) still show
+under a registered gametype: they change what players see, not how the
+game plays.
+
 ## States
 
 ```

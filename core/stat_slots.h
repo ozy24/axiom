@@ -6,8 +6,8 @@
 // in STAT_LAST..MAX_STATS-1 (54..63, ten slots).
 //
 // The CTF block (18..31) is NOT handed out: SetCTFStats writes it every frame
-// in every mode. Opening it outside team modes would need that call gated
-// first (a [mod] change with its own test).
+// in every mode. Outside team modes the miniscore (core/miniscore*) reuses
+// its team-score stats, overwriting them after SetCTFStats.
 //
 // Allocation is by owner and idempotent: asking again with the same owner and
 // count returns the same slots, so a game reload doesn't exhaust the pool.

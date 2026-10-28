@@ -753,3 +753,20 @@ TEST_CASE("sounds: none with the match flow off (stock)")
 	m.Begin(0);
 	CHECK(Sounds(m.Update(At(1000, {P(1, true)}))).empty());
 }
+
+TEST_CASE("match: with the flow off the clock counts down stock's timelimit")
+{
+	CHECK(Core_Match_StockHudText(0, 600000).clock == "10:00");
+	CHECK(Core_Match_StockHudText(1, 600000).clock == "10:00");
+	CHECK(Core_Match_StockHudText(1000, 600000).clock == "9:59");
+	CHECK(Core_Match_StockHudText(599001, 600000).clock == "0:01");
+	CHECK(Core_Match_StockHudText(600000, 600000).clock == "0:00");
+	CHECK(Core_Match_StockHudText(700000, 600000).clock == "0:00"); // the intermission
+	CHECK(Core_Match_StockHudText(5000, 600000).status.empty());
+}
+
+TEST_CASE("match: with the flow off and no timelimit, no clock")
+{
+	CHECK(Core_Match_StockHudText(5000, 0).clock.empty());
+	CHECK(Core_Match_StockHudText(5000, 0).status.empty());
+}
