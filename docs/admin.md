@@ -73,10 +73,27 @@ Each switch starts clean: nothing a previous mode set carries over.
 | `g_vote` | 1 | voting on |
 | `g_vote_allow` | `map gametype restart` | what players can call |
 | `g_vote_midgame` | 1 | also during a match; 0 = warmup only |
-| `g_map_list` | (stock maps) | maps a vote may pick; empty = q2dm1-8, or q2ctf1-5 in CTF |
+| `g_map_list` | (empty) | the map rotation, and the maps a vote may pick |
+| `g_map_list_shuffle` | 1 | play the rotation in a random order; 0 = as written |
 
 `sv callvote <map|gametype|restart> [choice]` puts a vote to the players
 from the console (the server casts no vote; the player limits don't apply).
 
-`g_map_list` is gameplay, so set it in a gametype's file. The rest is
-`server.cfg`. Details: docs/design/voting.md.
+`g_map_list` and `g_map_list_shuffle` are gameplay, so set them in a
+gametype's file (`set g_map_list "q2dm1 q2dm2 q2dm6 q2dm8"` in
+`rulesets/ffa.cfg`). The rest is `server.cfg`. Details:
+docs/design/voting.md, docs/decisions/0014.
+
+How the rotation runs:
+
+- Each map in the list plays once per pass. Shuffled, every pass is in a
+  new order, and a map never comes back until at least half the list has
+  played since its last turn.
+- The map the server starts on (`+map`, or the listen server's menu) need
+  not be in the list: after it, the rotation starts.
+- A voted map that is in the list carries the rotation on from its place.
+- With no list, each map leads to its own next one, as stock does (and a
+  vote offers q2dm1-8, or q2ctf1-5 in CTF).
+- `maplist` (players) and `sv maplist` (console) show the rotation and
+  what's next; so does the Tab menu's Match Info, and everyone sees
+  "Next map: ..." as the match ends.

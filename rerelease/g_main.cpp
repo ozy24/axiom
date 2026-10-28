@@ -6,6 +6,7 @@
 #include "core/identity.h" // [mod]
 #include "core/gametype.h" // [mod]
 #include "core/match_hooks.h" // [mod]
+#include "core/maps_hooks.h" // [mod]
 
 CHECK_GCLIENT_INTEGRITY;
 CHECK_EDICT_INTEGRITY;
@@ -537,6 +538,9 @@ void EndDMLevel()
 		BeginIntermission(CreateTargetChangeLevel(level.forcemap));
 		return;
 	}
+
+	if (Core_Maps_EndLevel()) // [mod] the map rotation (core/maps.h); stock's below with no list
+		return; // [mod]
 
 	// see if it's in the map list
 	if (*g_map_list->string)

@@ -65,10 +65,11 @@ same way. docs/admin.md has the admin's side.
 | `g_vote_time` | 30 | seconds to vote (minimum 5) |
 | `g_vote_cooldown` | 30 | seconds after a caller's failed vote |
 | `g_vote_limit` | 3 | calls per player per map; 0 = no limit |
-| `g_map_list` | (empty) | maps a vote may pick; empty = q2dm1-8, or q2ctf1-5 under CTF |
+| `g_map_list` | (empty) | the rotation (decision 0014), which a vote picks from; empty = q2dm1-8, or q2ctf1-5 under CTF |
 
-List words are lowercased and must be `[a-z0-9_-]`, up to 32 characters;
-anything else is dropped, so a list can't inject a console command.
+List words are lowercased and must be `[a-z0-9_-]` (maps may also have
+`/` between parts, as `q64/dm1`), up to 32 characters; anything else is
+dropped, so a list can't inject a console command.
 
 ## What players see
 

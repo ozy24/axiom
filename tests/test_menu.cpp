@@ -53,7 +53,7 @@ MenuView Teams()
 MenuView Longest()
 {
 	MenuView v = Teams();
-	v.hostname = v.gametype = v.map = v.map_file = v.ruleset = std::string(60, 'W');
+	v.hostname = v.gametype = v.map = v.map_file = v.next_map = v.ruleset = std::string(60, 'W');
 	v.red = v.blue = 99;
 	v.team = 0;
 	v.ready_up = v.ready_required = v.rounds = true;
@@ -265,6 +265,9 @@ TEST_CASE("menu: match info names the rules, and returns to the main page")
 	CHECK(Shows(page, "Timelimit: 10 min"));
 	CHECK(Shows(page, "Overtime: sudden death"));
 	CHECK(Shows(page, "Ready-up: on"));
+	CHECK_FALSE(Shows(page, "Next map: "));
+	v.next_map = "q2ctf3";
+	CHECK(Shows(Core_Menu_MatchInfo(v), "Next map: q2ctf3"));
 	CHECK(page.back().action == MenuAction::Back);
 	CHECK(page.back().text == "$g_pc_return");
 

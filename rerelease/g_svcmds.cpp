@@ -5,6 +5,7 @@
 #include "core/rulesets.h" // [mod]
 #include "core/match_hooks.h" // [mod]
 #include "core/vote_hooks.h" // [mod]
+#include "core/maps_hooks.h" // [mod]
 
 void Svcmd_Test_f()
 {
@@ -288,7 +289,7 @@ void ServerCommand()
 	const char *cmd;
 
 	cmd = gi.argv(1);
-	if (Core_Rulesets_ServerCommand(cmd) || Core_Match_ServerCommand(cmd) || Core_Vote_ServerCommand(cmd)) // [mod] sv ruleset(s), sv match, sv callvote
+	if (Core_Rulesets_ServerCommand(cmd) || Core_Match_ServerCommand(cmd) || Core_Vote_ServerCommand(cmd) || Core_Maps_ServerCommand(cmd)) // [mod] sv ruleset(s), sv match, sv callvote, sv maplist
 		return;
 	if (Q_strcasecmp(cmd, "test") == 0)
 		Svcmd_Test_f();

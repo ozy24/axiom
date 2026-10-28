@@ -1,6 +1,8 @@
 // Pure part of voting (core/vote.h). No engine access.
 #include "core/vote.h"
 
+#include "core/maps.h"
+
 #include <algorithm>
 #include <cctype>
 
@@ -96,7 +98,7 @@ std::vector<std::string> Core_Vote_Words(std::string_view text)
 
 std::vector<std::string> Core_Vote_MapList(std::string_view g_map_list, bool ctf)
 {
-	std::vector<std::string> maps = Core_Vote_Words(g_map_list);
+	std::vector<std::string> maps = Core_Maps_Words(g_map_list);
 	if (!maps.empty())
 		return maps;
 	if (ctf)

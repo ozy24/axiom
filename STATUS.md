@@ -2,7 +2,7 @@
 
 _Updated at the end of every session. Last update: 2026-10-28._
 
-## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD done)
+## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation done)
 
 ## Phase 2b, part 1 (match flow) done
 - `core/match.*` state machine (24 unit-test cases) and adapter: warmup,
@@ -153,6 +153,21 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
 - Fixed from the playtest: a gametype vote kept the old mode's settings; the
   countdown started on a map change before the humans had loaded, then was
   cancelled.
+
+## Map rotation (2026-10-28, decision 0014)
+- Compared MuffMode's and MMREX's map handling and kept it small: one
+  `g_map_list` per gametype, both the rotation and what a map vote offers.
+  No vote-only pool, no MyMap, no end-of-match pick, and no reset of an
+  empty server (Chris turned each down).
+- `core/maps.*` behind one marked call in `EndDMLevel`: a map off the list
+  (the starting map) is followed by the list's first; shuffled from the
+  first pass; each new pass reshuffled so no map returns until half the
+  list has played since. The order lives in `g_map_order`; `g_map_list`
+  is never rewritten. No list: stock's rotation, unchanged.
+- `g_map_list_shuffle` joins the ruleset reset (stock default 0; every
+  built-in ruleset sets 1). `maplist` / `sv maplist`, "Next map: ..." at
+  intermission and in the Tab menu's Match Info. Map names may have `/`
+  (`q64/dm1`), in votes too. Harness tier 15.
 
 Next: Phase 4's remainder - timeouts/pauses, admin controls, per-gametype
 scoreboards (Chris asked about an OpenFFA-style FFA board: feasible within

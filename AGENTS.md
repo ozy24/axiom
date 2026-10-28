@@ -167,6 +167,10 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   refused map vote fails, its caller waits out the cooldown, a map off the
   list is answered with the list, then a vote answered with stock's `yes`
   passes, shows on the HUD's status line and loads the map.
+- **Tier 15 maps:** a shuffled three-map `g_map_list` (q2dm3-5), started off the list
+  on q2dm1, with bots: four level ends, each followed by a `gamemap` to the
+  announced map; the first pass plays every listed map once, the next pass
+  doesn't open with the map just played, and `g_map_list` is unchanged.
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.
