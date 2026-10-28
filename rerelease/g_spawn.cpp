@@ -4,6 +4,7 @@
 #include "g_local.h"
 #include "core/match_hooks.h" // [mod]
 #include "core/id_view_hooks.h" // [mod]
+#include "core/miniscore_hooks.h" // [mod]
 
 struct spawn_t
 {
@@ -1389,6 +1390,7 @@ static void G_InitStatusbar()
 		// dm
 		// frags
 		sb.xr(-50).yt(2).num(3, STAT_FRAGS);
+		Core_Miniscore_Statusbar(sb); // [mod] two players' faces and scores, bottom right
 
 		if (!Core_IdView_Statusbar(sb)) // [mod] the chased name, centred above the match status under a registered gametype; else stock's (single player, coop too):
 		{ // [mod]

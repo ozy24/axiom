@@ -25,6 +25,10 @@ enum class MatchState
 
 const char *MatchStateName(MatchState state);
 
+// The match is being played: live, overtime, or between rounds. Not warmup,
+// the countdown or the intermission.
+bool MatchStateInPlay(MatchState state);
+
 struct MatchPlayer;
 
 // The one playing client other than `self`, or -1 if there isn't exactly one
@@ -84,6 +88,11 @@ struct MatchHudText
 	std::string status;
 	std::string clock;
 };
+
+// The HUD with the match flow off (stock's rules): no status, and the clock
+// counts down stock's timelimit from the level's start (CheckDMRules), 0:00
+// once it's up. No clock with no timelimit.
+MatchHudText Core_Match_StockHudText(int64_t now_ms, int64_t timelimit_ms);
 
 enum class MatchActionKind
 {

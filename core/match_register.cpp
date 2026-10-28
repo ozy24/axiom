@@ -251,7 +251,13 @@ void Publish(int configstring, std::string &published, const std::string &text)
 
 void PublishHud()
 {
-	MatchHudText hud = match.OwnsRules() ? match.HudText(Snapshot()) : MatchHudText{};
+	// With the flow off, stock's timelimit on the clock: in deathmatch under a
+	// registered gametype (Rogue's stock gamerules modes stay stock).
+	MatchHudText hud;
+	if (match.OwnsRules())
+		hud = match.HudText(Snapshot());
+	else if (deathmatch->integer && Core_Gametype_Active())
+		hud = Core_Match_StockHudText(level.time.milliseconds(), (int64_t)(timelimit->value * 60000));
 	// An open vote takes the status's place; the clock stays (core/vote_register.cpp).
 	if (std::string vote = Core_Vote_HudText(); !vote.empty())
 		hud.status = std::move(vote);
@@ -619,6 +625,13 @@ bool Core_Match_ReadyUp()
 bool Core_Match_Warmup()
 {
 	return Core_Match_OwnsRules() && match.State() == MatchState::Warmup;
+}
+
+bool Core_Match_InPlay()
+{
+	if (level.intermissiontime)
+		return false;
+	return !Core_Match_OwnsRules() || MatchStateInPlay(match.State());
 }
 
 bool Core_Match_IsReady(const edict_t *ent)

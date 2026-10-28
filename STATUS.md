@@ -2,7 +2,7 @@
 
 _Updated at the end of every session. Last update: 2026-10-28._
 
-## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation done)
+## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
 ## Phase 2b, part 1 (match flow) done
 - `core/match.*` state machine (24 unit-test cases) and adapter: warmup,
@@ -169,9 +169,30 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
   intermission and in the Tab menu's Match Info. Map names may have `/`
   (`q64/dm1`), in votes too. Harness tier 15.
 
-Next: Phase 4's remainder - timeouts/pauses, admin controls, per-gametype
-scoreboards (Chris asked about an OpenFFA-style FFA board: feasible within
-the 1024-byte layout, waiting on his column list), then the M4 checklist on
+## Miniscore and the stock-rules clock (2026-10-28)
+- Outside team modes, bottom right: the top two players' faces (their
+  skin's 32x32 icon) and scores while the match is in play (`core/miniscore*`,
+  two marked calls). Compared with MuffMode/MMREX (leader and you, a "you"
+  frame): Chris chose the top two and no frame. Stock can't scale layout
+  pictures and no stock frame fits a 32x32 face. Reuses stock's CTF
+  team-score stats (18..21), so the 6 free stat slots stay free. At most
+  32 distinct faces per level (each takes an image configstring for the
+  level; a full table is a fatal error); odd skin names and the overflow
+  show `male/grunt`. Untested: how a client draws a face for a custom skin
+  it doesn't have.
+- With the match flow off, the clock shows stock's timelimit counting down
+  (none with `timelimit 0`). `match-flow.md`: off means stock *rules*; the
+  HUD additions still show.
+- "Server is full" on a map change at 8/8 (Chris, 2026-10-28): the server
+  log shows the lobby reconnect working; the refusal is most likely a second
+  connect over direct UDP, which doesn't match the lobby slot (the same in
+  Q2RED and retail). Unconfirmed: needs `developer 1` on the rig. Retail
+  also appears to kick a bot for a joining human on a full server; Q2RED
+  doesn't (a Q2RED item).
+
+Next: Phase 4's remainder - Chris has other features to work through first,
+then timeouts/pauses, admin controls, per-gametype scoreboards (an
+OpenFFA-style FFA board waits on his column list), then the M4 checklist on
 Q2REX and a retail listen server.
 
 ## Known issues
