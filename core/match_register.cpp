@@ -8,10 +8,14 @@
 #include "core/host_files.h"
 #include "core/match_record.h"
 #include "core/player_name.h"
+#include "core/stat_slots.h"
+#include "g_statusbar.h"
 #include "mod_identity.h"
 #include "core/match_hooks.h"
+#include "core/vote_hooks.h"
 
 #include <array>
+#include <optional>
 #include <chrono>
 #include <ctime>
 #include <filesystem>
@@ -73,6 +77,8 @@ MatchConfig ReadConfig()
 	// is the team score, and in TDM the fraglimit is too (CheckEndTDMLevel).
 	c.teams = G_TeamplayEnabled();
 	c.fraglimit_on_teams = teamplay->integer != 0;
+	c.join_grace_ms = 10000;
+	c.join_wait_ms = 30000;
 	return c;
 }
 
@@ -104,10 +110,14 @@ MatchInput Snapshot()
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		const edict_t *ent = ClientEdict(i);
-		if (!ent->inuse || !ent->client || !ent->client->pers.connected)
+		if (!ent->client || !ent->client->pers.connected)
 			continue;
 		MatchPlayer p;
 		p.id = (int)i;
+		// Connected, not yet begun: loading the map (not inuse until ClientBegin).
+		p.joining = !ent->client->pers.spawned && !(ent->svflags & SVF_BOT);
+		if (!ent->inuse && !p.joining)
+			continue;
 		p.playing = Playing(ent);
 		// Bots can't type `ready`; they never hold a match up.
 		p.ready = ready[i] || (ent->svflags & SVF_BOT);
@@ -202,6 +212,52 @@ void ResetArena(bool players)
 	}
 }
 
+// The HUD's match status and clock (docs/design/hud.md): each text lives in a
+// general configstring stock leaves free; a player's stat points at it while
+// there is text, so an empty one isn't drawn.
+constexpr int kStatusConfigstring = CONFIG_LAST;
+constexpr int kClockConfigstring = CONFIG_LAST + 1;
+static_assert(kClockConfigstring < CS_GENERAL + MAX_GENERAL, "no free general configstring");
+std::string status_text; // what the configstrings hold now
+std::string clock_text;
+
+player_stat_t StatusStat()
+{
+	static const std::optional<int> slot = Core_StatSlots().Allocate("match_status");
+	return (player_stat_t)(slot ? *slot : 0);
+}
+
+player_stat_t ClockStat()
+{
+	static const std::optional<int> slot = Core_StatSlots().Allocate("match_clock");
+	return (player_stat_t)(slot ? *slot : 0);
+}
+
+// The HUD's big countdown digits: seconds left in the match or round countdown.
+player_stat_t CountdownStat()
+{
+	static const std::optional<int> slot = Core_StatSlots().Allocate("match_countdown");
+	return (player_stat_t)(slot ? *slot : 0);
+}
+
+void Publish(int configstring, std::string &published, const std::string &text)
+{
+	if (text == published)
+		return;
+	published = text;
+	gi.configstring(configstring, text.c_str());
+}
+
+void PublishHud()
+{
+	MatchHudText hud = match.OwnsRules() ? match.HudText(Snapshot()) : MatchHudText{};
+	// An open vote takes the status's place; the clock stays (core/vote_register.cpp).
+	if (std::string vote = Core_Vote_HudText(); !vote.empty())
+		hud.status = std::move(vote);
+	Publish(kStatusConfigstring, status_text, hud.status);
+	Publish(kClockConfigstring, clock_text, hud.clock);
+}
+
 // Warmup and the countdown are free play: every frag, suicide and capture is
 // undone in the frame it happens, before any client sees it.
 void ZeroScores()
@@ -275,7 +331,7 @@ void WriteMatchRecord()
 		r.gametype = gt->id;
 	else
 		r.gametype = G_Fmt("stock gamerules {}", gamerules->integer).data();
-	r.ruleset = gi.cvar("g_ruleset", "stock", CVAR_SERVERINFO)->string;
+	r.ruleset = gi.cvar("g_ruleset", "", CVAR_SERVERINFO)->string;
 	r.map = level.mapname;
 	r.ended_at_utc = UtcNow();
 	r.reason = end_reason.empty() ? "rules" : end_reason;
@@ -332,10 +388,17 @@ void Act(const std::vector<MatchAction> &actions)
 		case MatchActionKind::Announce:
 			CenterAll(a.text);
 			break;
-		case MatchActionKind::Countdown:
-			CenterAll((match.State() == MatchState::RoundCountdown ? "Next round in " : "Match starts in ") +
-			          std::to_string(a.value));
+		case MatchActionKind::Klaxon:
+			// Heard everywhere, as stock CTF plays its match countdown.
+			gi.positioned_sound(world->s.origin, world, CHAN_AUTO | CHAN_RELIABLE, gi.soundindex("world/klaxon2.wav"),
+			                    1, ATTN_NONE, 0);
 			break;
+		case MatchActionKind::Sound:
+			gi.positioned_sound(world->s.origin, world, CHAN_AUTO | CHAN_RELIABLE, gi.soundindex(a.text.c_str()), 1,
+			                    ATTN_NONE, 0);
+			break;
+		case MatchActionKind::Countdown:
+			break; // shown by the HUD's big digits (Core_Match_SetStats)
 		case MatchActionKind::ResetArena:
 			ResetArena(a.value == 0);
 			break;
@@ -370,10 +433,26 @@ void Core_Match_Frame()
 		begun = true;
 		ended_this_level = false;
 		end_reason.clear();
+		status_text.clear(); // configstrings start empty on a new level
+		clock_text.clear();
 		if (match.OwnsRules())
 			gi.Com_PrintFmt("Match: {}\n", MatchStateName(match.State()));
 	}
 	last_time = level.time;
+	Core_Vote_Frame();
+	// Settings that change before the match starts take effect: an admin's
+	// rulesets/<gametype>.cfg lands after the level has begun (the engine runs
+	// queued commands when it gets to them), and so does a `set` in warmup.
+	if (match.OwnsRules() && match.State() == MatchState::Warmup && !level.intermissiontime)
+	{
+		const MatchConfig config = ReadConfig();
+		if (!(config == match.Config()))
+		{
+			match = Match(config);
+			match.Begin(level.time.milliseconds());
+			gi.Com_PrintFmt("Match: settings changed; {}\n", MatchStateName(match.State()));
+		}
+	}
 
 	// The gametype's own per-frame work and end-of-match hook run whether or
 	// not the match flow owns the rules (stock rules can end the level too).
@@ -388,7 +467,10 @@ void Core_Match_Frame()
 			gt->match_ended();
 	}
 	if (!match.OwnsRules() || level.intermissiontime)
+	{
+		PublishHud();
 		return;
+	}
 
 	const MatchState before = match.State();
 	const std::vector<MatchAction> actions = match.Update(Snapshot());
@@ -399,6 +481,7 @@ void Core_Match_Frame()
 		ZeroScores();
 	if (match.State() == MatchState::RoundOver)
 		HoldDead();
+	PublishHud();
 }
 
 bool Core_Match_OwnsRules()
@@ -439,6 +522,51 @@ bool Core_Match_SuicidePoint(edict_t *self)
 	return true;
 }
 
+void Core_Match_Statusbar(statusbar_t &sb)
+{
+	if (!deathmatch->integer || !StatusStat() || !ClockStat() || !CountdownStat())
+		return;
+	// Each in a place of its own (Chris, 2026-10-27), so either can show with
+	// the other. The status top middle, in green like the clock: the row under the client's
+	// 4 notify rows (10 units each from the top, scr_maxlines 4), above where
+	// centre prints start (20% down, 48 units at the least); yt 43, not 40,
+	// because the client draws this text about 2 units higher than the notify
+	// font. The clock bottom left of centre, in green, just above the stock
+	// HUD: centred halfway between the screen centre and the box's left edge
+	// (xv 80, over the gap between the health icon and the ammo; cstring
+	// centres on xv + 160).
+	// Stock tokens only, and no `ifbit`.
+	const player_stat_t status = StatusStat(), clock = ClockStat(), countdown = CountdownStat();
+	sb.ifstat(status).xv(0).yt(43);
+	sb.sb << "loc_stat_cstring2 " << status << ' ';
+	sb.endifstat();
+	sb.ifstat(clock).xv(-80).yb(-61);
+	sb.sb << "loc_stat_cstring2 " << clock << ' ';
+	sb.endifstat();
+	// The countdown in big HUD digits, between the centre prints and the
+	// crosshair. num 3 right-aligns in a 50 px field, so xv 118 centres one
+	// digit; yv counts from the centred 240-high box, so it lands the same
+	// distance above the crosshair at every resolution (yb -256 was off the
+	// top of a 240-unit-high screen: 1440p, 4K).
+	sb.ifstat(countdown).xv(118).yv(64).num(3, countdown).endifstat();
+}
+
+void Core_Match_SetStats(edict_t *ent)
+{
+	if (StatusStat())
+		ent->client->ps.stats[StatusStat()] = status_text.empty() ? 0 : kStatusConfigstring;
+	if (ClockStat())
+		ent->client->ps.stats[ClockStat()] = clock_text.empty() ? 0 : kClockConfigstring;
+	if (CountdownStat())
+		ent->client->ps.stats[CountdownStat()] =
+		    Core_Match_OwnsRules() ? match.CountdownSeconds(level.time.milliseconds()) : 0;
+}
+
+bool Core_Match_HoldFire(const edict_t *ent)
+{
+	return Core_Match_OwnsRules() && match.HoldFire() && Playing(ent);
+}
+
 bool Core_Match_Frozen(const edict_t *ent)
 {
 	return Core_Match_OwnsRules() && match.Frozen() && Playing(ent);
@@ -471,15 +599,42 @@ bool Core_Match_ClientCommand(edict_t *ent, const char *cmd)
 	// Match flow off: stock's commands (CTF competition mode's own ready-up).
 	if (!Core_Match_OwnsRules())
 		return false;
+	Core_Match_SetReady(ent, want_ready);
+	return true;
+}
+
+bool Core_Match_Playing(const edict_t *ent)
+{
+	return Playing(ent);
+}
+
+bool Core_Match_ReadyUp()
+{
+	return Core_Match_OwnsRules() && match.Config().ready_required &&
+	       (match.State() == MatchState::Warmup || match.State() == MatchState::Countdown);
+}
+
+bool Core_Match_Warmup()
+{
+	return Core_Match_OwnsRules() && match.State() == MatchState::Warmup;
+}
+
+bool Core_Match_IsReady(const edict_t *ent)
+{
+	return ready[(uint32_t)(ent - g_edicts) - 1];
+}
+
+void Core_Match_SetReady(edict_t *ent, bool want_ready)
+{
 	if (match.State() != MatchState::Warmup && match.State() != MatchState::Countdown)
 	{
 		gi.LocClient_Print(ent, PRINT_HIGH, "There is no match warmup.\n");
-		return true;
+		return;
 	}
 	if (!Playing(ent))
 	{
 		gi.LocClient_Print(ent, PRINT_HIGH, "Join the game first.\n");
-		return true;
+		return;
 	}
 	const uint32_t slot = (uint32_t)(ent - g_edicts) - 1;
 	if (ready[slot] != want_ready)
@@ -488,5 +643,4 @@ bool Core_Match_ClientCommand(edict_t *ent, const char *cmd)
 		gi.LocBroadcast_Print(PRINT_HIGH, want_ready ? "{} is ready.\n" : "{} is not ready.\n",
 		                      ent->client->pers.netname);
 	}
-	return true;
 }

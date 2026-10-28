@@ -3,6 +3,7 @@
 #include "../g_local.h"
 #include "../m_player.h"
 #include "core/match_hooks.h" // [mod]
+#include "core/menu_hooks.h" // [mod]
 
 #include <assert.h>
 
@@ -2959,6 +2960,8 @@ void CTFUpdateJoinMenu(edict_t *ent)
 
 void CTFOpenJoinMenu(edict_t *ent)
 {
+	if (Core_Menu_JoinMenu(ent)) // [mod] the Tab menu instead
+		return;
 	uint32_t num1 = 0, num2 = 0;
 	for (uint32_t i = 0; i < game.maxclients; i++)
 	{

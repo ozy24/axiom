@@ -706,6 +706,24 @@ def embedded_tokens(tap):
     return bad
 
 
+def state_line(tap):
+    """The HUD's match status and clock, from the game tap: whether the status
+    bar draws both (status top middle, clock bottom middle), and every text either showed, in order
+    (repeats collapsed).
+    The status is the configstring that first says WARMUP; the clock is the
+    next one (docs/design/hud.md)."""
+    cs = [r for r in tap if r.get("type") == "configstring"]
+    bars = [r["text"] for r in cs if "hnum" in r["text"]]
+    drawn = any("yt 43 loc_stat_cstring2 " in t and "yb -61 loc_stat_cstring2 " in t for t in bars)
+    status = next((r["index"] for r in cs if r["text"].startswith("WARMUP")), None)
+    texts = []
+    for r in cs:
+        if status is not None and r["index"] in (status, status + 1) and r["text"] and \
+                (not texts or texts[-1] != r["text"]):
+            texts.append(r["text"])
+    return drawn, texts
+
+
 def tier_human_duel(args, results):
     """Duel through the human path: three simulated players (Alice, Bob,
     Carol), played by ozbot, join like retail clients and run the playtest's
@@ -755,11 +773,11 @@ at 30 0 cmd score
     if not any(r["base"] == "Join the game first.\n" for r in to(carol)):
         detail.append("the queued player's `ready` got no 'Join the game first.'")
 
+    # The countdown's seconds are the HUD's big digits now; the centre prints
+    # bracket it.
     centre = [r["args"][0] for r in to(alice) if r["base"] == "{}" and r["args"]]
-    want = ["Match starting"] + [f"Match starts in {n}" for n in range(10, 0, -1)] + ["FIGHT!"]
-    got = [c for c in centre if c in want]
-    if got[:len(want)] != want:
-        detail.append(f"Alice's countdown {got[:14]}, expected {want}")
+    if centre[:2] != ["Match starting", "FIGHT!"]:
+        detail.append(f"Alice's centre prints {centre[:4]}, expected 'Match starting' then 'FIGHT!'")
 
     queue_lines = [r["args"] for r in locs if r["to"] == alice and r["base"] == "{}. {} ({})\n"]
     if [q[2] for q in queue_lines] != ["duelling", "duelling", "waiting"] or \
@@ -780,6 +798,15 @@ at 30 0 cmd score
         detail.append("the warmup scoreboard shows a clock")
     if not after or not any("time_limit" in r["text"] for r in after):
         detail.append("no clock on the scoreboard once the match was live")
+
+    # The HUD's state line: warmup, the countdown, the clock.
+    drawn, texts = state_line(tap)
+    if not drawn:
+        detail.append("the status bar doesn't draw the match status and clock")
+    if "WARMUP" not in texts or "COUNTDOWN" not in texts \
+            or not any(re.fullmatch(r"\d+:\d\d", t) for t in texts):
+        detail.append(f"state line texts {texts[:4]}...{texts[-3:]}, expected WARMUP, "
+                      "COUNTDOWN, then the clock")
 
     # A warmup suicide doesn't score (`sv match` during warmup).
     warmup_scores = [int(m) for m in re.findall(r"^\S*\s+(-?\d+) (?:Alice|Bob|Carol)", log, re.M)][:3]
@@ -897,8 +924,7 @@ at 40 1 cmd kill
     alice = humans.get("Alice")
     centre = [r["args"][0] for r in tap if r.get("type") == "locprint" and r["to"] == alice
               and r["base"] == "{}" and r["args"]]
-    breaks = sum(1 for i in range(len(centre) - 3)
-                 if centre[i:i + 4] == ["Next round in 3", "Next round in 2", "Next round in 1", "FIGHT!"])
+    breaks = centre.count("FIGHT!") - 1  # every round after the first starts with FIGHT!
     seen = ["Match: " + l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
     round_breaks = seen.count("Match: live -> round over")
     # Bots fight too, so frags can add rounds; the two suicides make at least two.
@@ -907,6 +933,13 @@ at 40 1 cmd kill
                       "or more (two scripted suicides)")
     if seen[-1:] != ["Match: ended (timelimit)"]:
         detail.append(f"the match ended {seen[-1:]}, expected by the timelimit")
+    drawn, texts = state_line(tap)
+    for want in ("ROUND OVER", "COUNTDOWN"):
+        if want not in texts:
+            detail.append(f"the state line never showed {want!r}")
+    after_round = texts[texts.index("ROUND OVER"):] if "ROUND OVER" in texts else []
+    if not any(re.fullmatch(r"\d+:\d\d", t) for t in after_round):
+        detail.append("the clock never came back after a round")
     detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
@@ -1017,9 +1050,72 @@ def tier_rounds(args, results):
     results.append(("7 rounds", not detail, detail))
 
 
+def tier_human_vote(args, results):
+    """Voting through the human path (docs/design/voting.md): three simulated
+    players in an FFA warmup, started the admin's way (g_ruleset, with a
+    rulesets/ffa.cfg that holds the warmup open). A map vote two of them refuse fails; its caller
+    can't call again at once; a map off the list is refused with the list;
+    then a vote one other player answers with stock's `yes` passes, shows on
+    the HUD's status line, and loads the map. Q2RED only."""
+    rig, why = scenario_rig(args, "t14-vote")
+    if not rig:
+        results.append(("14 human-vote", True, [f"skipped: {why}"]))
+        return
+    script = """seconds 40
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Carol social=sim-carol puppet
+at 8 0 cmd callvote map q2dm2
+at 9 1 cmd vote no
+at 9 2 cmd vote no
+at 12 0 cmd callvote map q2dm3
+at 13 1 cmd callvote map q2dm9
+at 14 1 cmd callvote map q2dm3
+at 15 2 cmd yes
+"""
+    # The server starts its mode the admin's way (docs/admin.md): server.cfg
+    # names it, and rulesets/ffa.cfg changes it - match_minplayers 99, so the
+    # warmup never ends and votes stay open.
+    rulesets = rig.dir / "baseq2" / "rulesets"
+    rulesets.mkdir(parents=True, exist_ok=True)
+    (rulesets / "ffa.cfg").write_text("set match_minplayers 99\n")
+    startup = scenario_startup(rig, ["+set", "g_ruleset", "ffa", "+map", "q2dm1"])
+    log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 120)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    if set(humans) != {"Alice", "Bob", "Carol"}:
+        results.append(("14 human-vote", False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
+        return
+    if "Ruleset: starting ffa (Free For All)" not in log:
+        detail.append("server.cfg's g_ruleset ffa was never applied at startup")
+    seen = [l.split("Vote: ", 1)[1].strip() for l in log.splitlines() if "Vote: " in l]
+    want = ["Alice called map q2dm2", "map q2dm2 failed", "Bob called map q2dm3", "map q2dm3 passed",
+            "running map q2dm3"]
+    if seen != want:
+        detail.append(f"vote log {seen}, expected {want}")
+    locs = [r for r in tap if r.get("type") == "locprint"]
+    to = lambda name: [" ".join([r["base"]] + r.get("args", [])) for r in locs if r["to"] == humans[name]]
+    if not any("wait a little" in t for t in to("Alice")):
+        detail.append("Alice's second call wasn't refused for the cooldown")
+    if not any("Maps: q2dm1 q2dm2" in t for t in to("Bob")):
+        detail.append("Bob's call for q2dm9 wasn't answered with the map list")
+    texts = [r["text"] for r in tap if r.get("type") == "configstring" and r["text"].startswith("VOTE")]
+    for line in ("VOTE: MAP Q2DM2 - YES 1/3 - ", "VOTE: MAP Q2DM3 - YES 1/3 - ", "VOTE PASSED"):
+        if not any(t.startswith(line) for t in texts):
+            detail.append(f"the status line never showed {line!r} (saw {sorted(set(texts))})")
+    if not re.search(r"Vote: running map q2dm3[\s\S]*InitGame[\s\S]*Gametype:", log):
+        detail.append("q2dm3 never loaded after the vote")
+    detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append(("14 human-vote", not detail, detail))
+
+
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_rounds, tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
-         tier_human_rounds)
+         tier_human_rounds, tier_human_vote)
 
 
 def run_tier(tier, args):
@@ -1121,7 +1217,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

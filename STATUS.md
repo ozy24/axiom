@@ -1,8 +1,8 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-10-26._
+_Updated at the end of every session. Last update: 2026-10-28._
 
-## Current phase: 3b done (M3b); Phase 4 next
+## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD done)
 
 ## Phase 2b, part 1 (match flow) done
 - `core/match.*` state machine (24 unit-test cases) and adapter: warmup,
@@ -15,9 +15,7 @@ _Updated at the end of every session. Last update: 2026-10-26._
   after LIVE vs 10 in a stock minute, checked by hand).
 
 ## Phase 2b, part 2 (rulesets) done
-- `sv ruleset <name>` / `sv rulesets` (`core/rulesets.h`): built-ins `stock`
-  and `match` compiled in; other names exec `rulesets/<name>.cfg`. Safe names
-  only. Unit tests check every built-in sets only known cvars.
+- Superseded by decision 0013 (below): `stock` and `match` are gone.
 
 ## Phase 3a, part 1 (Duel) done
 - `gametypes/duel/`: a play queue (pure, unit-tested) — the front two play,
@@ -36,7 +34,7 @@ _Updated at the end of every session. Last update: 2026-10-26._
 - Rounds in the match flow (`match_rounds`, `match_round_countdown`): a
   frag ends the round, players are held, the level resets (scores kept),
   everyone respawns together. 14 more unit-test cases; harness tier 7.
-- Built-in ruleset `hoony`: Duel with rounds, first to 7, sudden death.
+- Built-in ruleset `hoony`: Duel with rounds, first to 5 (was 7; 2026-10-27), sudden death.
 - Every built-in ruleset now sets every match cvar (a unit test checks), so
   switching rulesets never leaves one behind.
 
@@ -134,6 +132,32 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
   plays on, the dead stay dead), then everyone respawns frozen for
   `match_round_countdown` (now 5 s), then FIGHT!. Fixes the vanishing bot
   (the old hold overwrote svflags, dropping SVF_BOT).
+
+## Playtest batch 2026-10-27 (branch `menu`): Phase 4 essentials
+- **Tab menu** (`docs/design/menu.md`): join, spectate, chase, ready, match
+  info, voting; stock's pmenu draws it, every row runs an existing command.
+- **Eyecam** (`docs/design/eyecam.md`): chase through the target's eyes;
+  `+use` / `eyecam` flips to third person.
+- **Voting** (`docs/design/voting.md`): map, gametype (with variants as
+  submenus), restart; majority of the voters there now; every kind reloads
+  the map; allowed mid-match. `sv callvote` for admins. The call plays
+  `misc/pc_up.wav`. Harness tier 14.
+- **Rulesets, decision 0013** (`docs/admin.md`): `server.cfg` for the server
+  and its starting mode (`set g_ruleset ffa`), `rulesets/<gametype>.cfg` for
+  an admin's changes, `rulesets/<gametype>_<name>.cfg` for their own
+  variants (listed in `g_rulesets`). Each switch resets every gameplay cvar
+  first, so nothing leaks between modes. Built-ins ffa, duel, hoony, tdm, ctf.
+- **HUD** (`docs/design/hud.md`): status top middle in green, clock always
+  shown left of centre above the stock HUD, big countdown digits, the
+  chased player's name. The weapon icon stays at stock's place.
+- Fixed from the playtest: a gametype vote kept the old mode's settings; the
+  countdown started on a map change before the humans had loaded, then was
+  cancelled.
+
+Next: Phase 4's remainder - timeouts/pauses, admin controls, per-gametype
+scoreboards (Chris asked about an OpenFFA-style FFA board: feasible within
+the 1024-byte layout, waiting on his column list), then the M4 checklist on
+Q2REX and a retail listen server.
 
 ## Known issues
 - One intermittent Q2RED segfault in a CTF server with simulated players

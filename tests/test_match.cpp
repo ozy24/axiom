@@ -75,6 +75,33 @@ TEST_CASE("warmup waits until every playing client is ready")
 	CHECK(Has(out, MatchActionKind::Countdown));
 }
 
+TEST_CASE("a new level waits for players still loading it before the countdown")
+{
+	MatchConfig c = Enabled();
+	c.join_grace_ms = 10000;
+	c.join_wait_ms = 30000;
+	Match m(c);
+	m.Begin(0);
+	// The bots are back and ready; a human is still loading the map.
+	MatchPlayer loading = P(3, false, 0, false);
+	loading.joining = true;
+	CHECK(m.Update(At(500, {P(1, true), P(2, true)})).empty()); // within the grace
+	CHECK(m.Update(At(11000, {P(1, true), P(2, true), loading})).empty());
+	CHECK(m.State() == MatchState::Warmup);
+	// In, unready: still warmup, nothing to cancel.
+	CHECK(m.Update(At(12000, {P(1, true), P(2, true), P(3, false)})).empty());
+	CHECK(m.State() == MatchState::Warmup);
+	m.Update(At(13000, {P(1, true), P(2, true), P(3, true)}));
+	CHECK(m.State() == MatchState::Countdown);
+
+	// One stuck loading holds the start only so long.
+	Match stuck(c);
+	stuck.Begin(0);
+	CHECK(stuck.Update(At(29000, {P(1, true), P(2, true), loading})).empty());
+	stuck.Update(At(30000, {P(1, true), P(2, true), loading}));
+	CHECK(stuck.State() == MatchState::Countdown);
+}
+
 TEST_CASE("warmup needs match_minplayers")
 {
 	Match m(Enabled());
@@ -500,4 +527,229 @@ TEST_CASE("a suicide's point goes to the only opponent, or nobody")
 	CHECK(Core_SuicideOpponent({P(1), P(2), P(3, false, 0, false)}, 2) == 1); // a spectator isn't one
 	CHECK(Core_SuicideOpponent({P(1), P(2), P(3)}, 1) == -1);                 // FFA: whose point?
 	CHECK(Core_SuicideOpponent({P(1)}, 1) == -1);
+}
+
+// --- The HUD's match status and clock ------------------------------------------
+
+namespace
+{
+MatchHudText Hud(std::string status, std::string clock)
+{
+	return {std::move(status), std::move(clock)};
+}
+
+bool operator==(const MatchHudText &a, const MatchHudText &b)
+{
+	return a.status == b.status && a.clock == b.clock;
+}
+} // namespace
+
+TEST_CASE("the HUD: the match length in warmup and the countdown, then the clock")
+{
+	MatchConfig c = Enabled(); // countdown 3 s, timelimit 60 s
+	Match m(c);
+	m.Begin(0);
+	CHECK(m.HudText(At(500, {P(1, true), P(2, false)})) == Hud("WARMUP", "1:00"));
+	CHECK(m.HudText(At(500, {P(1, false)})) == Hud("WAITING FOR PLAYERS", "1:00")); // match_minplayers 2
+	CHECK(m.CountdownSeconds(500) == 0);
+	m.Update(At(1000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Countdown);
+	CHECK(m.HudText(At(1000, {P(1, true), P(2, true)})) == Hud("COUNTDOWN", "1:00"));
+	CHECK(m.CountdownSeconds(1000) == 3);
+	CHECK(m.CountdownSeconds(3100) == 1);
+	m.Update(At(4000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK(m.HudText(At(4000, {P(1, true), P(2, true)})) == Hud("", "1:00"));
+	CHECK(m.HudText(At(4000 + 18500, {P(1, true), P(2, true)})) == Hud("", "0:42"));
+	m.Update(At(64000, {P(1, true, 2), P(2, true, 1)}));
+	REQUIRE(m.State() == MatchState::Intermission);
+	CHECK(m.HudText(At(64000, {})) == Hud("MATCH END", ""));
+}
+
+TEST_CASE("the HUD: warmup says what the start waits for, teams included")
+{
+	MatchConfig c = Enabled();
+	c.teams = true;
+	Match m(c);
+	m.Begin(0);
+	MatchPlayer red = P(1, false), red2 = P(2, false), blue = P(3, false);
+	red.team = red2.team = 1;
+	blue.team = 2;
+	CHECK(m.HudText(At(500, {red})) == Hud("WAITING FOR PLAYERS", "1:00"));
+	CHECK(m.HudText(At(500, {red, red2})) == Hud("WAITING FOR TEAMS", "1:00"));
+	CHECK(m.HudText(At(500, {red, blue})) == Hud("WARMUP", "1:00"));
+}
+
+TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
+{
+	MatchConfig c = Enabled();
+	c.timelimit_ms = 0;
+	Match up(c);
+	up.Begin(0);
+	CHECK(up.HudText(At(500, {P(1, true), P(2, false)})) == Hud("WARMUP", "0:00")); // it will count up
+	up = Match(c);
+	const int64_t live = ToLive(up);
+	CHECK(up.HudText(At(live + 75000, {P(1, true), P(2, true)})) == Hud("", "1:15"));
+
+	MatchConfig o = Enabled();
+	o.overtime = 2;
+	Match timed(o);
+	const int64_t live2 = ToLive(timed);
+	timed.Update(At(live2 + 60000, {P(1, true, 3), P(2, true, 3)}));
+	REQUIRE(timed.State() == MatchState::Overtime);
+	CHECK(timed.HudText(At(live2 + 62000, {P(1, true, 3), P(2, true, 3)})) == Hud("OVERTIME", "1:58"));
+
+	o.overtime = -1;
+	Match sudden(o);
+	const int64_t live3 = ToLive(sudden);
+	sudden.Update(At(live3 + 60000, {P(1, true, 3), P(2, true, 3)}));
+	REQUIRE(sudden.State() == MatchState::Overtime);
+	CHECK(sudden.HudText(At(live3 + 61000, {P(1, true, 3), P(2, true, 3)})) == Hud("SUDDEN DEATH", "0:00"));
+}
+
+TEST_CASE("the HUD in rounds: the clock, round over, the countdown, the clock")
+{
+	Match m(Hoony()); // pause 1 s, countdown 2 s, timelimit 60 s
+	const int64_t live = ToLive(m);
+	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)}));
+	CHECK(m.HudText(At(live + 100, {P(1, true), P(2, true)})) == Hud("", "1:00"));
+	m.Update(At(live + 5000, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::RoundOver);
+	CHECK(m.HudText(At(live + 5000, {})) == Hud("ROUND OVER", "0:55")); // the clock runs on
+	m.Update(At(live + 6000, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::RoundCountdown);
+	CHECK(m.HudText(At(live + 6000, {})) == Hud("COUNTDOWN", "0:54"));
+	CHECK(m.CountdownSeconds(live + 6000) == 2);
+	CHECK(m.CountdownSeconds(live + 7500) == 1);
+	m.Update(At(live + 8000, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK(m.HudText(At(live + 8000, {})) == Hud("", "0:52"));
+	CHECK(m.CountdownSeconds(live + 8000) == 0);
+}
+
+TEST_CASE("the HUD is empty with the match flow off (stock HUD)")
+{
+	Match m;
+	m.Begin(0);
+	CHECK(m.HudText(At(1000, {P(1, true)})) == Hud("", ""));
+}
+
+TEST_CASE("overtime and sudden death sound the klaxon; the HUD names them, no centre print")
+{
+	auto kinds = [](const std::vector<MatchAction> &out, MatchActionKind kind)
+	{ return std::count_if(out.begin(), out.end(), [&](const MatchAction &a) { return a.kind == kind; }); };
+	MatchConfig c = Enabled();
+	c.overtime = 2;
+	Match timed(c);
+	const int64_t live = ToLive(timed);
+	auto out = timed.Update(At(live + 60000, {P(1, true, 3), P(2, true, 3)}));
+	CHECK(kinds(out, MatchActionKind::Klaxon) == 1);
+	CHECK(kinds(out, MatchActionKind::Announce) == 0);
+	out = timed.Update(At(live + 60000 + 120000, {P(1, true, 4), P(2, true, 4)})); // still tied
+	CHECK(kinds(out, MatchActionKind::Klaxon) == 1);
+
+	c.overtime = -1;
+	Match sudden(c);
+	const int64_t live2 = ToLive(sudden);
+	out = sudden.Update(At(live2 + 60000, {P(1, true, 3), P(2, true, 3)}));
+	CHECK(kinds(out, MatchActionKind::Klaxon) == 1);
+	CHECK(kinds(out, MatchActionKind::Announce) == 0);
+}
+
+TEST_CASE("no firing in the match countdown; the round countdown freezes outright")
+{
+	Match m(Enabled());
+	m.Begin(0);
+	CHECK_FALSE(m.HoldFire()); // warmup is free play
+	m.Update(At(1000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Countdown);
+	CHECK(m.HoldFire());
+	CHECK_FALSE(m.Frozen()); // they can still move
+	m.Update(At(4000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK_FALSE(m.HoldFire());
+
+	Match stock; // match flow off: stock
+	stock.Begin(0);
+	CHECK_FALSE(stock.HoldFire());
+}
+
+// --- Stock sounds, as MuffMode plays them ------------------------------------
+
+namespace
+{
+std::vector<std::string> Sounds(const std::vector<MatchAction> &out)
+{
+	std::vector<std::string> sounds;
+	for (const MatchAction &a : out)
+		if (a.kind == MatchActionKind::Sound)
+			sounds.push_back(a.text);
+	return sounds;
+}
+} // namespace
+
+TEST_CASE("sounds: the countdown is spoken, FIGHT plays tele_up")
+{
+	MatchConfig c = Enabled();
+	c.countdown_ms = 12000;
+	Match m(c);
+	m.Begin(0);
+	std::vector<std::string> heard;
+	for (int64_t t = 1000; t < 13000; t += 100)
+		for (const std::string &s : Sounds(m.Update(At(t, {P(1, true), P(2, true)}))))
+			heard.push_back(s);
+	// 12 and 11 have no stock voice; 10 down to 1 do.
+	CHECK(heard == std::vector<std::string>{"world/10.wav", "world/9.wav", "world/8.wav", "world/7.wav", "world/6.wav",
+	                                        "world/5.wav", "world/4.wav", "world/3.wav", "world/2.wav", "world/1.wav"});
+	auto out = m.Update(At(13000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK(Sounds(out) == std::vector<std::string>{"misc/tele_up.wav"});
+}
+
+TEST_CASE("sounds: the last 30 and 20 seconds, then every second from 10")
+{
+	Match m(Enabled()); // timelimit 60 s
+	const int64_t live = ToLive(m);
+	std::vector<std::string> heard;
+	for (int64_t t = live + 100; t < live + 60000; t += 100)
+		for (const std::string &s : Sounds(m.Update(At(t, {P(1, true, 1), P(2, true, 0)}))))
+			heard.push_back(s);
+	REQUIRE(heard.size() == 12);
+	CHECK(heard[0] == "world/30sec.wav");
+	CHECK(heard[1] == "world/20sec.wav");
+	CHECK(heard[2] == "world/10.wav");
+	CHECK(heard[11] == "world/1.wav");
+}
+
+TEST_CASE("sounds: a won round plays flagcap; the next round's FIGHT plays tele_up")
+{
+	Match m(Hoony());
+	const int64_t live = ToLive(m);
+	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)})); // baseline
+	auto out = m.Update(At(live + 5000, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::RoundOver);
+	CHECK(Sounds(out) == std::vector<std::string>{"ctf/flagcap.wav"});
+	m.Update(At(live + 6000, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::RoundCountdown);
+	out = m.Update(At(live + 6100, {P(1, true, 1), P(2, true, 0)}));
+	CHECK(Sounds(out) == std::vector<std::string>{"world/2.wav"});
+	out = m.Update(At(live + 8000, {P(1, true, 1), P(2, true, 0)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK(Sounds(out) == std::vector<std::string>{"misc/tele_up.wav"});
+}
+
+TEST_CASE("sounds: the match end plays the jingle over the scoreboard")
+{
+	Match m(Enabled());
+	const int64_t live = ToLive(m);
+	auto out = m.Update(At(live + 60000, {P(1, true, 2), P(2, true, 1)}));
+	REQUIRE(m.State() == MatchState::Intermission);
+	CHECK(Sounds(out) == std::vector<std::string>{"world/xian1.wav"});
+}
+
+TEST_CASE("sounds: none with the match flow off (stock)")
+{
+	Match m;
+	m.Begin(0);
+	CHECK(Sounds(m.Update(At(1000, {P(1, true)}))).empty());
 }

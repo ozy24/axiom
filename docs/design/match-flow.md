@@ -32,7 +32,12 @@ turns it on.
 - **WARMUP:** players can move, shoot and pick up; nothing is scored. Each
   player toggles `ready` (console command). The countdown starts when every
   required player is ready, and there are at least `match_minplayers`. If
-  `match_warmup_time` > 0 it also starts when that runs out.
+  `match_warmup_time` > 0 it also starts when that runs out. It never starts
+  in a level's first 10 seconds, nor while a human is still loading the map
+  (up to 30 seconds in, so a stuck client can't hold it):
+  after a map change the bots are back first and ready, and the countdown
+  used to start, then be cancelled as the humans arrived unready (playtest,
+  2026-10-27).
 - **Free play until LIVE:** in WARMUP and COUNTDOWN nothing scores. Frags,
   suicides and captures are undone in the frame they happen, before any client
   sees them, and the scoreboard shows no clock. From LIVE the clock runs to the
@@ -103,13 +108,15 @@ isn't a spectator. Every transition prints a `Match:` console line.
 | `match_suicide_point` | `0` | 1: a suicide or death to the world is a point to the only opponent, not -1 (HoonyMode; not in team modes or with more than one opponent) |
 | `match_round_pause` | `2` | seconds after the round-ending frag before the respawn (rounds on) |
 
-Rulesets (`.cfg`, decision 0003) set these; built-in defaults are stock.
-`sv ruleset <name>` applies one (`core/rulesets.h`): the built-ins `stock`
-and `match` are compiled in, any other name runs `exec rulesets/<name>.cfg`.
-Names are `[a-z0-9_-]` so an exec can't leave `rulesets/`. `g_ruleset`
-(serverinfo) records the last ruleset applied; the module can't see whether
-an exec found its file, so a missing file shows only the engine's
-`couldn't exec` warning.
+Rulesets set these (decisions 0003 and 0013, `core/rulesets.h`, the admin's
+view in docs/admin.md). The compiled defaults are stock; each gametype's
+built-in ruleset (`ffa`, `duel`, `tdm`, `ctf`) turns the match flow on, and
+`rulesets/<gametype>.cfg` changes it. `sv ruleset <name>` (or `set g_ruleset`
+in server.cfg) switches: every gameplay cvar back to its default, the
+gametype's settings and cfg, then a variant's (`hoony`). `g_ruleset`
+(serverinfo) names the mode; empty means server.cfg set everything itself.
+The module can't see whether an exec found its file, so a missing one shows
+only the engine's `couldn't exec` warning.
 
 ## Implementation split
 

@@ -2,6 +2,9 @@
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
 #include "core/match_hooks.h" // [mod]
+#include "core/menu_hooks.h" // [mod]
+#include "core/eyecam_hooks.h" // [mod]
+#include "core/vote_hooks.h" // [mod]
 #include "m_player.h"
 
 void SelectNextItem(edict_t *ent, item_flags_t itflags, bool menu = true)
@@ -754,6 +757,9 @@ void Cmd_Inven_f(edict_t *ent)
 		cl->showinventory = false;
 		return;
 	}
+
+	if (Core_Menu_Inven(ent)) // [mod] the Tab menu in deathmatch
+		return;
 
 	// ZOID
 	if (G_TeamplayEnabled() && cl->resp.ctf_team == CTF_NOTEAM)
@@ -1604,8 +1610,12 @@ void ClientCommand(edict_t *ent)
 
 	cmd = gi.argv(0);
 
+	if (Core_EyeCam_Command(ent, cmd)) // [mod] eyecam
+		return; // [mod]
 	if (Core_Match_ClientCommand(ent, cmd)) // [mod] ready / notready
 		return;
+	if (Core_Vote_ClientCommand(ent, cmd)) // [mod] callvote / vote; yes, no, warp while ours
+		return; // [mod]
 
 	if (Q_strcasecmp(cmd, "players") == 0)
 	{

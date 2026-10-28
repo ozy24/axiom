@@ -2,6 +2,8 @@
 // Licensed under the GNU General Public License 2.0.
 
 #include "g_local.h"
+#include "core/match_hooks.h" // [mod]
+#include "core/id_view_hooks.h" // [mod]
 
 struct spawn_t
 {
@@ -1364,11 +1366,14 @@ static void G_InitStatusbar()
 			sb.ifstat(STAT_CTF_FLAG_PIC).yt(26).xr(-24).pic(STAT_CTF_FLAG_PIC).endifstat();
 		}
 
+		if (!Core_IdView_Statusbar(sb)) // [mod] centred above the match status under a registered gametype; else stock's:
+		{ // [mod]
 		// id view state
 		sb.ifstat(STAT_CTF_ID_VIEW).xv(112).yb(-58).stat_pname(STAT_CTF_ID_VIEW).endifstat();
 
 		// id view color
 		sb.ifstat(STAT_CTF_ID_VIEW_COLOR).xv(96).yb(-58).pic(STAT_CTF_ID_VIEW_COLOR).endifstat();
+		} // [mod]
 
 		if (ctf->integer)
 		{
@@ -1385,14 +1390,18 @@ static void G_InitStatusbar()
 		// frags
 		sb.xr(-50).yt(2).num(3, STAT_FRAGS);
 
+		if (!Core_IdView_Statusbar(sb)) // [mod] the chased name, centred above the match status under a registered gametype; else stock's (single player, coop too):
+		{ // [mod]
 		// spectator
 		sb.ifstat(STAT_SPECTATOR).xv(0).yb(-58).string2("SPECTATOR MODE").endifstat();
 
 		// chase cam
 		sb.ifstat(STAT_CHASE).xv(0).yb(-68).string("CHASING").xv(64).stat_string(STAT_CHASE).endifstat();
+		} // [mod]
 	}
 
 	// ---- more shared stuff ----
+	Core_Match_Statusbar(sb); // [mod] the match-state line
 	if (deathmatch->integer)
 	{
 		// tech

@@ -2,6 +2,8 @@
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
 #include "core/match_hooks.h" // [mod]
+#include "core/eyecam_hooks.h" // [mod]
+#include "core/vote_hooks.h" // [mod]
 #include "m_player.h"
 #include "bots/bot_includes.h"
 
@@ -2933,6 +2935,9 @@ void ClientDisconnect(edict_t *ent)
 	if (!ent->client)
 		return;
 
+	Core_EyeCam_Disconnect(ent); // [mod]
+	Core_Vote_Disconnect(ent);   // [mod]
+
 	// ZOID
 	CTFDeadDropFlag(ent);
 	CTFDeadDropTech(ent);
@@ -3128,7 +3133,9 @@ bool HandleMenuMovement(edict_t *ent, usercmd_t *ucmd)
 		}
 	}
 
-	if (ent->client->latched_buttons & (BUTTON_ATTACK | BUTTON_JUMP))
+	if (ent->client->latched_buttons & BUTTON_ATTACK) // [mod] fire doesn't select (an easy accidental join); swallowed, so it doesn't start the chase cam either
+		return true;
+	if (ent->client->latched_buttons & BUTTON_JUMP) // [mod] was BUTTON_ATTACK | BUTTON_JUMP
 	{
 		PMenu_Select(ent);
 		return true;
@@ -3203,6 +3210,11 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 		client->ps.pmove.pm_type = PM_FREEZE; // [mod]
 		client->buttons = client->latched_buttons = BUTTON_NONE; // [mod]
 		return; // [mod]
+	}
+	if (Core_Match_HoldFire(ent)) // [mod] the match countdown: move, but no firing
+	{
+		client->buttons &= ~BUTTON_ATTACK; // [mod]
+		client->latched_buttons &= ~BUTTON_ATTACK; // [mod]
 	}
 
 	if (ent->client->chase_target)
@@ -3390,7 +3402,11 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 		{
 			client->latched_buttons = BUTTON_NONE;
 
-			if (client->chase_target)
+			if (client->menu)
+			{
+				// [mod] fire is ignored under a menu (HandleMenuMovement), not a chase toggle
+			}
+			else if (client->chase_target)
 			{
 				client->chase_target = nullptr;
 				client->ps.pmove.pm_flags &= ~(PMF_NO_POSITIONAL_PREDICTION | PMF_NO_ANGULAR_PREDICTION);
@@ -3414,6 +3430,8 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 			}
 		}
 	}
+
+	Core_EyeCam_Use(ent); // [mod] +use flips first / third person while chasing
 
 	if (client->resp.spectator)
 	{

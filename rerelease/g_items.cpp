@@ -1,6 +1,7 @@
 // Copyright (c) ZeniMax Media Inc.
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
+#include "core/eyecam_hooks.h" // [mod]
 #include "bots/bot_includes.h"
 
 bool Pickup_Weapon(edict_t *ent, edict_t *other);
@@ -899,6 +900,8 @@ void Drop_PowerArmor(edict_t *ent, gitem_t *item)
 
 bool Entity_IsVisibleToPlayer(edict_t* ent, edict_t* player)
 {
+	if (!Core_EyeCam_Visible(ent, player)) // [mod] a chased body, hidden from its first-person chaser
+		return false;
 	return !ent->item_picked_up_by[player->s.number - 1];
 }
 

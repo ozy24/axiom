@@ -9,7 +9,8 @@
 #     BOTS    ozbot-re checkout     (default ~/Code/Projects/ozbot-re; dist/ built)
 #
 # Then:  RIG/run.sh   start (LAN lobby on UDP 5073; log RIG/server.out)
-#        RIG/cmd.sh "sv ruleset hoony"; RIG/cmd.sh "map q2dm1"
+#        RIG/cmd.sh "sv ruleset hoony"; RIG/cmd.sh "map q2dm1"   (sv ruleset only
+#        works once a map is up; server.cfg starts in a mode with `set g_ruleset`)
 #        RIG/update.sh  copy in the latest build/linux-release/game_x64.so
 #        RIG/stop.sh
 # Join from retail: console, connect 127.0.0.1:5073
@@ -31,23 +32,14 @@ done
 cp "$repo/build/linux-release/game_x64.so" "$rig/baseq2/game_x64.so"
 
 cat >"$rig/baseq2/server.cfg" <<'CFG'
-// Playtest server. These are the `duel` ruleset's settings (sv ruleset only
-// works once a map is up); change modes with ./cmd.sh "sv ruleset <name>",
-// then ./cmd.sh "map <map>".
+// Playtest server (docs/admin.md). The server's own settings; the gameplay
+// comes from the ruleset: change modes with ./cmd.sh "sv ruleset <name>" then
+// ./cmd.sh "map <map>". Change a gametype's settings in rulesets/<gametype>.cfg.
 set hostname "Playtest"
 set deathmatch 1
 set maxclients 8
-set g_gametype duel
-set match_warmup 1
-set match_ready 1
-set match_minplayers 2
-set match_countdown 5
-set match_overtime -1
-set match_rounds 0
-set match_round_countdown 3
-set timelimit 10
-set fraglimit 0
-// one bot to duel against; bot_count 0 for human-only
+set g_ruleset ffa
+// bots to play against; bot_count 0 for human-only
 set sv_bot_brain ozbot
 set bot_count 1
 set bot_skill 2
@@ -91,8 +83,10 @@ echo stopped
 STOP
 cat >"$rig/update.sh" <<UPD
 #!/bin/sh
-# copy in the latest local build of the mod (restart or change map to load it)
-cp "$repo/build/linux-release/game_x64.so" "\$(dirname "\$0")/baseq2/game_x64.so" && strings "\$(dirname "\$0")/baseq2/game_x64.so" | grep mod-identity
+# copy in the latest local build of the mod (restart or change map to load it).
+# Copied beside it and renamed over: writing into the .so a running server has
+# loaded crashes it (SIGBUS).
+cp "$repo/build/linux-release/game_x64.so" "\$(dirname "\$0")/baseq2/game_x64.so.new" && mv "\$(dirname "\$0")/baseq2/game_x64.so.new" "\$(dirname "\$0")/baseq2/game_x64.so" && strings "\$(dirname "\$0")/baseq2/game_x64.so" | grep mod-identity
 UPD
 chmod +x "$rig"/*.sh
 echo "rig ready: $rig"

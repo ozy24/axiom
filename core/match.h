@@ -46,6 +46,18 @@ struct MatchConfig
 	int64_t round_countdown_ms = 5000; // match_round_countdown: frozen at the spawns
 	bool teams = false;                // TDM, CTF: the lead and ties go by MatchInput::team_scores
 	bool fraglimit_on_teams = false;   // TDM: fraglimit applies to team totals (stock CheckEndTDMLevel)
+	int64_t join_grace_ms = 0;         // a new level: no countdown before this (players reloading the map)
+	int64_t join_wait_ms = 0;          // ... nor, until this, while a human is still loading it
+
+	bool operator==(const MatchConfig &o) const
+	{
+		return enabled == o.enabled && ready_required == o.ready_required && min_players == o.min_players &&
+		       warmup_time_ms == o.warmup_time_ms && countdown_ms == o.countdown_ms && overtime == o.overtime &&
+		       timelimit_ms == o.timelimit_ms && fraglimit == o.fraglimit && rounds_on_frag == o.rounds_on_frag &&
+		       round_pause_ms == o.round_pause_ms && round_countdown_ms == o.round_countdown_ms && teams == o.teams &&
+		       fraglimit_on_teams == o.fraglimit_on_teams && join_grace_ms == o.join_grace_ms &&
+		       join_wait_ms == o.join_wait_ms;
+	}
 };
 
 struct MatchPlayer
@@ -54,7 +66,8 @@ struct MatchPlayer
 	bool playing = false; // false: spectator / not joined
 	bool ready = false;
 	int score = 0;
-	int team = 0; // with MatchConfig::teams: 1 or 2 (0 = on no team)
+	int team = 0;         // with MatchConfig::teams: 1 or 2 (0 = on no team)
+	bool joining = false; // a human connected but still loading the map: no countdown starts yet
 };
 
 struct MatchInput
@@ -66,9 +79,17 @@ struct MatchInput
 	std::array<int, 2> team_scores{}; // with MatchConfig::teams: team 1, team 2 (frags or captures)
 };
 
+struct MatchHudText
+{
+	std::string status;
+	std::string clock;
+};
+
 enum class MatchActionKind
 {
 	Announce,     // text to every player (centre print)
+	Klaxon,       // the stock klaxon, heard everywhere: overtime and sudden death begin
+	Sound,        // text = a stock sound, heard everywhere: the spoken countdown, FIGHT, round won, match end
 	Countdown,    // value = whole seconds left, sent once per second
 	ResetArena,   // value 0: going LIVE - reset items, zero scores, respawn players
 	              // value 1: between rounds - reset items and projectiles only
@@ -134,6 +155,27 @@ class Match
 	{
 		return config_.enabled && state_ == MatchState::RoundCountdown;
 	}
+	// Whether playing clients may move but not fire: the match countdown.
+	bool HoldFire() const
+	{
+		return config_.enabled && state_ == MatchState::Countdown;
+	}
+	// The round being played (rounds_on_frag): 1 from LIVE, +1 each new round.
+	int Round() const
+	{
+		return round_;
+	}
+	// The HUD's match status and clock (docs/design/hud.md). The status, top
+	// middle: OpenTDM's names (WAITING FOR PLAYERS / TEAMS, WARMUP, COUNTDOWN,
+	// OVERTIME, SUDDEN DEATH, ROUND OVER, MATCH END), none in normal live
+	// play. The clock, bottom middle, always: the match's length before it
+	// starts, then the time left (or up from LIVE with no timelimit), 0:00 in
+	// sudden death. Both empty with the match flow off.
+	MatchHudText HudText(const MatchInput &in) const;
+	// The HUD's big countdown digits: whole seconds left in the match or round
+	// countdown, else 0 (hidden).
+	int CountdownSeconds(int64_t now_ms) const;
+
 	int64_t ClockEndMs() const
 	{
 		const bool timed = state_ == MatchState::Live || state_ == MatchState::Overtime ||
@@ -148,6 +190,7 @@ class Match
 	void Baseline(const MatchInput &in);
 	void GoLive(int64_t now_ms, std::vector<MatchAction> &out);
 	void End(const char *why, std::vector<MatchAction> &out);
+	void TimeWarning(int64_t now_ms, std::vector<MatchAction> &out);
 
 	MatchConfig config_;
 	MatchState state_ = MatchState::Live;
@@ -155,6 +198,8 @@ class Match
 	int64_t live_since_ms_ = 0;
 	int64_t time_end_ms_ = 0; // LIVE/OVERTIME deadline (0 = none)
 	int last_countdown_s_ = -1;
-	MatchState round_return_ = MatchState::Live;    // where RoundCountdown goes back to
+	int last_warning_s_ = 0;                     // LIVE: the seconds left last spoken for (timelimit warnings)
+	MatchState round_return_ = MatchState::Live; // where RoundCountdown goes back to
+	int round_ = 0;
 	std::vector<std::pair<int, int>> round_scores_; // (id, score) when the round began
 };
