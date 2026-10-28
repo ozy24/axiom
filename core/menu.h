@@ -98,6 +98,7 @@ struct MenuView
 	std::string gametype; // its title: "Free For All"
 	std::string map;      // the level's title, else its file name
 	std::string map_file; // "q2dm1"
+	std::string next_map; // where the level goes next (core/maps_hooks.h)
 	std::string ruleset;
 
 	bool teams = false; // TDM, CTF

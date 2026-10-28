@@ -219,6 +219,8 @@ MenuPage Core_Menu_MatchInfo(const MenuView &v)
 	if (!v.ruleset.empty())
 		Add(page, Core_Menu_Clean("Ruleset: " + v.ruleset));
 	Add(page, Core_Menu_Clean("Map: " + v.map_file));
+	if (!v.next_map.empty())
+		Add(page, Core_Menu_Clean("Next map: " + v.next_map));
 	Add(page, "");
 	Add(page, "Timelimit: " + Minutes(v.timelimit_min));
 	if (v.ctf)

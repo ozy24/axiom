@@ -6,6 +6,7 @@
 #include "g_local.h"
 
 #include "core/gametype.h"
+#include "core/maps_hooks.h"
 #include "core/match_hooks.h"
 #include "core/menu.h"
 #include "core/menu_hooks.h"
@@ -60,6 +61,7 @@ MenuView View(const edict_t *ent)
 	v.gametype = gt ? gt->title : "";
 	v.map = *level.level_name ? level.level_name : level.mapname;
 	v.map_file = level.mapname;
+	v.next_map = Core_Maps_NextMap();
 	v.ruleset = gi.cvar("g_ruleset", "", CVAR_SERVERINFO)->string;
 	v.teams = G_TeamplayEnabled();
 	v.ctf = ctf->integer != 0;

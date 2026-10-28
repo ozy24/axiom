@@ -36,6 +36,9 @@ Tiers (plan Phase 1b):
                  team; the record has everyone on their team (Q2RED).
  13. human-rounds  HoonyMode: each scripted suicide ends a round, the next
                  starts after "Next round in 3..1" (Q2RED).
+ 14. human-vote  Map votes through simulated players (Q2RED).
+ 15. maps        The shuffled map rotation: off-list start, a whole pass,
+                 no repeat at the reshuffle, g_map_list kept as written.
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -116,9 +119,11 @@ class Rig:
     def run(self, startup, steps, timeout):
         """Start the server, then work through `steps` in order:
              ("wait", regex, seconds)  wait for the console log to match
+             ("wait", regex, seconds, n) ... to match n times
              ("exists", path, seconds) wait for a file to appear
              ("sleep", seconds)
              ("cmd", text)             send a console command over stdin
+             ("cmdf", fn)              send fn(console log text)
              ("sim", script)           start Q2RED's simulated players on a
                                        script (q2red tools/sim-client) and go on
              ("simwait",)              wait for them to finish
@@ -161,7 +166,8 @@ class Rig:
             time.sleep(step[1])
         elif step[0] == "wait":
             regex, limit = re.compile(step[1]), time.monotonic() + step[2]
-            while not regex.search(self.log_path.read_text(errors="replace")):
+            count = step[3] if len(step) > 3 else 1
+            while len(regex.findall(self.log_path.read_text(errors="replace"))) < count:
                 if proc.poll() is not None:
                     self.exited_early = True
                     return False
@@ -188,9 +194,10 @@ class Rig:
                 self.sim.wait(timeout=max(1, deadline - time.monotonic()))
             except subprocess.TimeoutExpired:
                 raise RuntimeError(f"sim clients did not finish ({self.dir})")
-        elif step[0] == "cmd":
+        elif step[0] in ("cmd", "cmdf"):
+            text = step[1] if step[0] == "cmd" else step[1](self.log_path.read_text(errors="replace"))
             try:
-                proc.stdin.write(step[1] + "\n")
+                proc.stdin.write(text + "\n")
                 proc.stdin.flush()
             except BrokenPipeError:
                 self.exited_early = True
@@ -644,6 +651,49 @@ def tier_duel_rotation(args, results):
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]
     results.append(("10 duel-rotation", not detail, detail))
+
+
+def tier_maps(args, results):
+    """The map rotation (docs/decisions/0014): a server started on a map
+    outside its shuffled g_map_list goes to the list next; each level end
+    leads to the announced map (the harness loads it with `gamemap`, as the
+    intermission's exit would: bots press no button); the first pass plays
+    every listed map once, the next pass doesn't open with the map that just
+    played, and g_map_list stays as written."""
+    rig = RIGS[args.engine_kind](args, args.candidate, "t15-maps")
+    rotation = ["q2dm3", "q2dm4", "q2dm5"]
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "0",
+                "+set", "timelimit", "0.25", "+set", "g_map_list", " ".join(rotation),
+                "+set", "g_map_list_shuffle", "1"] + rig.bot_args() + ["+map", "q2dm1"])
+    announced = r"Maps: next (\S+)"
+
+    def go_next(log):
+        return "gamemap " + re.findall(announced, log)[-1]
+
+    steps = [rig.wait_ready()]
+    for n in range(1, 5):
+        steps += [("wait", announced, 90, n), ("sleep", 2)]
+        if n < 4:
+            steps += [("cmdf", go_next)]
+    steps += [("cmd", "sv maplist"), ("cmd", "g_map_list"), ("sleep", 2), ("cmd", "quit")]
+    log = rig.run(startup, steps, timeout=args.boot_timeout + 420)
+    seen = re.findall(announced, log)
+    detail = []
+    if len(seen) < 4:
+        detail.append(f"announced {seen}, expected four level ends")
+    else:
+        if sorted(seen[:3]) != rotation:
+            detail.append(f"first pass {seen[:3]}, expected each of {rotation} once (from off-list q2dm1)")
+        if seen[3] == seen[2]:
+            detail.append(f"the next pass opened with {seen[3]}, the map that just played")
+    if "Map rotation (shuffled): " not in log:
+        detail.append("no `sv maplist` rotation line")
+    if not re.search(r'"g_map_list" is "%s' % " ".join(rotation), log):
+        detail.append("g_map_list was rewritten")
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append(("15 maps", not detail, detail))
 
 
 # --- Scenario tiers: simulated players (docs/design/simulated-clients.md) -------
@@ -1115,7 +1165,7 @@ at 15 2 cmd yes
 
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_rounds, tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
-         tier_human_rounds, tier_human_vote)
+         tier_human_rounds, tier_human_vote, tier_maps)
 
 
 def run_tier(tier, args):
@@ -1217,7 +1267,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

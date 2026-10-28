@@ -57,8 +57,8 @@ std::string Core_Vote_Describe(const VoteProposal &p);
 // break a console command or a path.
 std::vector<std::string> Core_Vote_Words(std::string_view text);
 
-// The maps a vote may pick: g_map_list if it names any, else the stock maps
-// for the family (q2ctf1-5 for CTF, q2dm1-8 otherwise).
+// The maps a vote may pick: g_map_list if it names any (Core_Maps_Words:
+// "q64/dm1" too), else the stock maps for the family (q2ctf1-5 for CTF, q2dm1-8 otherwise).
 std::vector<std::string> Core_Vote_MapList(std::string_view g_map_list, bool ctf);
 
 // Where a gametype or ruleset change reloads: the current map if the new

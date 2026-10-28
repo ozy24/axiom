@@ -11,6 +11,7 @@
 #include "core/stat_slots.h"
 #include "g_statusbar.h"
 #include "mod_identity.h"
+#include "core/maps_hooks.h"
 #include "core/match_hooks.h"
 #include "core/vote_hooks.h"
 
@@ -440,6 +441,7 @@ void Core_Match_Frame()
 	}
 	last_time = level.time;
 	Core_Vote_Frame();
+	Core_Maps_Frame();
 	// Settings that change before the match starts take effect: an admin's
 	// rulesets/<gametype>.cfg lands after the level has begun (the engine runs
 	// queued commands when it gets to them), and so does a `set` in warmup.
