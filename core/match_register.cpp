@@ -77,6 +77,7 @@ MatchConfig ReadConfig()
 	// is the team score, and in TDM the fraglimit is too (CheckEndTDMLevel).
 	c.teams = G_TeamplayEnabled();
 	c.fraglimit_on_teams = teamplay->integer != 0;
+	c.join_grace_ms = 10000;
 	return c;
 }
 
@@ -108,10 +109,14 @@ MatchInput Snapshot()
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		const edict_t *ent = ClientEdict(i);
-		if (!ent->inuse || !ent->client || !ent->client->pers.connected)
+		if (!ent->client || !ent->client->pers.connected)
 			continue;
 		MatchPlayer p;
 		p.id = (int)i;
+		// Connected, not yet begun: loading the map (not inuse until ClientBegin).
+		p.joining = !ent->client->pers.spawned && !(ent->svflags & SVF_BOT);
+		if (!ent->inuse && !p.joining)
+			continue;
 		p.playing = Playing(ent);
 		// Bots can't type `ready`; they never hold a match up.
 		p.ready = ready[i] || (ent->svflags & SVF_BOT);

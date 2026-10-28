@@ -111,6 +111,11 @@ bool Match::CanStart(const MatchInput &in) const
 {
 	if (!Staffed(config_, in))
 		return false;
+	// After a map change the bots are back before the humans: the countdown
+	// waits for them, or it would start and be cancelled as they arrive unready.
+	if (in.now_ms < config_.join_grace_ms ||
+	    std::any_of(in.players.begin(), in.players.end(), [](const MatchPlayer &p) { return p.joining; }))
+		return false;
 	if (config_.warmup_time_ms > 0 && in.now_ms - state_since_ms_ >= config_.warmup_time_ms &&
 	    state_ == MatchState::Warmup)
 		return true;

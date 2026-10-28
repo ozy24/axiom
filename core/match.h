@@ -46,6 +46,7 @@ struct MatchConfig
 	int64_t round_countdown_ms = 5000; // match_round_countdown: frozen at the spawns
 	bool teams = false;                // TDM, CTF: the lead and ties go by MatchInput::team_scores
 	bool fraglimit_on_teams = false;   // TDM: fraglimit applies to team totals (stock CheckEndTDMLevel)
+	int64_t join_grace_ms = 0;         // a new level: no countdown before this (players reloading the map)
 
 	bool operator==(const MatchConfig &o) const
 	{
@@ -53,7 +54,7 @@ struct MatchConfig
 		       warmup_time_ms == o.warmup_time_ms && countdown_ms == o.countdown_ms && overtime == o.overtime &&
 		       timelimit_ms == o.timelimit_ms && fraglimit == o.fraglimit && rounds_on_frag == o.rounds_on_frag &&
 		       round_pause_ms == o.round_pause_ms && round_countdown_ms == o.round_countdown_ms && teams == o.teams &&
-		       fraglimit_on_teams == o.fraglimit_on_teams;
+		       fraglimit_on_teams == o.fraglimit_on_teams && join_grace_ms == o.join_grace_ms;
 	}
 };
 
@@ -63,7 +64,8 @@ struct MatchPlayer
 	bool playing = false; // false: spectator / not joined
 	bool ready = false;
 	int score = 0;
-	int team = 0; // with MatchConfig::teams: 1 or 2 (0 = on no team)
+	int team = 0;         // with MatchConfig::teams: 1 or 2 (0 = on no team)
+	bool joining = false; // a human connected but still loading the map: no countdown starts yet
 };
 
 struct MatchInput

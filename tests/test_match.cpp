@@ -75,6 +75,25 @@ TEST_CASE("warmup waits until every playing client is ready")
 	CHECK(Has(out, MatchActionKind::Countdown));
 }
 
+TEST_CASE("a new level waits for players still loading it before the countdown")
+{
+	MatchConfig c = Enabled();
+	c.join_grace_ms = 10000;
+	Match m(c);
+	m.Begin(0);
+	// The bots are back and ready; a human is still loading the map.
+	MatchPlayer loading = P(3, false, 0, false);
+	loading.joining = true;
+	CHECK(m.Update(At(500, {P(1, true), P(2, true)})).empty()); // within the grace
+	CHECK(m.Update(At(11000, {P(1, true), P(2, true), loading})).empty());
+	CHECK(m.State() == MatchState::Warmup);
+	// In, unready: still warmup, nothing to cancel.
+	CHECK(m.Update(At(12000, {P(1, true), P(2, true), P(3, false)})).empty());
+	CHECK(m.State() == MatchState::Warmup);
+	m.Update(At(13000, {P(1, true), P(2, true), P(3, true)}));
+	CHECK(m.State() == MatchState::Countdown);
+}
+
 TEST_CASE("warmup needs match_minplayers")
 {
 	Match m(Enabled());
