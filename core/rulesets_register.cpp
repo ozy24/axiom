@@ -92,7 +92,8 @@ bool Core_Rulesets_ServerCommand(const char *cmd)
 		return true;
 	}
 	gi.AddCommandString(Core_Ruleset_Commands(*r).c_str());
-	gi.Com_PrintFmt("Ruleset {} ({}) applied; it takes effect at the next map.\n", r->name, Title(*r));
+	gi.Com_PrintFmt("Ruleset {} ({}) applied: its settings now, its gametype at the next map (`map <name>`).\n",
+	                r->name, Title(*r));
 	return true;
 }
 

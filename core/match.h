@@ -47,6 +47,7 @@ struct MatchConfig
 	bool teams = false;                // TDM, CTF: the lead and ties go by MatchInput::team_scores
 	bool fraglimit_on_teams = false;   // TDM: fraglimit applies to team totals (stock CheckEndTDMLevel)
 	int64_t join_grace_ms = 0;         // a new level: no countdown before this (players reloading the map)
+	int64_t join_wait_ms = 0;          // ... nor, until this, while a human is still loading it
 
 	bool operator==(const MatchConfig &o) const
 	{
@@ -54,7 +55,8 @@ struct MatchConfig
 		       warmup_time_ms == o.warmup_time_ms && countdown_ms == o.countdown_ms && overtime == o.overtime &&
 		       timelimit_ms == o.timelimit_ms && fraglimit == o.fraglimit && rounds_on_frag == o.rounds_on_frag &&
 		       round_pause_ms == o.round_pause_ms && round_countdown_ms == o.round_countdown_ms && teams == o.teams &&
-		       fraglimit_on_teams == o.fraglimit_on_teams && join_grace_ms == o.join_grace_ms;
+		       fraglimit_on_teams == o.fraglimit_on_teams && join_grace_ms == o.join_grace_ms &&
+		       join_wait_ms == o.join_wait_ms;
 	}
 };
 

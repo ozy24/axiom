@@ -76,6 +76,11 @@ std::string Core_Menu_Layout(const MenuPage &page, int cur);
 // PMenu_Next / PMenu_Prev move it; -1 if no row is selectable.
 int Core_Menu_Next(const MenuPage &page, int cur);
 int Core_Menu_Prev(const MenuPage &page, int cur);
+// Where the cursor goes when the page is rebuilt under it (a vote opens,
+// a row flips): the row that does what it was on (`action` with `arg`), as
+// rows can move; else the same row if it still does something (Ready became
+// Not Ready); else the first choice.
+int Core_Menu_Keep(const MenuPage &page, int cur, MenuAction action, std::string_view arg);
 
 // A gametype in the vote: its rulesets, the standard one first. One ruleset:
 // voted from the list; more: a submenu of variants.

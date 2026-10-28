@@ -114,6 +114,17 @@ int Core_Menu_Next(const MenuPage &page, int cur)
 	return -1;
 }
 
+int Core_Menu_Keep(const MenuPage &page, int cur, MenuAction action, std::string_view arg)
+{
+	if (action != MenuAction::None)
+		for (int i = 0; i < (int)page.size(); ++i)
+			if (page[i].action == action && page[i].arg == arg)
+				return i;
+	if (cur >= 0 && cur < (int)page.size() && page[cur].action != MenuAction::None)
+		return cur;
+	return Core_Menu_Next(page, -1);
+}
+
 int Core_Menu_Prev(const MenuPage &page, int cur)
 {
 	const int n = (int)page.size();

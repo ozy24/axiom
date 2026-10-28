@@ -78,6 +78,7 @@ MatchConfig ReadConfig()
 	c.teams = G_TeamplayEnabled();
 	c.fraglimit_on_teams = teamplay->integer != 0;
 	c.join_grace_ms = 10000;
+	c.join_wait_ms = 30000;
 	return c;
 }
 

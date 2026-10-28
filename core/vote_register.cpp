@@ -121,8 +121,6 @@ std::string GametypeVoteRuleset(std::string arg)
 // a fresh load of the level, so latched settings (g_gametype) take effect.
 std::string Commands(const VoteProposal &p)
 {
-	const auto map_for = [](const GametypeDef *gt)
-	{ return Core_Vote_MapFor(Core_Vote_MapList(g_map_list->string, IsCtf(gt)), level.mapname); };
 	switch (p.kind)
 	{
 	case VoteKind::Map:
@@ -132,11 +130,12 @@ std::string Commands(const VoteProposal &p)
 	case VoteKind::Gametype:
 	{
 		// The whole ruleset, from the gametype's defaults (decision 0013):
-		// HoonyMode's rounds must not follow a vote to TDM.
+		// HoonyMode's rounds must not follow a vote to TDM. The map is picked
+		// once its configs have run (`sv votemap`), from the g_map_list they set.
 		const std::optional<Ruleset> r = Core_Rulesets_Find(p.arg);
-		if (!r)
+		if (!r || !GametypeById(r->gametype))
 			return {};
-		return Core_Ruleset_Commands(*r) + "map " + map_for(GametypeById(r->gametype)) + "\n";
+		return Core_Ruleset_Commands(*r) + "sv votemap " + r->gametype + "\n";
 	}
 	}
 	return {};
@@ -322,8 +321,33 @@ bool Core_Vote_ClientCommand(edict_t *ent, const char *cmd)
 	return false;
 }
 
+namespace
+{
+// `sv votemap <gametype>`, queued by a passed gametype vote after the new
+// ruleset's configs: loads the current map if the g_map_list they left has
+// it, else the list's first (the gametype's stock maps if empty).
+void VoteMap(const char *gametype)
+{
+	const GametypeDef *gt = GametypeById(gametype);
+	if (!gt)
+	{
+		gi.Com_Print("Usage: sv votemap <gametype>\n");
+		return;
+	}
+	const std::string map = Core_Vote_MapFor(Core_Vote_MapList(g_map_list->string, IsCtf(gt)), level.mapname);
+	gi.Com_PrintFmt("Vote: running map {}\n", map);
+	gi.AddCommandString(("map " + map + "\n").c_str());
+}
+} // namespace
+
 bool Core_Vote_ServerCommand(const char *cmd)
 {
+	if (!Q_strcasecmp(cmd, "votemap"))
+	{
+		RegisterCvars();
+		VoteMap(gi.argc() > 2 ? gi.argv(2) : "");
+		return true;
+	}
 	if (Q_strcasecmp(cmd, "callvote"))
 		return false;
 	if (!Active())

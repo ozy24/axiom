@@ -253,3 +253,17 @@ TEST_CASE("vote: the server's call has no answer of its own and skips the player
 	REQUIRE(v.Cast(1, true, voters) == VoteError::None);
 	CHECK(v.Update(voters, 30) == VoteEvent::Passed);
 }
+
+TEST_CASE("vote: a slot's next client doesn't inherit its calls or cooldown")
+{
+	VoteConfig c = AllKinds();
+	c.call_limit = 1;
+	Vote v(c);
+	const std::vector<int> voters{0, 1};
+	REQUIRE(v.Call(0, Map("q2dm2"), Choices(), false, voters, 0) == VoteError::None);
+	REQUIRE(v.Cast(1, false, voters) == VoteError::None);
+	REQUIRE(v.Update(voters, 10) == VoteEvent::Failed);
+	CHECK(v.Call(0, Map("q2dm2"), Choices(), false, voters, 20) == VoteError::LimitReached);
+	v.Forget(0); // they left; someone else takes slot 0
+	CHECK(v.Call(0, Map("q2dm2"), Choices(), false, voters, 30) == VoteError::None);
+}

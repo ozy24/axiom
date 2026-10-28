@@ -123,10 +123,11 @@ TEST_CASE("menu layout: stock's PMenu_Do_Update format")
 TEST_CASE("menu pages fit stock's 18 rows and the client's 1024-byte layout")
 {
 	MenuView v = Longest();
-	for (int state = 0; state < 4; ++state)
+	for (int state = 0; state < 8; ++state)
 	{
 		v.playing = state & 1;
 		v.vote_open = state & 2;
+		v.team = state & 4 ? 1 : 0; // on a team: Spectate shows too (with a vote and Ready, the longest)
 		v.vote_can_call = !v.vote_open;
 		for (const MenuPage &page :
 		     {Core_Menu_Main(v), Core_Menu_MatchInfo(v), Core_Menu_CallVote(v), Core_Menu_VoteMaps(v),
@@ -155,6 +156,38 @@ TEST_CASE("menu cursor: skips text rows and wraps, as stock's")
 	CHECK(Core_Menu_Next(page, close) == join); // wraps
 	CHECK(Core_Menu_Prev(page, join) == close);
 	CHECK(Core_Menu_Next(MenuPage(3), -1) == -1);
+}
+
+TEST_CASE("menu cursor: a rebuilt page keeps the cursor on what it did, as rows move")
+{
+	MenuView v = Voting(Teams());
+	v.team = 1;
+	v.playing = v.ready_up = true;
+	const MenuPage before = Core_Menu_Main(v);
+	const int ready = RowOf(before, MenuAction::Ready);
+	// A vote opens: five rows arrive above; the cursor stays on Ready.
+	v.vote_open = true;
+	v.vote_can_call = false;
+	v.vote_proposal = "map q2dm3";
+	const MenuPage during = Core_Menu_Main(v);
+	REQUIRE(RowOf(during, MenuAction::Ready) != ready);
+	CHECK(Core_Menu_Keep(during, ready, MenuAction::Ready, "") == RowOf(during, MenuAction::Ready));
+	// Ready flips to Not Ready in place: the same row.
+	v.ready = true;
+	const MenuPage flipped = Core_Menu_Main(v);
+	const int at = RowOf(during, MenuAction::Ready);
+	CHECK(Core_Menu_Keep(flipped, at, MenuAction::Ready, "") == at);
+	CHECK(flipped[at].action == MenuAction::NotReady);
+	// A row that went (Call a Vote, while the vote is open): the first choice.
+	CHECK(Core_Menu_Keep(during, 0, MenuAction::CallVote, "") == Core_Menu_Next(during, -1));
+	// Choice rows match by their argument too.
+	const MenuPage maps = Core_Menu_VoteMaps(v);
+	int dm3 = -1;
+	for (int i = 0; i < (int)maps.size(); ++i)
+		if (maps[i].arg == "map q2dm3")
+			dm3 = i;
+	REQUIRE(dm3 > RowOf(maps, MenuAction::VoteFor)); // not the first choice
+	CHECK(Core_Menu_Keep(maps, 0, MenuAction::VoteFor, "map q2dm3") == dm3);
 }
 
 TEST_CASE("menu: FFA spectator joins or chases; a player can spectate")

@@ -33,7 +33,8 @@ turns it on.
   player toggles `ready` (console command). The countdown starts when every
   required player is ready, and there are at least `match_minplayers`. If
   `match_warmup_time` > 0 it also starts when that runs out. It never starts
-  in a level's first 10 seconds, nor while a human is still loading the map:
+  in a level's first 10 seconds, nor while a human is still loading the map
+  (up to 30 seconds in, so a stuck client can't hold it):
   after a map change the bots are back first and ready, and the countdown
   used to start, then be cancelled as the humans arrived unready (playtest,
   2026-10-27).

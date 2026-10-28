@@ -8,9 +8,12 @@
 struct edict_t;
 struct statusbar_t;
 
-// From G_InitStatusbar's team-mode and deathmatch blocks, in place of stock's
-// ID view and spectator lines.
-void Core_IdView_Statusbar(statusbar_t &sb);
+// From G_InitStatusbar's team-mode and deathmatch blocks (the latter also
+// single player and coop): in deathmatch under a registered gametype, adds
+// the centred line in place of stock's ID view and spectator lines and
+// returns true; false elsewhere, and stock's lines stay. SetStats and
+// SetSpectatorStats do nothing there either.
+bool Core_IdView_Statusbar(statusbar_t &sb);
 
 // From G_SetStats, after SetCTFStats has worked out STAT_CTF_ID_VIEW.
 void Core_IdView_SetStats(edict_t *ent);

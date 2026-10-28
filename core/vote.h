@@ -148,10 +148,13 @@ class Vote
 	// `vote yes|no`: a voter's answer; they may change it.
 	VoteError Cast(int id, bool yes, const std::vector<int> &voters);
 
-	// A client left: their answer goes, so the slot's next client has none.
+	// A client left: their answer, calls and cooldown go, so the slot's next
+	// client starts fresh.
 	void Forget(int id)
 	{
 		answers_.erase(id);
+		calls_.erase(id);
+		failed_at_ms_.erase(id);
 	}
 
 	// Every frame: recounts against who counts now (leavers drop out), then

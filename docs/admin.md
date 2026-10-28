@@ -60,7 +60,7 @@ your `rulesets/ctf.cfg`.
 
 | | |
 |---|---|
-| `sv ruleset <name>` | switch; it takes effect at the next map (`map q2dm2`) |
+| `sv ruleset <name>` | switch: its settings apply at once, its gametype at the next map, so follow it with one (`map q2dm2`) |
 | `sv rulesets` | list every mode and where its settings come from |
 | `callvote gametype <name>` | players' way: a vote, which reloads the map |
 

@@ -79,6 +79,7 @@ TEST_CASE("a new level waits for players still loading it before the countdown")
 {
 	MatchConfig c = Enabled();
 	c.join_grace_ms = 10000;
+	c.join_wait_ms = 30000;
 	Match m(c);
 	m.Begin(0);
 	// The bots are back and ready; a human is still loading the map.
@@ -92,6 +93,13 @@ TEST_CASE("a new level waits for players still loading it before the countdown")
 	CHECK(m.State() == MatchState::Warmup);
 	m.Update(At(13000, {P(1, true), P(2, true), P(3, true)}));
 	CHECK(m.State() == MatchState::Countdown);
+
+	// One stuck loading holds the start only so long.
+	Match stuck(c);
+	stuck.Begin(0);
+	CHECK(stuck.Update(At(29000, {P(1, true), P(2, true), loading})).empty());
+	stuck.Update(At(30000, {P(1, true), P(2, true), loading}));
+	CHECK(stuck.State() == MatchState::Countdown);
 }
 
 TEST_CASE("warmup needs match_minplayers")

@@ -7,7 +7,7 @@
 //   rulesets/<gametype>_<x>.cfg an admin's own variant, offered for votes by
 //                               listing it in g_rulesets
 //
-//   sv ruleset <name>   switch: applies at the next map
+//   sv ruleset <name>   switch: the settings now, the gametype (latched) at the next map
 //   sv rulesets         list them
 //
 // Every switch starts from the same place: every gameplay cvar back to its

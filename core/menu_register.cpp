@@ -143,16 +143,18 @@ MenuPage Build(const edict_t *ent, Page page, const char *gametype)
 }
 
 // UpdateFunc: stock calls it before each redraw (a cursor move, a dirty menu,
-// the 3-second refresh). The cursor stays on its row while that row still
-// does something.
+// the 3-second refresh). The cursor follows what its row did, as rows move
+// when a vote opens or closes: a press must never do something else.
 void Update(edict_t *ent)
 {
 	pmenuhnd_t *hnd = ent->client->menu;
 	MenuState *state = (MenuState *)hnd->arg;
+	const bool on_row = hnd->cur >= 0 && hnd->cur < kMenuRows;
+	const MenuAction was = on_row ? state->actions[hnd->cur] : MenuAction::None;
+	const std::string arg = on_row ? state->args[hnd->cur] : "";
 	const MenuPage page = Build(ent, state->page, state->gametype);
 	Fill(hnd->entries, *state, page);
-	if (hnd->cur < 0 || hnd->cur >= kMenuRows || state->actions[hnd->cur] == MenuAction::None)
-		hnd->cur = Core_Menu_Next(page, -1);
+	hnd->cur = Core_Menu_Keep(page, hnd->cur, was, arg);
 }
 
 void Open(edict_t *ent, Page which, const char *gametype = "")
@@ -205,7 +207,18 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 			gi.LocClient_Print(ent, PRINT_HIGH, "$g_already_on_team", CTFTeamName(team)); // as `team`
 			break;
 		}
-		CTFJoinTeam(ent, team); // as stock's join menu; closes the menu
+		if (ent->client->resp.ctf_team == CTF_NOTEAM)
+		{
+			CTFJoinTeam(ent, team); // as stock's join menu; closes the menu
+			break;
+		}
+		// A change of team is stock's `team` command, run by the client: it
+		// kills the player (dropping a carried flag and tech), and refuses
+		// under g_teamplay_force_join or a stock CTF match.
+		PMenu_Close(ent);
+		gi.WriteByte(svc_stufftext);
+		gi.WriteString(team == CTF_TEAM1 ? "team red\n" : "team blue\n");
+		gi.unicast(ent, true);
 		break;
 	}
 	case MenuAction::JoinGame:
