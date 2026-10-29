@@ -1,6 +1,6 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-10-29 (handover)._
+_Updated at the end of every session. Last update: 2026-10-29 (shuffle vote)._
 
 ## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
@@ -260,8 +260,10 @@ Done (branch `scoreboard/duel`; Chris finished testing it on 2026-10-29):
 
 ## Handover (2026-10-29, end of a long session)
 
-**Branch `scoreboard/duel`:** Chris finished testing it on 2026-10-29; PR,
-full CI, squash-merge on green.
+**Branch `scoreboard/duel`:** Chris finished testing it on 2026-10-29; PR
+#34. The rename drill failed on it: About puts mod.json's `repository` in
+the binary, and the drill kept the real URL. The drill now gives the
+renamed mod a dummy repository too.
 
 **The playtest rig** (`~/q2playtest`, `./run.sh`, `./cmd.sh "<console>"`):
 Duel on q2dm1 with the branch's build. Deploy with a temp file and `mv`,
@@ -271,11 +273,15 @@ string shows a stale commit (the build id is read at configure time);
 themselves and start a match alone, so add them (`bot_count N`) after
 the human has entered.
 
-**Next, agreed with Chris: a team shuffle vote** (`callvote shuffle`, TDM
-and CTF). No `balance` vote: Chris says balancing only makes sense with a
-rating system, and we have none. Settled 2026-10-29: a plain random
-split (even sizes), callable in warmup only. Probably also `sv shuffle`
-for admins.
+**Team shuffle (branch `vote/shuffle`, decision 0020):** `callvote
+shuffle` and `sv shuffle` in TDM/CTF warmup (or the countdown) with three
+or more players on teams: a random even split, never the same two groups
+back; unlocks both teams and respawns everyone on a team (as going LIVE
+does, not stock's suicide-per-player team change). In `g_vote_allow`'s
+default; "Shuffle Teams" on the Call a Vote page. No `balance` vote: no
+ratings (Chris). Harness tier 20 (checked against a build that logs the
+split but doesn't move anyone: fails on the team skins). Tiers 12, 17,
+19 and 20 pass locally. Not playtested; waiting for Chris's look on the rig.
 
 **After that, Chris's options** (he hadn't chosen): Clan Arena as a TDM
 ruleset (elimination rounds that count the living, a spawn loadout,
