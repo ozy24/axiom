@@ -232,7 +232,8 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
 
 Chris finished testing this batch on 2026-10-29.
 
-Next: the FFA column scoreboard (Chris, 2026-10-29), on its own branch:
+In progress: the FFA column scoreboard (decision 0018, branch
+`scoreboard/ffa-columns`), waiting for Chris's playtest. As agreed:
 `#  Frg Dth  Player  FPH Time Ping`, where Time is whole minutes in the
 match. A dated header; spectators underneath with no chase target. When a
 full server doesn't fit, it shows the top N plus your own row. The stock

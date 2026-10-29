@@ -5,6 +5,7 @@
 #include "core/eyecam_hooks.h" // [mod]
 #include "core/vote_hooks.h" // [mod]
 #include "core/join_hooks.h" // [mod]
+#include "core/scoreboard_hooks.h" // [mod]
 #include "m_player.h"
 #include "bots/bot_includes.h"
 
@@ -570,6 +571,7 @@ DIE(player_die) (edict_t *self, edict_t *inflictor, edict_t *attacker, int damag
 		LookAtKiller(self, inflictor, attacker);
 		self->client->ps.pmove.pm_type = PM_DEAD;
 		ClientObituary(self, inflictor, attacker, mod);
+		Core_Scoreboard_Died(self); // [mod] the column board's deaths
 
 		CTFFragBonuses(self, inflictor, attacker);
 		// ZOID

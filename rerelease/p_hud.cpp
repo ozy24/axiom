@@ -5,6 +5,7 @@
 #include "core/match_hooks.h" // [mod]
 #include "core/id_view_hooks.h" // [mod]
 #include "core/miniscore_hooks.h" // [mod]
+#include "core/scoreboard_hooks.h" // [mod]
 #include "core/eyecam_hooks.h" // [mod]
 
 /*
@@ -454,6 +455,8 @@ void DeathmatchScoreboardMessage(edict_t *ent, edict_t *killer)
 		total++;
 	}
 
+	if (Core_Scoreboard_Columns(ent, string)) // [mod] the column board (g_scoreboard 1)
+		total = 0;                             // [mod] stock's rows give way; its limit and clock stay
 	// add the clients in sorted order
 	if (total > 16)
 		total = 16;

@@ -174,7 +174,8 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
 - **Tier 16 human-settings:** three simulated players in a live FFA match:
   a time limit vote moves the clock without a restart, friendly fire and
   an out-of-range time are refused, and a powerups vote reloads the map
-  with the voted time limit kept.
+  with the voted time limit kept. The column scoreboard (decision 0018)
+  shows a suicide as a death.
 - **Tier 17 human-teamlock:** TDM with five simulated players on the
   built-in ruleset (`match_lock 1`): first-on captains, both teams locked
   at LIVE, a newcomer refused (told alone), a dropped player back in, the
