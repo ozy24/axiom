@@ -1750,12 +1750,12 @@ void CTFScoreboardMessage(edict_t *ent, edict_t *killer)
 			cl = &game.clients[sorted[0][i]];
 			cl_ent = g_edicts + 1 + sorted[0][i];
 
-			std::string_view entry = G_Fmt("ctf -40 {} {} {} {} {} ",
+			std::string entry = Core_Teams_ScoreboardMark(cl_ent, -64, 42 + i * 8) + std::string(G_Fmt("ctf -40 {} {} {} {} {} ", // [mod] captain's *
 						42 + i * 8,
 						sorted[0][i],
 						cl->resp.score,
 						cl->ping > 999 ? 999 : cl->ping,
-						cl_ent->client->pers.inventory[IT_FLAG2] ? "sbfctf2" : "\"\"");
+						cl_ent->client->pers.inventory[IT_FLAG2] ? "sbfctf2" : "\"\"")); // [mod]
 
 			if (string.size() + entry.size() < MAX_CTF_STAT_LENGTH)
 			{
@@ -1770,12 +1770,12 @@ void CTFScoreboardMessage(edict_t *ent, edict_t *killer)
 			cl = &game.clients[sorted[1][i]];
 			cl_ent = g_edicts + 1 + sorted[1][i];
 
-			std::string_view entry = G_Fmt("ctf 200 {} {} {} {} {} ",
+			std::string entry = Core_Teams_ScoreboardMark(cl_ent, 174, 42 + i * 8) + std::string(G_Fmt("ctf 200 {} {} {} {} {} ", // [mod] captain's *
 						42 + i * 8,
 						sorted[1][i],
 						cl->resp.score,
 						cl->ping > 999 ? 999 : cl->ping,
-						cl_ent->client->pers.inventory[IT_FLAG1] ? "sbfctf1" : "\"\"");
+						cl_ent->client->pers.inventory[IT_FLAG1] ? "sbfctf1" : "\"\"")); // [mod]
 			
 			if (string.size() + entry.size() < MAX_CTF_STAT_LENGTH)
 			{

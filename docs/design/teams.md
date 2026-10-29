@@ -63,6 +63,7 @@ whole argument, so a name with spaces needs no quotes.
   if you aren't on its roster. Match Info shows each team's captain and lock. A captain has
   a **Team** page: Lock or Unlock Team, Ready Team in ready-up, and their
   teammates; each opens Make Captain and Kick from Team.
+- The scoreboard: a `*` left of each captain's name (as MMREX draws it).
 - The server log: `Teams: RED locked`, `Teams: RED captain Alice`, and so on.
 
 ## Clan Arena

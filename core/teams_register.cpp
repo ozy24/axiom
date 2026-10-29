@@ -88,7 +88,7 @@ void Announce(const std::vector<TeamsEvent> &events)
 			gi.LocBroadcast_Print(PRINT_HIGH, "{} is locked.\n", TeamName(e.team));
 			break;
 		case TeamsEvent::Kind::Unlocked:
-			gi.LocBroadcast_Print(PRINT_HIGH, "{} is unlocked: nobody left on it.\n", TeamName(e.team));
+			gi.LocBroadcast_Print(PRINT_HIGH, "{} is unlocked: no players left on it.\n", TeamName(e.team));
 			break;
 		}
 		gi.Com_PrintFmt("Teams: {} {}{}\n", TeamName(e.team),
@@ -397,4 +397,12 @@ void Core_Teams_MenuInfo(const edict_t *ent, MenuView &v)
 		if (mate != ent && Present(mate) && !(mate->svflags & SVF_BOT) && TeamOf(mate) == team)
 			v.teammates.push_back({(int)i, Core_PlayerName(mate)});
 	}
+}
+
+std::string Core_Teams_ScoreboardMark(const edict_t *ent, int x, int y)
+{
+	const int team = Active() ? TeamOf(ent) : 0;
+	if (!team || teams.Captain(team) != Core_PlayerKey(ent))
+		return {};
+	return fmt::format("xv {} yv {} string2 \"*\" ", x, y);
 }

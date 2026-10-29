@@ -58,7 +58,9 @@ A human new to the server arrives spectating with the main page open
 - **Call a Vote.** The allowed kinds: Map and Gametype open their lists;
   Restart Match is called from here. Time Limit, Frag Limit (Capture Limit
   in CTF), Powerups and, in team modes, Friendly Fire each open a few
-  choices, the value now marked and skipped (decision 0015).
+  choices, the value now marked and skipped (decision 0015). In a ready-up
+  warmup, Ready Everyone and (on a team) Ready My Team call `readyall` /
+  `readyteam`.
 - **Maps.** The vote's map list. The current map is marked and skipped.
 - **Gametypes.** A gametype with one ruleset is voted from the list. One with
   variants opens a submenu, for example Duel → Duel / HoonyMode. The current

@@ -16,6 +16,8 @@ engine side: `core/vote_register.cpp`; harness: tiers 14 and 16.
 | `callvote scorelimit <n>` | the frag limit (0-100), or the capture limit in CTF (0-20); 0 = none. `fraglimit` and `capturelimit` are the same command |
 | `callvote powerups on\|off` | stock's `g_no_items`; reloads the map, as items spawn when it loads |
 | `callvote friendlyfire on\|off` | team modes only; at once |
+| `callvote readyall` | in a ready-up warmup: everyone playing is ready |
+| `callvote readyteam` | team modes, in a ready-up warmup: the caller's team is ready. Only that team votes on it (a majority of its humans); the HUD shows `VOTE: READY RED`. `sv callvote readyteam red\|blue` from the console |
 | `vote yes` / `vote no` | answer the open vote; an answer can be changed |
 | `yes` / `no` | stock's commands: answer our vote while one is open, else stock's CTF elections as before |
 | `warp <map>` | stock's map election: the same as `callvote map` |
@@ -69,7 +71,7 @@ same way. docs/admin.md has the admin's side.
 | Cvar | Default | |
 |---|---|---|
 | `g_vote` | 1 | voting on |
-| `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire` | the kinds that can be called |
+| `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire readyall readyteam` | the kinds that can be called |
 | `g_vote_midgame` | 1 | also during a live match; 0 = warmup only |
 | `g_vote_time` | 30 | seconds to vote (minimum 5) |
 | `g_vote_cooldown` | 30 | seconds after a caller's failed vote |

@@ -224,6 +224,11 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
   which also keeps TDM/CTF teams across map changes. Duel's queue is
   opt-in (Join Queue / Leave Queue). New `GametypeDef::waiting` hook.
   Harness tier 18; tiers 11, 13, 14, 16 set `g_auto_join 1`.
+- An emptied team's unlock reads "RED is unlocked: no players left on it."
+- The team scoreboard marks each captain with a `*` (tier 17 checks it).
+- Ready votes: `callvote readyall` and `callvote readyteam` (voted on by
+  the caller's team alone) in a ready-up warmup, in the default
+  `g_vote_allow` and the Call a Vote page. Harness tier 19.
 
 Next: Clan Arena as a TDM ruleset (elimination rounds that count the
 living, spawn loadout, `match_lock 1`). Then Phase 4's remainder - Chris has other features to work through first,

@@ -399,3 +399,64 @@ TEST_CASE("vote settings: not allowed unless listed")
 	Vote v(AllKinds()); // map gametype restart
 	CHECK(v.Call(0, {VoteKind::Timelimit, "20", ""}, Now(10, 0), false, {0, 1}, 0) == VoteError::NotAllowed);
 }
+
+namespace
+{
+VoteConfig ReadyVotes()
+{
+	VoteConfig c;
+	c.allowed = {VoteKind::ReadyAll, VoteKind::ReadyTeam};
+	return c;
+}
+
+VoteChoices ReadyUp(bool teams, bool ready_up = true)
+{
+	VoteChoices c = Choices();
+	c.now.teams = teams;
+	c.now.ready_up = ready_up;
+	return c;
+}
+} // namespace
+
+TEST_CASE("vote ready: readyall and readyteam name and describe themselves")
+{
+	CHECK(Core_Vote_ParseKind("ReadyAll") == VoteKind::ReadyAll);
+	CHECK(Core_Vote_ParseKind("readyteam") == VoteKind::ReadyTeam);
+	CHECK_FALSE(Core_Vote_Setting(VoteKind::ReadyAll, false).has_value());
+	Vote v(ReadyVotes());
+	REQUIRE(v.Call(0, {VoteKind::ReadyAll, "", ""}, ReadyUp(false), false, {0, 1, 2}, 0) == VoteError::None);
+	CHECK(Core_Vote_Describe(v.Proposal()) == "ready everyone");
+	CHECK(v.HudText(0) == "VOTE: READY EVERYONE - YES 1/3 - 30s");
+	Vote t(ReadyVotes());
+	REQUIRE(t.Call(0, {VoteKind::ReadyTeam, "Red", ""}, ReadyUp(true), false, {0, 1}, 0) == VoteError::None);
+	CHECK(t.Proposal().arg == "red");
+	CHECK(t.HudText(0) == "VOTE: READY RED - YES 1/2 - 30s");
+}
+
+TEST_CASE("vote ready: only in a ready-up; readyteam only in team modes, for a team")
+{
+	Vote v(ReadyVotes());
+	CHECK(v.Call(0, {VoteKind::ReadyAll, "", ""}, ReadyUp(false, false), false, {0, 1}, 0) == VoteError::NoReadyUp);
+	CHECK(v.Call(0, {VoteKind::ReadyAll, "now", ""}, ReadyUp(false), false, {0, 1}, 0) == VoteError::BadArg);
+	CHECK(v.Call(0, {VoteKind::ReadyTeam, "red", ""}, ReadyUp(false), false, {0, 1}, 0) == VoteError::TeamsOnly);
+	CHECK(v.Call(0, {VoteKind::ReadyTeam, "red", ""}, ReadyUp(true, false), false, {0, 1}, 0) == VoteError::NoReadyUp);
+	CHECK(v.Call(0, {VoteKind::ReadyTeam, "", ""}, ReadyUp(true), false, {0, 1}, 0) == VoteError::BadArg);
+	const VoteConfig c = ReadyVotes();
+	CHECK(Core_Vote_ErrorText(VoteError::BadArg, c, {VoteKind::ReadyTeam, "", ""}, ReadyUp(true)) ==
+	      "Join a team first.");
+	CHECK(Core_Vote_ErrorText(VoteError::TeamsOnly, c, {VoteKind::ReadyTeam, "red", ""}, ReadyUp(false)) ==
+	      "Readyteam is only for team gametypes.");
+	CHECK(Core_Vote_ErrorText(VoteError::NotVoter, c, {VoteKind::ReadyTeam, "red", ""}, ReadyUp(true)) ==
+	      "Only RED votes on readying RED.");
+}
+
+TEST_CASE("vote ready: readyteam's voters are the team the adapter passes")
+{
+	// The adapter passes only the caller's team as voters: two of them, so
+	// one other yes passes it whatever the other team thinks.
+	Vote v(ReadyVotes());
+	REQUIRE(v.Call(0, {VoteKind::ReadyTeam, "blue", ""}, ReadyUp(true), false, {0, 3}, 0) == VoteError::None);
+	CHECK(v.Cast(1, false, {0, 3}) == VoteError::NotVoter);
+	CHECK(v.Cast(3, true, {0, 3}) == VoteError::None);
+	CHECK(v.Update({0, 3}, 0) == VoteEvent::Passed);
+}

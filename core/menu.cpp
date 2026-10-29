@@ -280,6 +280,11 @@ MenuPage Core_Menu_CallVote(const MenuView &v)
 		Add(page, "Restart Match", MenuAction::VoteFor, MenuAlign::Left, false, "restart");
 	for (const MenuVoteSetting &s : v.vote_settings)
 		Add(page, Core_Menu_Clean(s.title), MenuAction::VoteSetting, MenuAlign::Left, false, s.kind);
+	// In a ready-up warmup: ready everyone playing, or your own team.
+	if (v.ready_up && allowed("readyall"))
+		Add(page, "Ready Everyone", MenuAction::VoteFor, MenuAlign::Left, false, "readyall");
+	if (v.ready_up && v.team && allowed("readyteam"))
+		Add(page, "Ready My Team", MenuAction::VoteFor, MenuAlign::Left, false, "readyteam");
 	Footer(page, {"$g_pc_return", MenuAlign::Left, MenuAction::Back, false, {}});
 	return page;
 }

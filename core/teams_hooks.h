@@ -2,6 +2,8 @@
 // and into the mod's own (docs/design/teams.md, decision 0016).
 #pragma once
 
+#include <string>
+
 struct edict_t;
 struct MenuView;
 
@@ -27,3 +29,7 @@ void Core_Teams_MenuInfo(const edict_t *ent, MenuView &view);
 // A captain's command from the Tab menu, as the console command `cmd`
 // (`lockteam`, ...) with `target` the client it acts on (teamkick, captain).
 void Core_Teams_Run(edict_t *ent, const char *cmd, edict_t *target);
+
+// The scoreboard's captain marker: a `*` left of a captain's row at (x, y),
+// as layout text, else empty. From CTFScoreboardMessage, before the row.
+std::string Core_Teams_ScoreboardMark(const edict_t *ent, int x, int y);

@@ -62,7 +62,7 @@ MenuView Longest()
 	v.timelimit_min = 999;
 	v.voter = true;
 	v.vote_proposal = std::string(60, 'W');
-	v.vote_kinds = {"map", "gametype", "restart"};
+	v.vote_kinds = {"map", "gametype", "restart", "readyall", "readyteam"};
 	for (int i = 0; i < 40; ++i)
 	{
 		const std::string name = std::to_string(i) + std::string(30, 'W');
@@ -338,6 +338,20 @@ TEST_CASE("menu: Call a Vote lists the allowed kinds; restart is called from it"
 	CHECK(Row(page, "Restart Match")->arg == "restart");
 	v.vote_kinds = {"map"};
 	CHECK(Actions(Core_Menu_CallVote(v)) == std::vector<MenuAction>{MenuAction::VoteMaps, MenuAction::Back});
+}
+
+TEST_CASE("menu: Call a Vote offers the ready votes in a ready-up; readyteam on a team")
+{
+	MenuView v = Voting(Teams());
+	v.vote_kinds = {"readyall", "readyteam"};
+	CHECK(Actions(Core_Menu_CallVote(v)) == std::vector<MenuAction>{MenuAction::Back});
+	v.ready_up = true;
+	CHECK(Row(Core_Menu_CallVote(v), "Ready Everyone")->arg == "readyall");
+	CHECK_FALSE(Row(Core_Menu_CallVote(v), "Ready My Team"));
+	v.team = 2;
+	CHECK(Row(Core_Menu_CallVote(v), "Ready My Team")->arg == "readyteam");
+	v.vote_kinds = {"readyteam"};
+	CHECK_FALSE(Row(Core_Menu_CallVote(v), "Ready Everyone"));
 }
 
 TEST_CASE("menu: vote maps call the vote; the current one is marked and skipped")

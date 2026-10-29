@@ -98,7 +98,7 @@ Details: docs/design/teams.md, docs/decisions/0016.
 | | Default | |
 |---|---|---|
 | `g_vote` | 1 | voting on |
-| `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire` | what players can call; remove a word to turn that vote off |
+| `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire readyall readyteam` | what players can call; remove a word to turn that vote off |
 | `g_vote_midgame` | 1 | also during a match; 0 = warmup only |
 | `g_map_list` | (empty) | the map rotation, and the maps a vote may pick |
 | `g_map_list_shuffle` | 1 | play the rotation in a random order; 0 = as written |
@@ -107,7 +107,9 @@ Details: docs/design/teams.md, docs/decisions/0016.
 (the server casts no vote; the player limits don't apply).
 
 Players can also vote on the time limit (1-60 minutes), the frag or
-capture limit, powerups and, in team modes, friendly fire. A voted value
+capture limit, powerups and, in team modes, friendly fire; and in a
+ready-up warmup, to ready everyone (`readyall`) or their own team
+(`readyteam`, voted on by that team alone). A voted value
 lasts until the gametype changes, as if you had typed `set`; the next
 gametype starts from its own file again. The ranges are fixed
 (decision 0015).

@@ -47,6 +47,8 @@ Tiers (plan Phase 1b):
  18. human-join  Arriving spectating with the menu; `join` and the menu;
                  players kept across `gamemap` and `map`; Duel's queue by
                  asking; TDM teams kept (Q2RED).
+ 19. human-readyvote  The ready votes in a TDM ready-up: readyteam voted on by
+                 the caller's team alone, readyall readying everyone (Q2RED).
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -1267,6 +1269,7 @@ at 8 3 cmd team blue
 at 11 3 cmd inven
 at 12 3 cmd invuse
 at 14 3 cmd team blue
+at 24 2 cmd score
 at 27 4 cmd team red
 at 29 1 disconnect
 at 32 1 rejoin
@@ -1320,7 +1323,78 @@ at 58 3 disconnect
     dave = [r["args"][1] for r in locs if r["base"] == "$g_changed_team" and r["args"][0] == f"##P{humans['Dave']}"]
     if dave != ["RED", "BLUE"]:
         detail.append(f"Dave changed to {dave}, expected RED from the menu, then BLUE")
+    # The scoreboard marks each team's captain with a `*` (playtest
+    # 2026-10-29): Carol's, opened once live, has one per column.
+    boards = [r["text"] for r in tap if r.get("type") == "layout" and r["to"] == humans["Carol"]
+              and "ctf -40" in r["text"]]
+    if not boards:
+        detail.append("Carol was never shown the team scoreboard")
+    else:
+        marks = re.findall(r'xv (-?\d+) yv \d+ string2 "\*"', boards[0])
+        if sorted(marks) != ["-64", "174"]:
+            detail.append(f"captain marks at x {marks}, expected one per team (-64, 174)")
     detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append((label, not detail, detail))
+
+
+def tier_human_readyvote(args, results):
+    """The ready votes (playtest 2026-10-29) in a TDM ready-up warmup, four
+    simulated players: Alice calls readyteam, which only RED votes on (Carol,
+    on BLUE, is refused), and Bob's yes readies RED; then Carol calls
+    readyall, BLUE and Alice say yes, everyone is ready and the match goes
+    live. Q2RED only."""
+    label = "19 human-readyvote"
+    rig, why = scenario_rig(args, "t19-readyvote")
+    if not rig:
+        results.append((label, True, [f"skipped: {why}"]))
+        return
+    script = """seconds 40
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Carol social=sim-carol puppet
+client 3 name=Dave social=sim-dave puppet
+at 6 0 cmd team red
+at 6 1 cmd team red
+at 6 2 cmd team blue
+at 6 3 cmd team blue
+at 12 0 cmd callvote readyteam
+at 14 2 cmd vote yes
+at 15 1 cmd vote yes
+at 22 2 cmd callvote readyall
+at 24 3 cmd vote yes
+at 25 0 cmd vote yes
+"""
+    rulesets = rig.dir / "baseq2" / "rulesets"
+    rulesets.mkdir(parents=True, exist_ok=True)
+    (rulesets / "tdm.cfg").write_text("set match_ready 1\nset match_countdown 3\nset timelimit 5\n")
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_vote_cooldown", "0",
+                                     "+set", "g_ruleset", "tdm", "+map", "q2dm1"])
+    log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 100)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    if not {"Alice", "Bob", "Carol", "Dave"} <= set(humans):
+        results.append((label, False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
+        return
+    votes = [l.split("Vote: ", 1)[1].strip() for l in log.splitlines() if "Vote: " in l]
+    want = ["Alice called ready red", "ready red passed", "ready red",
+            "Carol called ready everyone", "ready everyone passed", "ready everyone"]
+    if votes != want:
+        detail.append(f"votes {votes}, expected {want}")
+    locs = [r for r in tap if r.get("type") == "locprint"]
+    if not any(r["to"] == humans["Carol"] and r["args"] == ["Only RED votes on readying RED."] for r in locs):
+        detail.append("Carol (BLUE) wasn't refused a vote on RED's readyteam")
+    ready = [r["args"][0] for r in locs if r["base"] == "{} is ready.\n" and r["to"] == -1]
+    if ready != ["RED"]:
+        detail.append(f"ready broadcasts {ready}, expected RED's alone (one line for the team)")
+    live = log.find("-> live")
+    if live < 0:
+        detail.append("the match never went live")
+    elif log.find("Vote: ready everyone\n") < 0 or log.find("Vote: ready everyone\n") > live:
+        detail.append("the match went live before readyall passed")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]
@@ -1425,7 +1499,7 @@ at 6 1 cmd team blue
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_rounds, tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
          tier_human_rounds, tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
-         tier_human_join)
+         tier_human_join, tier_human_readyvote)
 
 
 def run_tier(tier, args):
@@ -1527,7 +1601,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps", "human_settings", "human_teamlock", "human_join"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")
