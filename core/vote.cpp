@@ -65,15 +65,17 @@ const char *VoteKindName(VoteKind kind)
 		return "readyall";
 	case VoteKind::ReadyTeam:
 		return "readyteam";
+	case VoteKind::Shuffle:
+		return "shuffle";
 	}
 	return "?";
 }
 
 const std::vector<VoteKind> &Core_Vote_AllKinds()
 {
-	static const std::vector<VoteKind> kinds{VoteKind::Map,          VoteKind::Gametype,   VoteKind::Restart,
-	                                         VoteKind::Timelimit,    VoteKind::Scorelimit, VoteKind::Powerups,
-	                                         VoteKind::FriendlyFire, VoteKind::ReadyAll,   VoteKind::ReadyTeam};
+	static const std::vector<VoteKind> kinds{
+	    VoteKind::Map,      VoteKind::Gametype,     VoteKind::Restart,  VoteKind::Timelimit, VoteKind::Scorelimit,
+	    VoteKind::Powerups, VoteKind::FriendlyFire, VoteKind::ReadyAll, VoteKind::ReadyTeam, VoteKind::Shuffle};
 	return kinds;
 }
 
@@ -111,6 +113,7 @@ std::optional<VoteSetting> Core_Vote_Setting(VoteKind kind, bool ctf)
 	case VoteKind::Restart:
 	case VoteKind::ReadyAll:
 	case VoteKind::ReadyTeam:
+	case VoteKind::Shuffle:
 		break;
 	}
 	return std::nullopt;
@@ -173,6 +176,7 @@ int Core_Vote_SettingNow(const VoteSetting &s, const VoteSettingsNow &now)
 	case VoteKind::Restart:
 	case VoteKind::ReadyAll:
 	case VoteKind::ReadyTeam:
+	case VoteKind::Shuffle:
 		break;
 	}
 	return 0;
@@ -189,8 +193,8 @@ std::string Core_Vote_SettingLabel(const VoteSetting &s, int value)
 std::string Core_Vote_Describe(const VoteProposal &p)
 {
 	const bool ready = p.kind == VoteKind::ReadyAll || p.kind == VoteKind::ReadyTeam;
-	if ((Core_Vote_Setting(p.kind, false) || ready) && !p.label.empty())
-		return p.label; // "time limit 20 minutes", "ready red"
+	if ((Core_Vote_Setting(p.kind, false) || ready || p.kind == VoteKind::Shuffle) && !p.label.empty())
+		return p.label; // "time limit 20 minutes", "ready red", "shuffle teams"
 	const std::string &what = p.label.empty() ? p.arg : p.label;
 	return what.empty() ? VoteKindName(p.kind) : std::string(VoteKindName(p.kind)) + " " + what;
 }
@@ -277,6 +281,8 @@ std::string Core_Vote_ErrorText(VoteError e, const VoteConfig &config, const Vot
 			return "Usage: callvote readyall";
 		case VoteKind::ReadyTeam:
 			return "Join a team first.";
+		case VoteKind::Shuffle:
+			return "Usage: callvote shuffle";
 		case VoteKind::Timelimit:
 		case VoteKind::Scorelimit:
 		case VoteKind::Powerups:
@@ -299,7 +305,12 @@ std::string Core_Vote_ErrorText(VoteError e, const VoteConfig &config, const Vot
 	}
 	case VoteError::TeamsOnly:
 		return p.kind == VoteKind::ReadyTeam ? "Readyteam is only for team gametypes."
+		       : p.kind == VoteKind::Shuffle ? "Shuffle is only for team gametypes."
 		                                     : "Friendly fire is only for team gametypes.";
+	case VoteError::WarmupOnly:
+		return "Teams can only be shuffled in warmup.";
+	case VoteError::TooFew:
+		return "A shuffle needs at least three players on teams.";
 	case VoteError::NoReadyUp:
 		return "Nobody is readying up now: ready votes are for the warmup.";
 	case VoteError::NoLimit:
@@ -369,6 +380,16 @@ VoteError Vote::Call(int caller, VoteProposal proposal, const VoteChoices &choic
 		proposal.label = team ? "ready " + proposal.arg : "ready everyone";
 		break;
 	}
+	case VoteKind::Shuffle:
+		if (!choices.now.teams)
+			return VoteError::TeamsOnly;
+		if (!choices.now.warmup)
+			return VoteError::WarmupOnly;
+		if (choices.now.team_players < 3)
+			return VoteError::TooFew;
+		arg_ok = proposal.arg.empty();
+		proposal.label = "shuffle teams";
+		break;
 	case VoteKind::Timelimit:
 	case VoteKind::Scorelimit:
 	case VoteKind::Powerups:

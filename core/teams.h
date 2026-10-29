@@ -12,6 +12,7 @@
 
 #include <array>
 #include <cstdint>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -116,3 +117,10 @@ class Teams
 	std::array<Side, 3> sides_{}; // [1] red, [2] blue; [0] unused
 	uint64_t clock_ = 0;
 };
+
+// `shuffle` (a warmup vote): a random split of the players on teams. `teams`
+// holds each player's team now (1 or 2); the result is theirs after the
+// shuffle, the sides' sizes differing by at most one. With three or more
+// players it never gives the same two groups back, in either colour, so a
+// passed shuffle always changes something.
+std::vector<int> Core_Teams_Shuffle(const std::vector<int> &teams, std::mt19937 &rng);

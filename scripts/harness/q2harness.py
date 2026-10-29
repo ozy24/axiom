@@ -49,6 +49,8 @@ Tiers (plan Phase 1b):
                  asking; TDM teams kept (Q2RED).
  19. human-readyvote  The ready votes in a TDM ready-up: readyteam voted on by
                  the caller's team alone, readyall readying everyone (Q2RED).
+ 20. human-shuffle  The shuffle vote in a TDM warmup: a new even split, team
+                 skins to match, the locks off; refused once live (Q2RED).
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -1443,6 +1445,96 @@ at 25 0 cmd vote yes
     results.append((label, not detail, detail))
 
 
+def tier_human_shuffle(args, results):
+    """The shuffle vote (2026-10-29: a random split, warmup only) in a TDM
+    ready-up warmup, five simulated players, three RED and two BLUE. The
+    server locks RED (`sv lockteam`: who captains it depends on arrival
+    order); Dave's shuffle passes on Alice's and Bob's yes. The new teams are three and two, not the old groups, everyone's
+    team skin follows their new team, and RED is unlocked. Then readyall
+    starts the match and a shuffle called live is refused. Q2RED only."""
+    label = "20 human-shuffle"
+    rig, why = scenario_rig(args, "t20-shuffle")
+    if not rig:
+        results.append((label, True, [f"skipped: {why}"]))
+        return
+    script = """seconds 44
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Carol social=sim-carol puppet
+client 3 name=Dave social=sim-dave puppet
+client 4 name=Eve social=sim-eve puppet
+at 6 0 cmd team red
+at 7 1 cmd team red
+at 7 2 cmd team red
+at 7 3 cmd team blue
+at 7 4 cmd team blue
+at 12 3 cmd callvote shuffle
+at 14 0 cmd vote yes
+at 14 1 cmd vote yes
+at 22 2 cmd callvote readyall
+at 24 0 cmd vote yes
+at 24 1 cmd vote yes
+at 24 3 cmd vote yes
+at 36 4 cmd callvote shuffle
+"""
+    rulesets = rig.dir / "baseq2" / "rulesets"
+    rulesets.mkdir(parents=True, exist_ok=True)
+    (rulesets / "tdm.cfg").write_text("set match_ready 1\nset match_countdown 3\nset timelimit 5\n")
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_vote_cooldown", "0",
+                                     "+set", "g_ruleset", "tdm", "+map", "q2dm1"])
+    during = [("sleep", 10), ("cmd", "sv lockteam red"), ("wait", r"Teams: shuffled", 60), ("sleep", 1), ("cmd", "sv teams")]
+    log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 110)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    names = ["Alice", "Bob", "Carol", "Dave", "Eve"]
+    if not set(names) <= set(humans):
+        results.append((label, False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
+        return
+    m = re.search(r"Teams: shuffled: RED: (.*); BLUE: (.*)", log)
+    if not m:
+        detail.append("no 'Teams: shuffled' line")
+    else:
+        red, blue = (set(g.split(", ")) for g in m.groups())
+        if red | blue != set(names) or red & blue or sorted([len(red), len(blue)]) != [2, 3]:
+            detail.append(f"shuffled to RED {sorted(red)}, BLUE {sorted(blue)}: not a 3/2 split of all five")
+        if {frozenset(red), frozenset(blue)} == {frozenset(names[:3]), frozenset(names[3:])}:
+            detail.append("the shuffle gave the same teams back")
+        # Each player's skin configstring (CTFAssignSkin): their new team's.
+        skin = {}
+        for r in tap:
+            sm = re.fullmatch(r"(.*)\\[^\\]*/ctf_(r|b)\\default", r.get("text", "")) \
+                if r.get("type") == "configstring" else None
+            if sm:
+                who = next((n for n in names if sm.group(1) in (n, f"##P{humans[n]}")), None)
+                if who:
+                    skin[who] = "RED" if sm.group(2) == "r" else "BLUE"
+        want = {n: "RED" if n in red else "BLUE" for n in names}
+        if skin != want:
+            detail.append(f"team skins {skin}, expected {want}")
+    if "Teams: RED locked by the server" not in log.split("Teams: shuffled", 1)[0]:
+        detail.append("RED wasn't locked before the shuffle")
+    elif not re.search(r"RED: unlocked", log.split("Teams: shuffled", 1)[-1]):
+        detail.append("RED was still locked after the shuffle (`sv teams`)")
+    votes = [l.split("Vote: ", 1)[1].strip() for l in log.splitlines() if "Vote: " in l]
+    want_votes = ["Dave called shuffle teams", "shuffle teams passed", "shuffle teams",
+                  "Carol called ready everyone", "ready everyone passed", "ready everyone"]
+    if votes != want_votes:
+        detail.append(f"votes {votes}, expected {want_votes}")
+    if "-> live" not in log:
+        detail.append("the match never went live")
+    locs = [r for r in tap if r.get("type") == "locprint"]
+    if not any(r["to"] == humans["Eve"] and r["args"] == ["Teams can only be shuffled in warmup."] for r in locs):
+        detail.append("Eve's shuffle in the live match wasn't refused")
+    if not any(r["base"] == "Teams shuffled.\n" and r["to"] == -1 for r in locs):
+        detail.append("no 'Teams shuffled.' broadcast")
+    detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append((label, not detail, detail))
+
+
 def sv_match_dumps(log):
     """Each `sv match` in the log: {name: playing}. A dump is a `Match:` line
     followed by indented lines ("  <score> <name>[ (not playing)]")."""
@@ -1554,7 +1646,7 @@ at 6 1 cmd team blue
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_rounds, tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
          tier_human_rounds, tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
-         tier_human_join, tier_human_readyvote)
+         tier_human_join, tier_human_readyvote, tier_human_shuffle)
 
 
 def run_tier(tier, args):
@@ -1656,7 +1748,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

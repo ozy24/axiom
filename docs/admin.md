@@ -97,8 +97,10 @@ else.
 | `match_warmup_weapons` | 1 | in warmup, everyone has every weapon the map places, with full ammo; 0 = stock's start |
 | `match_lock` | 1 in `tdm` and `ctf` | lock both teams as the match goes live; 0 = only when a captain locks |
 
-From the console: `sv lockteam red|blue`, `sv unlockteam red|blue`, and
-`sv teams` to see each team's lock, captain and players. For a public
+From the console: `sv lockteam red|blue`, `sv unlockteam red|blue`,
+`sv teams` to see each team's lock, captain and players, and `sv shuffle`
+to split the players into two new random teams (warmup only; players can
+vote one with `callvote shuffle`, decision 0020). For a public
 server, put `set match_lock 0` in `rulesets/tdm.cfg` and `rulesets/ctf.cfg`.
 Details: docs/design/teams.md, docs/decisions/0016.
 
@@ -107,7 +109,7 @@ Details: docs/design/teams.md, docs/decisions/0016.
 | | Default | |
 |---|---|---|
 | `g_vote` | 1 | voting on |
-| `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire readyall readyteam` | what players can call; remove a word to turn that vote off |
+| `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire readyall readyteam shuffle` | what players can call; remove a word to turn that vote off |
 | `g_vote_midgame` | 1 | also during a match; 0 = warmup only |
 | `g_map_list` | (empty) | the map rotation, and the maps a vote may pick |
 | `g_map_list_shuffle` | 1 | play the rotation in a random order; 0 = as written |

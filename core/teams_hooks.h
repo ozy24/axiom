@@ -20,7 +20,13 @@ bool Core_Teams_MayJoin(edict_t *ent, int team, bool tell = true);
 // handled. From ClientCommand, before id's chain.
 bool Core_Teams_ClientCommand(edict_t *ent, const char *cmd);
 
-// `sv lockteam`, `sv unlockteam`, `sv teams`; true if handled. From ServerCommand.
+// A passed `callvote shuffle`, or `sv shuffle`: before LIVE, splits the
+// players on teams into two new teams at random (Core_Teams_Shuffle), unlocks
+// both and respawns everyone on a team. False, and nothing changes, once the
+// match is live or with the match flow off.
+bool Core_Teams_ShuffleNow();
+
+// `sv lockteam`, `sv unlockteam`, `sv teams`, `sv shuffle`; true if handled. From ServerCommand.
 bool Core_Teams_ServerCommand(const char *cmd);
 
 // The Tab menu: the locks and captains as `ent` sees them, into its view.

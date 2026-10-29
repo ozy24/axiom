@@ -56,7 +56,7 @@ MenuView Longest()
 	v.hostname = v.gametype = v.map = v.map_file = v.next_map = v.ruleset = std::string(60, 'W');
 	v.red = v.blue = 99;
 	v.team = 0;
-	v.ready_up = v.ready_required = v.rounds = true;
+	v.ready_up = v.ready_required = v.rounds = v.warmup = true;
 	v.overtime = -1;
 	v.capturelimit = v.fraglimit = 999;
 	v.timelimit_min = 999;
@@ -354,6 +354,27 @@ TEST_CASE("menu: Call a Vote offers the ready votes in a ready-up; readyteam on 
 	CHECK(Row(Core_Menu_CallVote(v), "Ready My Team")->arg == "readyteam");
 	v.vote_kinds = {"readyteam"};
 	CHECK_FALSE(Row(Core_Menu_CallVote(v), "Ready Everyone"));
+}
+
+TEST_CASE("menu: Call a Vote offers Shuffle Teams in a team game's warmup with three players")
+{
+	MenuView v = Voting(Teams());
+	v.vote_kinds = {"shuffle"};
+	v.red = 2;
+	v.blue = 1;
+	CHECK_FALSE(Row(Core_Menu_CallVote(v), "Shuffle Teams")); // live
+	v.warmup = true;
+	CHECK(Row(Core_Menu_CallVote(v), "Shuffle Teams")->arg == "shuffle");
+	v.blue = 0;
+	CHECK_FALSE(Row(Core_Menu_CallVote(v), "Shuffle Teams")); // two players: nothing to shuffle
+	v.blue = 1;
+	v.vote_kinds = {"map"};
+	CHECK_FALSE(Row(Core_Menu_CallVote(v), "Shuffle Teams"));
+	MenuView ffa = Voting(Ffa());
+	ffa.vote_kinds = {"shuffle"};
+	ffa.warmup = true;
+	ffa.red = 3;
+	CHECK_FALSE(Row(Core_Menu_CallVote(ffa), "Shuffle Teams"));
 }
 
 TEST_CASE("menu: vote maps call the vote; the current one is marked and skipped")

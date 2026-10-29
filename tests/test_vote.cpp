@@ -460,3 +460,58 @@ TEST_CASE("vote ready: readyteam's voters are the team the adapter passes")
 	CHECK(v.Cast(3, true, {0, 3}) == VoteError::None);
 	CHECK(v.Update({0, 3}, 0) == VoteEvent::Passed);
 }
+
+namespace
+{
+VoteConfig ShuffleVotes()
+{
+	VoteConfig c;
+	c.allowed = {VoteKind::Shuffle};
+	return c;
+}
+
+VoteChoices TeamWarmup(int players, bool warmup = true)
+{
+	VoteChoices c = Choices();
+	c.now.teams = true;
+	c.now.warmup = warmup;
+	c.now.team_players = players;
+	return c;
+}
+} // namespace
+
+TEST_CASE("vote shuffle: names and describes itself")
+{
+	CHECK(Core_Vote_ParseKind("Shuffle") == VoteKind::Shuffle);
+	CHECK_FALSE(Core_Vote_Setting(VoteKind::Shuffle, false).has_value());
+	Vote v(ShuffleVotes());
+	REQUIRE(v.Call(0, {VoteKind::Shuffle, "", ""}, TeamWarmup(4), false, {0, 1, 2, 3}, 0) == VoteError::None);
+	CHECK(Core_Vote_Describe(v.Proposal()) == "shuffle teams");
+	CHECK(v.HudText(0) == "VOTE: SHUFFLE TEAMS - YES 1/4 - 30s");
+}
+
+TEST_CASE("vote shuffle: team modes' warmup only, with three players on teams")
+{
+	Vote v(ShuffleVotes());
+	VoteChoices ffa = TeamWarmup(4);
+	ffa.now.teams = false;
+	CHECK(v.Call(0, {VoteKind::Shuffle, "", ""}, ffa, false, {0, 1}, 0) == VoteError::TeamsOnly);
+	CHECK(v.Call(0, {VoteKind::Shuffle, "", ""}, TeamWarmup(4, false), true, {0, 1}, 0) == VoteError::WarmupOnly);
+	CHECK(v.Call(0, {VoteKind::Shuffle, "", ""}, TeamWarmup(2), false, {0, 1}, 0) == VoteError::TooFew);
+	CHECK(v.Call(0, {VoteKind::Shuffle, "now", ""}, TeamWarmup(4), false, {0, 1}, 0) == VoteError::BadArg);
+	CHECK_FALSE(v.Open());
+	const VoteConfig c = ShuffleVotes();
+	const VoteProposal p{VoteKind::Shuffle, "", ""};
+	CHECK(Core_Vote_ErrorText(VoteError::TeamsOnly, c, p, ffa) == "Shuffle is only for team gametypes.");
+	CHECK(Core_Vote_ErrorText(VoteError::WarmupOnly, c, p, ffa) == "Teams can only be shuffled in warmup.");
+	CHECK(Core_Vote_ErrorText(VoteError::TooFew, c, p, ffa) == "A shuffle needs at least three players on teams.");
+	CHECK(Core_Vote_ErrorText(VoteError::BadArg, c, p, ffa) == "Usage: callvote shuffle");
+}
+
+TEST_CASE("vote shuffle: the admin's sv callvote still needs the warmup")
+{
+	Vote v(ShuffleVotes());
+	CHECK(v.Call(Vote::kServer, {VoteKind::Shuffle, "", ""}, TeamWarmup(4, false), true, {0, 1}, 0) ==
+	      VoteError::WarmupOnly);
+	CHECK(v.Call(Vote::kServer, {VoteKind::Shuffle, "", ""}, TeamWarmup(4), false, {0, 1}, 0) == VoteError::None);
+}

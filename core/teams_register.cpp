@@ -240,6 +240,22 @@ int ArgTeam()
 	const char *t = gi.argv(2);
 	return !Q_strcasecmp(t, "red") ? 1 : !Q_strcasecmp(t, "blue") ? 2 : 0;
 }
+
+// The players on teams, and each one's team now.
+std::vector<edict_t *> TeamPlayers(std::vector<int> &now)
+{
+	std::vector<edict_t *> players;
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *ent = Slot(i);
+		if (Present(ent) && Core_Match_Playing(ent) && TeamOf(ent))
+		{
+			players.push_back(ent);
+			now.push_back(TeamOf(ent));
+		}
+	}
+	return players;
+}
 } // namespace
 
 void Core_Teams_Frame()
@@ -272,6 +288,39 @@ void Core_Teams_Frame()
 		teams.Clear();
 	was_in_play = in_play;
 	was_warmup = warmup;
+}
+
+bool Core_Teams_ShuffleNow()
+{
+	if (!Active() || !Core_Match_OwnsRules() || Core_Match_InPlay() || level.intermissiontime)
+		return false;
+	std::vector<int> now;
+	const std::vector<edict_t *> players = TeamPlayers(now);
+	const std::vector<int> after = Core_Teams_Shuffle(now, mt_rand);
+	// As going LIVE does: flags home, then everyone fresh at a spawn point.
+	// Not stock's change of team, which is a suicide each and refuses a lock.
+	if (ctf->integer)
+	{
+		CTFResetFlag(CTF_TEAM1);
+		CTFResetFlag(CTF_TEAM2);
+	}
+	teams.Clear(); // a lock's roster is the old team; the next Sync settles the captains
+	std::string names[3];
+	for (size_t i = 0; i < players.size(); ++i)
+	{
+		edict_t *ent = players[i];
+		ent->client->resp.ctf_team = after[i] == 1 ? CTF_TEAM1 : CTF_TEAM2;
+		ent->client->resp.ctf_state = 0;
+		char skin[MAX_INFO_VALUE] = {0};
+		gi.Info_ValueForKey(ent->client->pers.userinfo, "skin", skin, sizeof(skin));
+		CTFAssignSkin(ent, skin);
+		PutClientInServer(ent);
+		names[after[i]] += (names[after[i]].empty() ? "" : ", ") + Core_PlayerName(ent);
+	}
+	CTFDirtyTeamMenu();
+	gi.LocBroadcast_Print(PRINT_HIGH, "Teams shuffled.\n");
+	gi.Com_PrintFmt("Teams: shuffled: {}: {}; {}: {}\n", TeamName(1), names[1], TeamName(2), names[2]);
+	return true;
 }
 
 bool Core_Teams_MayJoin(edict_t *ent, int team, bool tell)
@@ -351,6 +400,12 @@ bool Core_Teams_ServerCommand(const char *cmd)
 			gi.Com_PrintFmt("{} has nobody on it.\n", TeamName(team));
 		else
 			gi.Com_PrintFmt("{} is already {}.\n", TeamName(team), lock ? "locked" : "unlocked");
+		return true;
+	}
+	if (!Q_strcasecmp(cmd, "shuffle"))
+	{
+		if (!Core_Teams_ShuffleNow())
+			gi.Com_Print("Teams can only be shuffled in a team game's warmup.\n");
 		return true;
 	}
 	if (Q_strcasecmp(cmd, "teams"))

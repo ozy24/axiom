@@ -194,6 +194,10 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   simulated players: `callvote readyteam` is voted on by the caller's
   team alone (the other team is refused) and readies it; `callvote
   readyall` readies everyone and the match goes live.
+- **Tier 20 human-shuffle:** TDM warmup with five simulated players, RED
+  locked by the server: a passed `callvote shuffle` gives a 3/2 split that
+  isn't the old groups, every team skin follows, RED is unlocked; once
+  live, a shuffle is refused (Q2RED only).
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.
