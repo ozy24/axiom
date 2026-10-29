@@ -627,6 +627,14 @@ bool Core_Match_Warmup()
 	return Core_Match_OwnsRules() && match.State() == MatchState::Warmup;
 }
 
+void Core_Match_LimitsChanged()
+{
+	if (!begun || !match.OwnsRules())
+		return;
+	const MatchConfig c = ReadConfig();
+	match.ChangeLimits(c.timelimit_ms, c.fraglimit, level.time.milliseconds());
+}
+
 bool Core_Match_InPlay()
 {
 	if (level.intermissiontime)

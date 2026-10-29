@@ -53,23 +53,135 @@ const char *VoteKindName(VoteKind kind)
 		return "gametype";
 	case VoteKind::Restart:
 		return "restart";
+	case VoteKind::Timelimit:
+		return "timelimit";
+	case VoteKind::Scorelimit:
+		return "scorelimit";
+	case VoteKind::Powerups:
+		return "powerups";
+	case VoteKind::FriendlyFire:
+		return "friendlyfire";
 	}
 	return "?";
+}
+
+const std::vector<VoteKind> &Core_Vote_AllKinds()
+{
+	static const std::vector<VoteKind> kinds{VoteKind::Map,         VoteKind::Gametype,   VoteKind::Restart,
+	                                         VoteKind::Timelimit,   VoteKind::Scorelimit, VoteKind::Powerups,
+	                                         VoteKind::FriendlyFire};
+	return kinds;
 }
 
 std::optional<VoteKind> Core_Vote_ParseKind(std::string_view name)
 {
 	const std::string n = Lower(name);
-	for (VoteKind k : {VoteKind::Map, VoteKind::Gametype, VoteKind::Restart})
+	for (VoteKind k : Core_Vote_AllKinds())
 		if (n == VoteKindName(k))
 			return k;
 	if (n == "ruleset")
 		return VoteKind::Gametype;
+	if (n == "fraglimit" || n == "capturelimit")
+		return VoteKind::Scorelimit;
 	return std::nullopt;
+}
+
+std::optional<VoteSetting> Core_Vote_Setting(VoteKind kind, bool ctf)
+{
+	// The table (decision 0015). Ranges are fixed: wide enough for any
+	// sensible match, narrow enough that a vote can't make a silly one.
+	switch (kind)
+	{
+	case VoteKind::Timelimit:
+		return VoteSetting{kind, "Time Limit", VoteValue::Minutes, 1, 60, {5, 10, 15, 20, 30}, false, false};
+	case VoteKind::Scorelimit:
+		if (ctf)
+			return VoteSetting{kind, "Capture Limit", VoteValue::Count, 0, 20, {0, 3, 5, 8, 10}, false, false};
+		return VoteSetting{kind, "Frag Limit", VoteValue::Count, 0, 100, {0, 10, 20, 30, 50}, false, false};
+	case VoteKind::Powerups:
+		return VoteSetting{kind, "Powerups", VoteValue::OnOff, 0, 1, {1, 0}, false, true};
+	case VoteKind::FriendlyFire:
+		return VoteSetting{kind, "Friendly Fire", VoteValue::OnOff, 0, 1, {1, 0}, true, false};
+	case VoteKind::Map:
+	case VoteKind::Gametype:
+	case VoteKind::Restart:
+		break;
+	}
+	return std::nullopt;
+}
+
+std::optional<int> Core_Vote_SettingValue(const VoteSetting &s, std::string_view arg)
+{
+	const std::string a = Lower(arg);
+	if (s.value == VoteValue::OnOff)
+	{
+		if (a == "on" || a == "1" || a == "yes")
+			return 1;
+		if (a == "off" || a == "0" || a == "no")
+			return 0;
+		return std::nullopt;
+	}
+	if (a.empty() || a.size() > 6 || !std::all_of(a.begin(), a.end(), [](char c) { return c >= '0' && c <= '9'; }))
+		return std::nullopt;
+	const int v = std::stoi(a);
+	if (v < s.min || v > s.max)
+		return std::nullopt;
+	return v;
+}
+
+std::string Core_Vote_SettingArg(const VoteSetting &s, int value)
+{
+	if (s.value == VoteValue::OnOff)
+		return value ? "on" : "off";
+	return std::to_string(value);
+}
+
+std::string Core_Vote_SettingText(const VoteSetting &s, int value)
+{
+	switch (s.value)
+	{
+	case VoteValue::OnOff:
+		return value ? "on" : "off";
+	case VoteValue::Minutes:
+		return std::to_string(value) + (value == 1 ? " minute" : " minutes");
+	case VoteValue::Count:
+		return value ? std::to_string(value) : "none";
+	}
+	return {};
+}
+
+int Core_Vote_SettingNow(const VoteSetting &s, const VoteSettingsNow &now)
+{
+	switch (s.kind)
+	{
+	case VoteKind::Timelimit:
+		return now.timelimit_min;
+	case VoteKind::Scorelimit:
+		return now.scorelimit;
+	case VoteKind::Powerups:
+		return now.powerups ? 1 : 0;
+	case VoteKind::FriendlyFire:
+		return now.friendly_fire ? 1 : 0;
+	case VoteKind::Map:
+	case VoteKind::Gametype:
+	case VoteKind::Restart:
+		break;
+	}
+	return 0;
+}
+
+std::string Core_Vote_SettingLabel(const VoteSetting &s, int value)
+{
+	const std::string title = Lower(s.title);
+	if (s.value == VoteValue::Count && !value)
+		return "no " + title;
+	return title + " " + Core_Vote_SettingText(s, value);
 }
 
 std::string Core_Vote_Describe(const VoteProposal &p)
 {
+	if (Core_Vote_Setting(p.kind, false) && !p.label.empty())
+		return p.label; // "time limit 20 minutes"
 	const std::string &what = p.label.empty() ? p.arg : p.label;
 	return what.empty() ? VoteKindName(p.kind) : std::string(VoteKindName(p.kind)) + " " + what;
 }
@@ -150,8 +262,30 @@ std::string Core_Vote_ErrorText(VoteError e, const VoteConfig &config, const Vot
 			return "Gametypes: " + Join(choices.gametypes) + ".";
 		case VoteKind::Restart:
 			return "Usage: callvote restart";
+		case VoteKind::Timelimit:
+		case VoteKind::Scorelimit:
+		case VoteKind::Powerups:
+		case VoteKind::FriendlyFire:
+		{
+			const VoteSetting s = *Core_Vote_Setting(p.kind, choices.now.ctf);
+			const std::string usage = std::string("Usage: callvote ") + VoteKindName(p.kind) + " ";
+			if (s.value == VoteValue::OnOff)
+				return usage + "on|off";
+			return usage + std::to_string(s.min) + "-" + std::to_string(s.max) +
+			       (s.value == VoteValue::Minutes ? " (minutes)" : " (0: none)");
+		}
 		}
 		return {};
+	case VoteError::AlreadySet:
+	{
+		const std::optional<VoteSetting> s = Core_Vote_Setting(p.kind, choices.now.ctf);
+		const std::optional<int> v = s ? Core_Vote_SettingValue(*s, p.arg) : std::nullopt;
+		return v ? "Already set: " + Core_Vote_SettingLabel(*s, *v) + "." : "Already set.";
+	}
+	case VoteError::TeamsOnly:
+		return "Friendly fire is only for team gametypes.";
+	case VoteError::NoLimit:
+		return "There's no time limit, so the match needs a score limit.";
 	case VoteError::NoVote:
 		return "No vote in progress.";
 	case VoteError::AlreadyVoted:
@@ -205,6 +339,26 @@ VoteError Vote::Call(int caller, VoteProposal proposal, const VoteChoices &choic
 	case VoteKind::Restart:
 		arg_ok = proposal.arg.empty();
 		break;
+	case VoteKind::Timelimit:
+	case VoteKind::Scorelimit:
+	case VoteKind::Powerups:
+	case VoteKind::FriendlyFire:
+	{
+		const VoteSetting s = *Core_Vote_Setting(proposal.kind, choices.now.ctf);
+		if (s.teams_only && !choices.now.teams)
+			return VoteError::TeamsOnly;
+		const std::optional<int> value = Core_Vote_SettingValue(s, proposal.arg);
+		if (!value)
+			return VoteError::BadArg;
+		proposal.arg = Core_Vote_SettingArg(s, *value);
+		proposal.label = Core_Vote_SettingLabel(s, *value);
+		if (*value == Core_Vote_SettingNow(s, choices.now))
+			return VoteError::AlreadySet;
+		if (proposal.kind == VoteKind::Scorelimit && *value == 0 && choices.now.timelimit_min <= 0)
+			return VoteError::NoLimit;
+		arg_ok = true;
+		break;
+	}
 	}
 	if (!arg_ok)
 		return VoteError::BadArg;

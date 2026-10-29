@@ -1,9 +1,9 @@
 # Voting
 
-Players change the map or gametype, or restart the match, by majority
-vote. Console commands are the interface; the Tab menu issues the
+Players change the map or gametype, restart the match, or change one of a
+few settings, by majority vote. Console commands are the interface; the Tab menu issues the
 same commands. Pure logic: `core/vote.{h,cpp}` (tests: `tests/test_vote.cpp`);
-engine side: `core/vote_register.cpp`; harness: tier 14.
+engine side: `core/vote_register.cpp`; harness: tiers 14 and 16.
 
 ## Commands
 
@@ -12,12 +12,17 @@ engine side: `core/vote_register.cpp`; harness: tier 14.
 | `callvote map <name>` | a map on the map list |
 | `callvote gametype <name>` | a gametype (`ffa`, `duel`, `tdm`, `ctf`) or a variant (`hoony`, or an admin's own listed in `g_rulesets`): switches to that ruleset as `sv ruleset` does (decision 0013), then reloads. The current settings don't carry over (HoonyMode's rounds don't follow a vote to TDM). `callvote ruleset` is the same command. |
 | `callvote restart` | reloads the current map: a fresh warmup |
+| `callvote timelimit <1-60>` | the time limit in minutes, at once (no restart): still counted from LIVE |
+| `callvote scorelimit <n>` | the frag limit (0-100), or the capture limit in CTF (0-20); 0 = none. `fraglimit` and `capturelimit` are the same command |
+| `callvote powerups on\|off` | stock's `g_no_items`; reloads the map, as items spawn when it loads |
+| `callvote friendlyfire on\|off` | team modes only; at once |
 | `vote yes` / `vote no` | answer the open vote; an answer can be changed |
 | `yes` / `no` | stock's commands: answer our vote while one is open, else stock's CTF elections as before |
 | `warp <map>` | stock's map election: the same as `callvote map` |
 
-Every passed vote ends in `map <name>` (a fresh load, so latched settings
-such as `g_gametype` apply), never through intermission: a warmup vote must
+A passed map, gametype, restart or powerups vote ends in `map <name>` (a
+fresh load, so latched settings such as `g_gametype` apply), never through
+intermission: a warmup vote must
 not write a match record or rotate the Duel queue. A gametype
 change keeps the current map if the new map list has it, else takes the
 list's first map (FFA on q2dm1 voted to CTF goes to q2ctf1).
@@ -45,7 +50,11 @@ same way. docs/admin.md has the admin's side.
   default), so a match started with the wrong settings can be voted away.
   `g_vote_midgame 0` limits them to warmup (and any time with the match flow
   off).
-- Every kind ends in a full reload of a map, so a vote mid-match restarts
+- Setting votes (decision 0015) come from one table compiled in. A voted
+  value lasts until the gametype changes; a vote for the value it has now
+  is refused, and so is no score limit with no time limit. The limits and
+  friendly fire apply in place; a time limit already passed ends the match.
+- The other kinds end in a full reload of a map, so a vote mid-match restarts
   the match from warmup. Each kind needs it: a map change by definition;
   `g_gametype` is latched; a ruleset can change the gametype, item settings
   (spawned at load) and the match settings (read when the level starts);
@@ -60,7 +69,7 @@ same way. docs/admin.md has the admin's side.
 | Cvar | Default | |
 |---|---|---|
 | `g_vote` | 1 | voting on |
-| `g_vote_allow` | `map gametype restart` | the kinds that can be called |
+| `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire` | the kinds that can be called |
 | `g_vote_midgame` | 1 | also during a live match; 0 = warmup only |
 | `g_vote_time` | 30 | seconds to vote (minimum 5) |
 | `g_vote_cooldown` | 30 | seconds after a caller's failed vote |
@@ -97,10 +106,9 @@ MMREX (`match/vote.cpp`, `ui/vote_menu.cpp`, ~3,000 lines) has 17 vote
 kinds, a disable bitmask (`g_vote_flags`), two map cvars (`g_map_list`,
 `g_map_pool`), and forces a ballot menu onto every voter. Axiom keeps its
 rules (majority of eligible humans, caller votes yes, 30 s, 3 s delay,
-per-map limit) and differs where noted above: three kinds (a gametype's
-variants cover the limit and item toggles), an allow-list, one map list,
-no forced menu, a cooldown, and pure tested logic shared by menu and
-console.
+per-map limit) and differs where noted above: seven kinds (four of them
+settings from one table, where MMREX writes a handler pair per kind), an
+allow-list, one map list, no forced menu, a cooldown, and pure tested
+logic shared by menu and console.
 
-Later: an end-of-match map pick and map rotation (MMREX's `map_pick`,
-`map_rotation`).
+Map rotation is decision 0014; there is no end-of-match map pick.

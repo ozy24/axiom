@@ -29,6 +29,7 @@ enum class Page : int32_t
 	VoteMaps,
 	VoteGametypes,
 	VoteVariants,
+	VoteSetting,
 };
 
 // The menu's arg (PMenu_Open TagFrees it on close): which page, and what each
@@ -38,8 +39,8 @@ struct MenuState
 {
 	Page page;
 	MenuAction actions[kMenuRows];
-	char args[kMenuRows][64]; // VoteFor: "map q2dm3"; VoteVariants: the gametype
-	char gametype[32];        // Page::VoteVariants: whose
+	char args[kMenuRows][64]; // VoteFor: "map q2dm3"; VoteVariants: the gametype; VoteSetting: the kind
+	char gametype[32];        // Page::VoteVariants: whose gametype; Page::VoteSetting: which setting
 };
 
 bool Active()
@@ -98,6 +99,7 @@ MenuView View(const edict_t *ent)
 	v.vote_kinds = vote.kinds;
 	v.vote_maps = vote.maps;
 	v.vote_gametypes = vote.gametypes;
+	v.vote_settings = vote.settings;
 	v.gametype_id = vote.gametype;
 	return v;
 }
@@ -140,6 +142,8 @@ MenuPage Build(const edict_t *ent, Page page, const char *gametype)
 		return Core_Menu_VoteGametypes(view);
 	case Page::VoteVariants:
 		return Core_Menu_VoteVariants(view, gametype);
+	case Page::VoteSetting:
+		return Core_Menu_VoteSetting(view, gametype);
 	}
 	return {};
 }
@@ -291,6 +295,12 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 	{
 		const std::string gametype = state->args[hnd->cur]; // Open frees this menu's state
 		Open(ent, Page::VoteVariants, gametype.c_str());
+		break;
+	}
+	case MenuAction::VoteSetting:
+	{
+		const std::string kind = state->args[hnd->cur]; // Open frees this menu's state
+		Open(ent, Page::VoteSetting, kind.c_str());
 		break;
 	}
 	case MenuAction::VoteFor:

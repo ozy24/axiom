@@ -171,6 +171,10 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   on q2dm1, with bots: four level ends, each followed by a `gamemap` to the
   announced map; the first pass plays every listed map once, the next pass
   doesn't open with the map just played, and `g_map_list` is unchanged.
+- **Tier 16 human-settings:** three simulated players in a live FFA match:
+  a time limit vote moves the clock without a restart, friendly fire and
+  an out-of-range time are refused, and a powerups vote reloads the map
+  with the voted time limit kept.
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

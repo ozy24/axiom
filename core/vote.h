@@ -1,16 +1,20 @@
 // Voting (docs/design/voting.md), as pure logic: what can be voted on, who
 // counts, and when a vote passes or fails. No engine access.
 //
-// Three kinds: map, gametype and restart (the current map, reloaded). A
-// gametype vote names a ruleset: the gametype's standard one or a variant
-// (HoonyMode is Duel's); "ruleset" is accepted as another word for it.
+// Three kinds pick what is played: map, gametype and restart (the current
+// map, reloaded). A gametype vote names a ruleset: the gametype's standard one
+// or a variant (HoonyMode is Duel's); "ruleset" is accepted as another word
+// for it. Four more change one setting each (decision 0015): the time and
+// score limits, powerups and friendly fire, from a table compiled in, within
+// fixed ranges. A voted setting lasts until the gametype changes.
 // Only voters count: humans in the match (in Duel, everyone in the queue).
 // The caller's vote is a yes. A vote passes on a majority of the voters there
 // now, fails as soon as it can't pass or after the timeout, and runs a few
 // seconds after it passes. Each player calls at most a few votes per map and
 // waits after one of theirs fails. Votes can be called mid-match (a match
-// started with the wrong settings is voted away); every kind reloads a map,
-// so the match starts again from warmup.
+// started with the wrong settings is voted away). Map, gametype, restart and
+// powerups reload a map, so the match starts again from warmup; the limits
+// and friendly fire apply in place.
 //
 // The adapter (core/vote_register.cpp) carries out the passed proposal and
 // shows the vote on the HUD's status line; the Tab menu issues the same
@@ -30,12 +34,67 @@ enum class VoteKind
 	Map,
 	Gametype,
 	Restart,
+	Timelimit,
+	Scorelimit,
+	Powerups,
+	FriendlyFire,
 };
 
-// "map", "gametype", "restart"; and back, case-insensitively ("ruleset" too,
-// for gametype).
+// "map", "gametype", "restart", "timelimit", "scorelimit", "powerups",
+// "friendlyfire"; and back, case-insensitively ("ruleset" for gametype;
+// "fraglimit" and "capturelimit" for scorelimit).
 const char *VoteKindName(VoteKind kind);
 std::optional<VoteKind> Core_Vote_ParseKind(std::string_view name);
+// Every kind, in the order the menu and usage lines list them.
+const std::vector<VoteKind> &Core_Vote_AllKinds();
+
+// The settings now, as the votes on them see them.
+struct VoteSettingsNow
+{
+	int timelimit_min = 0; // timelimit, whole minutes
+	int scorelimit = 0;    // fraglimit, or capturelimit in CTF
+	bool powerups = true;  // !g_no_items
+	bool friendly_fire = false;
+	bool teams = false; // TDM, CTF
+	bool ctf = false;
+};
+
+// One votable setting (decision 0015). The table is compiled in: admins
+// choose which votes are allowed (g_vote_allow), not what they change.
+enum class VoteValue
+{
+	Minutes, // a whole number of minutes in [min, max]
+	Count,   // a number in [min, max]; 0 = no limit
+	OnOff,
+};
+
+struct VoteSetting
+{
+	VoteKind kind = VoteKind::Timelimit;
+	const char *title = ""; // "Time Limit", "Frag Limit", "Capture Limit" (the menu's row)
+	VoteValue value = VoteValue::OnOff;
+	int min = 0, max = 1;
+	std::vector<int> menu;   // the Tab menu's choices (OnOff: on, off)
+	bool teams_only = false; // friendly fire
+	bool reloads = false;    // items spawn as a map loads: powerups reload it
+};
+
+// The setting a kind changes (the score limit is CTF's capture limit there,
+// with its own range), or nullopt for map, gametype and restart.
+std::optional<VoteSetting> Core_Vote_Setting(VoteKind kind, bool ctf);
+
+// A vote's argument as the setting's value: a number in range, or on / off
+// (also 1 / 0, yes / no). nullopt if it's neither.
+std::optional<int> Core_Vote_SettingValue(const VoteSetting &s, std::string_view arg);
+// The value as an argument ("20", "on") and as words ("20 minutes", "none",
+// "on").
+std::string Core_Vote_SettingArg(const VoteSetting &s, int value);
+std::string Core_Vote_SettingText(const VoteSetting &s, int value);
+// The setting's value now.
+int Core_Vote_SettingNow(const VoteSetting &s, const VoteSettingsNow &now);
+// What a setting vote proposes, as the HUD and the broadcasts say it: "time
+// limit 20 minutes", "no frag limit", "powerups off".
+std::string Core_Vote_SettingLabel(const VoteSetting &s, int value);
 
 struct VoteProposal
 {
@@ -81,6 +140,7 @@ struct VoteChoices
 {
 	std::vector<std::string> maps;
 	std::vector<std::string> gametypes; // ruleset names
+	VoteSettingsNow now;                // what the setting votes change
 };
 
 enum class VoteError
@@ -93,7 +153,10 @@ enum class VoteError
 	NotVoter,     // spectators and bots don't vote
 	LimitReached, // this player's calls for the map are used up
 	Cooldown,     // this player's last vote failed too recently
-	BadArg,       // not on the list (map, gametype, ruleset) or an argument to restart
+	BadArg,       // not on the list (map, gametype, ruleset), out of range, or an argument to restart
+	AlreadySet,   // a setting vote for the value it has now
+	TeamsOnly,    // friendly fire outside team modes
+	NoLimit,      // no score limit with no time limit: the match would never end
 	NoVote,       // `vote` with nothing open
 	AlreadyVoted, // the same answer again
 };

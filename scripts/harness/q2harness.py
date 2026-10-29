@@ -39,6 +39,8 @@ Tiers (plan Phase 1b):
  14. human-vote  Map votes through simulated players (Q2RED).
  15. maps        The shuffled map rotation: off-list start, a whole pass,
                  no repeat at the reshuffle, g_map_list kept as written.
+ 16. human-settings  Setting votes: a time limit applied in a live match, the
+                 refusals, a powerups vote reloading with the time kept (Q2RED).
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -1163,9 +1165,77 @@ at 15 2 cmd yes
     results.append(("14 human-vote", not detail, detail))
 
 
+def tier_human_settings(args, results):
+    """Setting votes (decision 0015) through the human path: three simulated
+    players in a live FFA match (10 minutes). A time limit vote passes and the
+    clock moves without a restart; friendly fire is refused outside team
+    modes and a time out of range with the usage; a powerups vote reloads the
+    map, and the voted time limit is still there after it. Q2RED only."""
+    rig, why = scenario_rig(args, "t16-settings")
+    if not rig:
+        results.append(("16 human-settings", True, [f"skipped: {why}"]))
+        return
+    # Live at about 20 s (the join grace, then a 3 s countdown): the votes come after.
+    script = """seconds 55
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Carol social=sim-carol puppet
+at 30 0 cmd callvote timelimit 7
+at 31 1 cmd vote yes
+at 36 1 cmd callvote friendlyfire on
+at 37 1 cmd callvote timelimit 99
+at 39 2 cmd callvote powerups off
+at 40 0 cmd vote yes
+"""
+    # No ready-up, a short countdown.
+    rulesets = rig.dir / "baseq2" / "rulesets"
+    rulesets.mkdir(parents=True, exist_ok=True)
+    (rulesets / "ffa.cfg").write_text("set match_ready 0\nset match_countdown 3\n")
+    startup = scenario_startup(rig, ["+set", "g_ruleset", "ffa", "+map", "q2dm1"])
+    log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 120)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    if set(humans) != {"Alice", "Bob", "Carol"}:
+        results.append(("16 human-settings", False,
+                        [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
+        return
+    seen = [l.split("Vote: ", 1)[1].strip() for l in log.splitlines() if "Vote: " in l]
+    want = ["Alice called time limit 7 minutes", "time limit 7 minutes passed", "setting time limit 7 minutes",
+            "Carol called powerups off", "powerups off passed", "setting powerups off"]
+    if seen != want:
+        detail.append(f"vote log {seen}, expected {want}")
+    # The time limit applies in place: no reload between it and the powerups vote, which reloads.
+    at_time, at_powerups = log.find("Vote: setting time limit"), log.find("Vote: setting powerups")
+    if at_time < 0 or at_powerups < 0 or "InitGame" in log[at_time:at_powerups]:
+        detail.append("the time limit vote reloaded the map (or never ran)")
+    if at_powerups < 0 or "InitGame" not in log[at_powerups:]:
+        detail.append("the powerups vote didn't reload the map")
+    if "-> live" not in log[:max(at_time, 0)]:
+        detail.append("the match wasn't live when the time limit vote ran")
+    locs = [r for r in tap if r.get("type") == "locprint"]
+    to = lambda name: [" ".join([r["base"]] + r.get("args", [])) for r in locs if r["to"] == humans[name]]
+    if not any("only for team gametypes" in t for t in to("Bob")):
+        detail.append("Bob's friendly fire vote in FFA wasn't refused")
+    if not any("Usage: callvote timelimit 1-60" in t for t in to("Bob")):
+        detail.append("Bob's time limit of 99 wasn't answered with the usage")
+    # The clock: 9:xx before the vote, 6:xx after it (7 minutes from LIVE),
+    # and 7:00 again in the reloaded level's warmup and countdown.
+    clocks = [r["text"] for r in tap if r.get("type") == "configstring" and re.fullmatch(r"\d+:\d\d", r["text"])]
+    for pattern, what in ((r"9:\d\d", "the 10-minute match's clock"), (r"6:\d\d", "the clock moved to 7 minutes"),
+                          (r"7:00", "7:00 after the reload")):
+        if not any(re.fullmatch(pattern, c) for c in clocks):
+            detail.append(f"never saw {what} (clock texts {sorted(set(clocks))[:12]})")
+    detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append(("16 human-settings", not detail, detail))
+
+
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_rounds, tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
-         tier_human_rounds, tier_human_vote, tier_maps)
+         tier_human_rounds, tier_human_vote, tier_maps, tier_human_settings)
 
 
 def run_tier(tier, args):
@@ -1267,7 +1337,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps", "human_settings"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

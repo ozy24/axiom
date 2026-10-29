@@ -267,3 +267,135 @@ TEST_CASE("vote: a slot's next client doesn't inherit its calls or cooldown")
 	v.Forget(0); // they left; someone else takes slot 0
 	CHECK(v.Call(0, Map("q2dm2"), Choices(), false, voters, 30) == VoteError::None);
 }
+
+namespace
+{
+VoteConfig Settings()
+{
+	VoteConfig c;
+	c.allowed = {VoteKind::Timelimit, VoteKind::Scorelimit, VoteKind::Powerups, VoteKind::FriendlyFire};
+	return c;
+}
+
+VoteChoices Now(int timelimit, int scorelimit, bool teams = false, bool ctf = false)
+{
+	VoteChoices c = Choices();
+	c.now.timelimit_min = timelimit;
+	c.now.scorelimit = scorelimit;
+	c.now.teams = teams;
+	c.now.ctf = ctf;
+	return c;
+}
+
+VoteError CallSetting(VoteKind kind, const char *arg, const VoteChoices &choices, Vote *out = nullptr)
+{
+	Vote local(Settings());
+	Vote &v = out ? *out : local;
+	return v.Call(0, {kind, arg, ""}, choices, false, {0, 1, 2}, 0);
+}
+} // namespace
+
+TEST_CASE("vote settings: names and aliases")
+{
+	CHECK(Core_Vote_ParseKind("TimeLimit") == VoteKind::Timelimit);
+	CHECK(Core_Vote_ParseKind("fraglimit") == VoteKind::Scorelimit);
+	CHECK(Core_Vote_ParseKind("capturelimit") == VoteKind::Scorelimit);
+	CHECK(Core_Vote_ParseKind("powerups") == VoteKind::Powerups);
+	CHECK(Core_Vote_ParseKind("friendlyfire") == VoteKind::FriendlyFire);
+	for (VoteKind k : Core_Vote_AllKinds())
+		CHECK(Core_Vote_ParseKind(VoteKindName(k)) == k);
+	CHECK_FALSE(Core_Vote_Setting(VoteKind::Map, false).has_value());
+	CHECK(Core_Vote_Setting(VoteKind::Scorelimit, false)->title == std::string("Frag Limit"));
+	CHECK(Core_Vote_Setting(VoteKind::Scorelimit, true)->title == std::string("Capture Limit"));
+}
+
+TEST_CASE("vote settings: values must be in range")
+{
+	const VoteSetting time = *Core_Vote_Setting(VoteKind::Timelimit, false);
+	CHECK(Core_Vote_SettingValue(time, "20") == 20);
+	CHECK(Core_Vote_SettingValue(time, "60") == 60);
+	for (const char *bad : {"0", "61", "-5", "10.5", "", "ten", "1e3", "9999999"})
+		CHECK_MESSAGE(!Core_Vote_SettingValue(time, bad).has_value(), bad);
+	const VoteSetting frags = *Core_Vote_Setting(VoteKind::Scorelimit, false);
+	CHECK(Core_Vote_SettingValue(frags, "0") == 0);
+	CHECK(Core_Vote_SettingValue(frags, "100") == 100);
+	CHECK_FALSE(Core_Vote_SettingValue(frags, "101").has_value());
+	const VoteSetting caps = *Core_Vote_Setting(VoteKind::Scorelimit, true);
+	CHECK_FALSE(Core_Vote_SettingValue(caps, "21").has_value());
+	const VoteSetting pu = *Core_Vote_Setting(VoteKind::Powerups, false);
+	CHECK(Core_Vote_SettingValue(pu, "OFF") == 0);
+	CHECK(Core_Vote_SettingValue(pu, "1") == 1);
+	CHECK(Core_Vote_SettingValue(pu, "yes") == 1);
+	CHECK_FALSE(Core_Vote_SettingValue(pu, "2").has_value());
+}
+
+TEST_CASE("vote settings: every menu choice is in range")
+{
+	for (bool ctf : {false, true})
+		for (VoteKind k : Core_Vote_AllKinds())
+			if (const std::optional<VoteSetting> s = Core_Vote_Setting(k, ctf))
+				for (int value : s->menu)
+					CHECK(Core_Vote_SettingValue(*s, Core_Vote_SettingArg(*s, value)) == value);
+}
+
+TEST_CASE("vote settings: labels say what changes")
+{
+	CHECK(Core_Vote_SettingLabel(*Core_Vote_Setting(VoteKind::Timelimit, false), 20) == "time limit 20 minutes");
+	CHECK(Core_Vote_SettingLabel(*Core_Vote_Setting(VoteKind::Timelimit, false), 1) == "time limit 1 minute");
+	CHECK(Core_Vote_SettingLabel(*Core_Vote_Setting(VoteKind::Scorelimit, false), 30) == "frag limit 30");
+	CHECK(Core_Vote_SettingLabel(*Core_Vote_Setting(VoteKind::Scorelimit, false), 0) == "no frag limit");
+	CHECK(Core_Vote_SettingLabel(*Core_Vote_Setting(VoteKind::Scorelimit, true), 5) == "capture limit 5");
+	CHECK(Core_Vote_SettingLabel(*Core_Vote_Setting(VoteKind::Powerups, false), 0) == "powerups off");
+	CHECK(Core_Vote_SettingLabel(*Core_Vote_Setting(VoteKind::FriendlyFire, false), 1) == "friendly fire on");
+}
+
+TEST_CASE("vote settings: a call normalises its argument and shows its label")
+{
+	Vote v(Settings());
+	REQUIRE(CallSetting(VoteKind::Powerups, "0", Now(10, 0), &v) == VoteError::None);
+	CHECK(v.Proposal().arg == "off");
+	CHECK(Core_Vote_Describe(v.Proposal()) == "powerups off");
+	CHECK(v.HudText(0) == "VOTE: POWERUPS OFF - YES 1/3 - 30s");
+
+	Vote t(Settings());
+	REQUIRE(CallSetting(VoteKind::Timelimit, "020", Now(10, 0), &t) == VoteError::None);
+	CHECK(t.Proposal().arg == "20");
+	CHECK(t.HudText(0) == "VOTE: TIME LIMIT 20 MINUTES - YES 1/3 - 30s");
+}
+
+TEST_CASE("vote settings: refused out of range, unchanged, or outside their modes")
+{
+	CHECK(CallSetting(VoteKind::Timelimit, "90", Now(10, 0)) == VoteError::BadArg);
+	CHECK(CallSetting(VoteKind::Timelimit, "10", Now(10, 0)) == VoteError::AlreadySet);
+	CHECK(CallSetting(VoteKind::Scorelimit, "20", Now(10, 20)) == VoteError::AlreadySet);
+	CHECK(CallSetting(VoteKind::Powerups, "on", Now(10, 0)) == VoteError::AlreadySet); // on by default
+	CHECK(CallSetting(VoteKind::FriendlyFire, "on", Now(10, 0)) == VoteError::TeamsOnly);
+	CHECK(CallSetting(VoteKind::FriendlyFire, "on", Now(10, 0, true)) == VoteError::None);
+	CHECK(CallSetting(VoteKind::FriendlyFire, "off", Now(10, 0, true)) == VoteError::AlreadySet);
+}
+
+TEST_CASE("vote settings: no score limit needs a time limit")
+{
+	CHECK(CallSetting(VoteKind::Scorelimit, "0", Now(0, 20)) == VoteError::NoLimit);
+	CHECK(CallSetting(VoteKind::Scorelimit, "0", Now(10, 20)) == VoteError::None);
+}
+
+TEST_CASE("vote settings: errors explain themselves")
+{
+	const VoteConfig c = Settings();
+	const VoteChoices ch = Now(10, 0, false, true);
+	CHECK(Core_Vote_ErrorText(VoteError::BadArg, c, {VoteKind::Timelimit, "90", ""}, ch) ==
+	      "Usage: callvote timelimit 1-60 (minutes)");
+	CHECK(Core_Vote_ErrorText(VoteError::BadArg, c, {VoteKind::Scorelimit, "x", ""}, ch) ==
+	      "Usage: callvote scorelimit 0-20 (0: none)"); // CTF's capture range
+	CHECK(Core_Vote_ErrorText(VoteError::BadArg, c, {VoteKind::Powerups, "x", ""}, ch) ==
+	      "Usage: callvote powerups on|off");
+	CHECK(Core_Vote_ErrorText(VoteError::AlreadySet, c, {VoteKind::Timelimit, "10", ""}, ch) ==
+	      "Already set: time limit 10 minutes.");
+}
+
+TEST_CASE("vote settings: not allowed unless listed")
+{
+	Vote v(AllKinds()); // map gametype restart
+	CHECK(v.Call(0, {VoteKind::Timelimit, "20", ""}, Now(10, 0), false, {0, 1}, 0) == VoteError::NotAllowed);
+}
