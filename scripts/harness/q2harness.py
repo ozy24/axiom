@@ -789,7 +789,8 @@ def tier_human_duel(args, results):
     Carol), played by ozbot, join like retail clients and run the playtest's
     match-flow and Duel rows: warmup is free play with no clock, `ready`, the
     10-second countdown, `queue`, the timelimit, and the rotation across the
-    map change. Q2RED only."""
+    map change. Duel's own scoreboard (g_scoreboard 1): the queue numbered
+    in warmup, the winner and their record at intermission. Q2RED only."""
     rig, why = scenario_rig(args, "t11-human-duel")
     if not rig:
         results.append(("11 human-duel", True, [f"skipped: {why}"]))
@@ -807,7 +808,7 @@ at 13 0 cmd queue
 at 30 0 cmd score
 """
     # match_countdown is left at its default: the playtest asked for 10 s.
-    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_gametype", "duel", "+set", "match_warmup", "1",
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_scoreboard", "1", "+set", "g_gametype", "duel", "+set", "match_warmup", "1",
                                      "+set", "timelimit", "0.5", "+map", "q2dm1"])
     # ozbot presses no button at intermission, so the level change that a
     # human's press would trigger is issued here (`gamemap`, as ExitLevel does).
@@ -858,6 +859,17 @@ at 30 0 cmd score
         detail.append("the warmup scoreboard shows a clock")
     if not after or not any("time_limit" in r["text"] for r in after):
         detail.append("no clock on the scoreboard once the match was live")
+
+    # Duel's board: in warmup the two duellists' blocks and Carol first in
+    # the queue; at intermission the winner marked, with their first win.
+    if not before or "Duel on " not in before[0]["text"] or before[0]["text"].count(" client ") != 2 \
+            or not re.search(rf"ctf -40 \d+ {carol} 0 0 \"\" xv -64 string 1 ", before[0]["text"]):
+        detail.append(f"Alice's warmup board: {before[0]['text'] if before else None}")
+    # (The first goes out a frame before the result: the last is the one shown.)
+    final = [r["text"] for r in layouts if "m_eou_press_button" in r["text"]]
+    if not final or "string2 WINNER" not in final[-1] or '"W 1  L 0"' not in final[-1] \
+            or "Match time " not in final[-1]:
+        detail.append(f"Alice's intermission board: {final[-1] if final else None}")
 
     # The HUD's state line: warmup, the countdown, the clock.
     drawn, texts = state_line(tap)

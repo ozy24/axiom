@@ -242,7 +242,8 @@ only the `ctf` layout row decodes a `##P` name token: `string`,
 `loc_string` and its `{}` arguments all show `##P0`, and `%s` isn't
 supported. So the name always comes after two numbers. Right-aligned
 `loc_rstring` numbers line up.
-Next: the Duel scoreboard (Chris likes MMREX's; improve where we can).
+In progress: Duel's scoreboard (decision 0019, branch `scoreboard/duel`),
+waiting for Chris's look.
 Then Clan Arena as a TDM ruleset (elimination rounds that count the
 living, spawn loadout, `match_lock 1`). Then Phase 4's remainder - Chris has other features to work through first,
 then timeouts/pauses, admin controls, per-gametype scoreboards (an

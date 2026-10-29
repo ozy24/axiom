@@ -8,6 +8,9 @@
 #pragma once
 
 #include <cstddef>
+#include <string>
+
+#include <cstddef>
 #include <string_view>
 
 struct dm_game_rt;
@@ -28,6 +31,10 @@ struct GametypeDef
 	// A client not in play who has asked to play (Duel's queue): kept as
 	// playing across a map change, offered "Leave" rather than "Join".
 	bool (*waiting)(const edict_t *ent);
+	// Its own scoreboard (g_scoreboard 1; Duel's): appends `viewer`'s board,
+	// at most `budget` bytes, to `layout`. Stock's frag limit, clock and
+	// intermission line follow it.
+	bool (*scoreboard)(const edict_t *viewer, size_t budget, std::string &layout);
 };
 
 // The generated registry (build/generated/gametype_registry.cpp).

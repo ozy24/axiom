@@ -154,8 +154,9 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
 - **Tier 11 human-duel:** three simulated players (Q2RED `q2red_sim_client`,
   played by ozbot as puppets, `docs/design/simulated-clients.md`) join like
   retail clients and run the playtest's match-flow and Duel rows; checks read
-  the server's game tap (what each player was shown). Q2RED only; skipped when
-  the engine has no sim client.
+  the server's game tap (what each player was shown). Duel's scoreboard:
+  the queue numbered in warmup, the winner and their record at
+  intermission. Q2RED only; skipped when the engine has no sim client.
 - **Tier 12 human-teams:** `tdm` and `ctf` with four simulated players who
   pick teams with `team red` / `team blue`: no countdown while one team is
   empty, then a timelimit end and a record with everyone on their team.

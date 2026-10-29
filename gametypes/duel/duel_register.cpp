@@ -1,10 +1,12 @@
 // Engine-facing part of Duel: keeps the two queue-front clients playing and
-// everyone else spectating, forfeits a match a duellist leaves, and rotates the
-// loser to the back of the queue at the end.
+// everyone else spectating, forfeits a match a duellist leaves, rotates the
+// loser to the back of the queue at the end, and draws Duel's scoreboard.
 #include "g_local.h"
 
 #include "core/join_hooks.h"
+#include "core/match_hooks.h"
 #include "core/player_name.h"
+#include "gametypes/duel/duel_board.h"
 #include "gametypes/duel/duel_queue.h"
 
 #include <algorithm>
@@ -20,6 +22,14 @@ DuelQueue queue;
 // Who has asked to play (`join`, the menu's Join Queue; bots, and the last
 // level's players, on arrival: core/join.h). Only they are queued.
 std::unordered_set<std::string> wants;
+// Everyone's wins and losses this session (kept across `gamemap`; a `map`
+// reloads the module and starts them again).
+DuelRecords records;
+// This level: when the match went into play, and (at intermission) who won.
+gtime_t play_since;
+bool was_in_play = false;
+std::string winner;
+gtime_t last_time;
 
 edict_t *Slot(int i)
 {
@@ -194,6 +204,13 @@ void Duel_Install(dm_game_rt &hooks)
 
 void Duel_Frame()
 {
+	if (level.time < last_time) // a new level
+		winner.clear(), was_in_play = false;
+	last_time = level.time;
+	const bool in_play = Core_Match_InPlay();
+	if (in_play && !was_in_play)
+		play_since = level.time;
+	was_in_play = in_play;
 	Sync();
 	if (level.intermissiontime)
 		return;
@@ -232,6 +249,81 @@ void Duel_MatchEnded()
 	// so the champion keeps the spot.
 	const bool first_lost = a->client->resp.score < b->client->resp.score;
 	queue.Rotate(first_lost ? players[0] : players[1]);
+	winner = first_lost ? players[1] : players[0];
+	records.Result(winner, first_lost ? players[0] : players[1]);
+	// The intermission's board went out before this; at intermission stock
+	// resends it only when menutime is set (as a client leaving does).
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *ent = Slot((int)i);
+		if (IsPresent(ent) && ent->client->showscores)
+			ent->client->menutime = level.time;
+	}
 	gi.Com_PrintFmt("Duel: {} {} - {} {}; next: {}\n", Core_PlayerName(a).c_str(), a->client->resp.score,
 	                b->client->resp.score, Core_PlayerName(b).c_str(), Core_PlayerName(first_lost ? a : b).c_str());
+}
+
+namespace
+{
+// The title's map name, safe inside the layout's quotes.
+std::string MapTitle()
+{
+	std::string name = level.level_name[0] ? level.level_name : level.mapname;
+	name.erase(std::remove(name.begin(), name.end(), '"'), name.end());
+	return name;
+}
+
+// "10:00", from when the match went into play to the intermission.
+std::string MatchTime()
+{
+	const int64_t s = std::max<int64_t>(0, (level.intermissiontime - play_since).seconds<int64_t>());
+	return fmt::format("{}:{:02}", s / 60, s % 60);
+}
+} // namespace
+
+bool Duel_Scoreboard(const edict_t *viewer, size_t budget, std::string &layout)
+{
+	DuelBoardInput in;
+	in.title = "Duel on " + MapTitle();
+	in.viewer = (int)(viewer - g_edicts) - 1;
+	in.budget = budget;
+	in.ready_up = Core_Match_ReadyUp();
+	if (level.intermissiontime)
+	{
+		in.match_time = MatchTime();
+		if (const edict_t *w = winner.empty() ? nullptr : Find(winner); w && IsPresent(w))
+			in.winner = (int)(w - g_edicts) - 1;
+	}
+	std::unordered_set<std::string> listed;
+	for (const std::string &key : queue.Players())
+	{
+		const edict_t *ent = Find(key);
+		if (!ent || !IsPresent(ent))
+			continue;
+		listed.insert(key);
+		DuelBoardDuellist d;
+		d.slot = (int)(ent - g_edicts) - 1;
+		d.score = ent->client->resp.score;
+		d.ping = ent->client->ping;
+		d.minutes = (int)(level.time - ent->client->resp.entertime).minutes();
+		d.ready = Core_Match_IsReady(ent);
+		d.record = records.Get(key);
+		in.duellists.push_back(d);
+	}
+	for (const std::string &key : queue.Order())
+	{
+		const edict_t *ent = Find(key);
+		if (listed.count(key) || !ent || !IsPresent(ent))
+			continue;
+		listed.insert(key);
+		in.queue.push_back({(int)(ent - g_edicts) - 1, records.Get(key)});
+	}
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		const edict_t *ent = Slot((int)i);
+		if (IsPresent(ent) && !listed.count(Key(ent)))
+			in.spectators.push_back({(int)i, records.Get(Key(ent))});
+	}
+	layout += Duel_BoardLayout(in);
+	return true;
 }

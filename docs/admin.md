@@ -81,7 +81,7 @@ Set it in `server.cfg`. Details: docs/design/joining.md.
 
 | Cvar | Default | What |
 |---|---|---|
-| `g_scoreboard` | 0 | 1: the column board outside team modes (Frg, Dth, Player, FPH, Time, Ping); the built-in `ffa` ruleset sets 1. 0: stock's board |
+| `g_scoreboard` | 0 | 1: the mod's boards outside team modes: FFA's columns (#, Frg, Dth, Player, FPH, Time, Ping) and Duel's (the duellists, records, the queue); the built-in `ffa` and `duel` rulesets set 1. 0: stock's board |
 
 See docs/design/scoreboard.md.
 

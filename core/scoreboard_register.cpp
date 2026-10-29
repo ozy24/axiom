@@ -137,6 +137,9 @@ bool Core_Scoreboard_Columns(const edict_t *ent, std::string &layout)
 	RegisterCvars();
 	if (!g_scoreboard->integer)
 		return false;
+	// A gametype with its own (Duel's).
+	if (const GametypeDef *gt = Core_Gametype_Active(); gt->scoreboard)
+		return gt->scoreboard(ent, Budget(layout.size()), layout);
 	ScoreboardInput in;
 	in.viewer = (int)(ent - g_edicts) - 1;
 	in.stamp = Stamp();

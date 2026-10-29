@@ -41,7 +41,8 @@ const RulesetDef core_rulesets[] = {
      "set match_lock 0\n"
      "set timelimit 10\n"
      "set fraglimit 0\n"
-     "set g_map_list_shuffle 1\n"},
+     "set g_map_list_shuffle 1\n"
+     "set g_scoreboard 1\n"},
     {"tdm", "tdm", "team deathmatch: warmup and ready-up, 20 minutes, sudden death on a tie",
      "set g_gametype tdm\n"
      "set ctf 0\n"

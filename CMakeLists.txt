@@ -223,10 +223,12 @@ if(GAME_BUILD_TESTS)
         core/join.cpp
         core/scoreboard.cpp
         tests/test_duel_queue.cpp
+        tests/test_duel_board.cpp
         tests/test_eyecam.cpp
         core/gametype.cpp
         gametypes/ffa/gametype.cpp
-        gametypes/duel/duel_queue.cpp)
+        gametypes/duel/duel_queue.cpp
+        gametypes/duel/duel_board.cpp)
     target_include_directories(game_tests PRIVATE
         "${CMAKE_SOURCE_DIR}"
         "${CMAKE_SOURCE_DIR}/tests"
