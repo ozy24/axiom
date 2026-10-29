@@ -35,3 +35,8 @@ void DuelQueue::Rotate(const std::string &loser)
 	order_.erase(it);
 	order_.push_back(loser);
 }
+
+void DuelQueue::Leave(const std::string &id)
+{
+	order_.erase(std::remove(order_.begin(), order_.end(), id), order_.end());
+}

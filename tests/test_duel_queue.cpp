@@ -93,3 +93,17 @@ TEST_CASE("a human keeps their place by key, whichever slot they come back in")
 	q.Sync({"bot:0", "bot:1", "human-abc"}, true);
 	CHECK(q.Players() == std::vector<std::string>{"bot:0", "human-abc"});
 }
+
+TEST_CASE("leaving the queue gives the place up; a duellist leaving lets the next one in")
+{
+	DuelQueue q;
+	q.Sync(K({1, 2, 3}));
+	q.Leave("3");
+	CHECK(q.Order() == K({1, 2}));
+	q.Leave("1");
+	CHECK(q.Players() == K({2}));
+	q.Sync(K({2, 3}));
+	CHECK(q.Players() == K({2, 3}));
+	q.Leave("9"); // not in it: nothing changes
+	CHECK(q.Order() == K({2, 3}));
+}

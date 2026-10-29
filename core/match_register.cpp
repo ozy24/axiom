@@ -14,6 +14,7 @@
 #include "core/maps_hooks.h"
 #include "core/match_hooks.h"
 #include "core/teams_hooks.h"
+#include "core/join_hooks.h"
 #include "core/vote_hooks.h"
 
 #include <array>
@@ -448,6 +449,7 @@ void Core_Match_Frame()
 	}
 	last_time = level.time;
 	Core_Teams_Frame();
+	Core_Join_Frame();
 	Core_Vote_Frame();
 	Core_Maps_Frame();
 	// Settings that change before the match starts take effect: an admin's

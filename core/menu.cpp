@@ -162,13 +162,15 @@ MenuPage Core_Menu_Main(const MenuView &v)
 		// No player counts, here or on Join the Match: the client's
 		// proportional font can't line them up (Chris, 2026-10-27). Your own team stays listed, in the alternate
 		// colour and skipped by the cursor: stock has no grey.
-		// A locked team you can't join is listed, marked locked, and skipped.
+		// A locked team always says so (Chris, 2026-10-29); one you can't
+		// join (not on its roster) is skipped too.
 		const auto team = [&](const char *name, int which, MenuAction join)
 		{
+			const std::string text = std::string("Join ") + name + (v.team_locked[which] ? " [LOCKED]" : "");
 			if (v.team != which && !v.team_may_join[which])
-				Add(page, std::string("Join ") + name + " (locked)");
+				Add(page, text);
 			else
-				Choice(page, std::string("Join ") + name, join, v.team == which);
+				Choice(page, text, join, v.team == which);
 		};
 		team("Red", 1, MenuAction::JoinRed);
 		team("Blue", 2, MenuAction::JoinBlue);
@@ -177,6 +179,7 @@ MenuPage Core_Menu_Main(const MenuView &v)
 	}
 	else if (v.duel)
 	{
+		Add(page, v.queued ? "Leave Queue" : "Join Queue", v.queued ? MenuAction::Spectate : MenuAction::JoinGame);
 		Add(page, "Duel Queue", MenuAction::Queue);
 	}
 	else if (v.playing)
@@ -252,7 +255,7 @@ MenuPage Core_Menu_MatchInfo(const MenuView &v)
 		const auto team = [&](const char *name, int which)
 		{
 			const std::string captain = v.team_captain[which].empty() ? "none" : v.team_captain[which];
-			Add(page, Core_Menu_Clean(std::string(name) + (v.team_locked[which] ? " (locked): " : ": ") + captain));
+			Add(page, Core_Menu_Clean(std::string(name) + (v.team_locked[which] ? " [LOCKED]: " : ": ") + captain));
 		};
 		team("Red", 1);
 		team("Blue", 2);
@@ -277,6 +280,11 @@ MenuPage Core_Menu_CallVote(const MenuView &v)
 		Add(page, "Restart Match", MenuAction::VoteFor, MenuAlign::Left, false, "restart");
 	for (const MenuVoteSetting &s : v.vote_settings)
 		Add(page, Core_Menu_Clean(s.title), MenuAction::VoteSetting, MenuAlign::Left, false, s.kind);
+	// In a ready-up warmup: ready everyone playing, or your own team.
+	if (v.ready_up && allowed("readyall"))
+		Add(page, "Ready Everyone", MenuAction::VoteFor, MenuAlign::Left, false, "readyall");
+	if (v.ready_up && v.team && allowed("readyteam"))
+		Add(page, "Ready My Team", MenuAction::VoteFor, MenuAlign::Left, false, "readyteam");
 	Footer(page, {"$g_pc_return", MenuAlign::Left, MenuAction::Back, false, {}});
 	return page;
 }

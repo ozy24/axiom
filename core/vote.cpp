@@ -61,15 +61,19 @@ const char *VoteKindName(VoteKind kind)
 		return "powerups";
 	case VoteKind::FriendlyFire:
 		return "friendlyfire";
+	case VoteKind::ReadyAll:
+		return "readyall";
+	case VoteKind::ReadyTeam:
+		return "readyteam";
 	}
 	return "?";
 }
 
 const std::vector<VoteKind> &Core_Vote_AllKinds()
 {
-	static const std::vector<VoteKind> kinds{VoteKind::Map,         VoteKind::Gametype,   VoteKind::Restart,
-	                                         VoteKind::Timelimit,   VoteKind::Scorelimit, VoteKind::Powerups,
-	                                         VoteKind::FriendlyFire};
+	static const std::vector<VoteKind> kinds{VoteKind::Map,          VoteKind::Gametype,   VoteKind::Restart,
+	                                         VoteKind::Timelimit,    VoteKind::Scorelimit, VoteKind::Powerups,
+	                                         VoteKind::FriendlyFire, VoteKind::ReadyAll,   VoteKind::ReadyTeam};
 	return kinds;
 }
 
@@ -105,6 +109,8 @@ std::optional<VoteSetting> Core_Vote_Setting(VoteKind kind, bool ctf)
 	case VoteKind::Map:
 	case VoteKind::Gametype:
 	case VoteKind::Restart:
+	case VoteKind::ReadyAll:
+	case VoteKind::ReadyTeam:
 		break;
 	}
 	return std::nullopt;
@@ -165,6 +171,8 @@ int Core_Vote_SettingNow(const VoteSetting &s, const VoteSettingsNow &now)
 	case VoteKind::Map:
 	case VoteKind::Gametype:
 	case VoteKind::Restart:
+	case VoteKind::ReadyAll:
+	case VoteKind::ReadyTeam:
 		break;
 	}
 	return 0;
@@ -180,8 +188,9 @@ std::string Core_Vote_SettingLabel(const VoteSetting &s, int value)
 
 std::string Core_Vote_Describe(const VoteProposal &p)
 {
-	if (Core_Vote_Setting(p.kind, false) && !p.label.empty())
-		return p.label; // "time limit 20 minutes"
+	const bool ready = p.kind == VoteKind::ReadyAll || p.kind == VoteKind::ReadyTeam;
+	if ((Core_Vote_Setting(p.kind, false) || ready) && !p.label.empty())
+		return p.label; // "time limit 20 minutes", "ready red"
 	const std::string &what = p.label.empty() ? p.arg : p.label;
 	return what.empty() ? VoteKindName(p.kind) : std::string(VoteKindName(p.kind)) + " " + what;
 }
@@ -248,6 +257,8 @@ std::string Core_Vote_ErrorText(VoteError e, const VoteConfig &config, const Vot
 	case VoteError::InProgress:
 		return "A vote is already in progress.";
 	case VoteError::NotVoter:
+		if (p.kind == VoteKind::ReadyTeam && !p.arg.empty())
+			return "Only " + Upper(p.arg) + " votes on readying " + Upper(p.arg) + ".";
 		return "Only players in the match can vote.";
 	case VoteError::LimitReached:
 		return "You have called your " + std::to_string(config.call_limit) + " votes for this map.";
@@ -262,6 +273,10 @@ std::string Core_Vote_ErrorText(VoteError e, const VoteConfig &config, const Vot
 			return "Gametypes: " + Join(choices.gametypes) + ".";
 		case VoteKind::Restart:
 			return "Usage: callvote restart";
+		case VoteKind::ReadyAll:
+			return "Usage: callvote readyall";
+		case VoteKind::ReadyTeam:
+			return "Join a team first.";
 		case VoteKind::Timelimit:
 		case VoteKind::Scorelimit:
 		case VoteKind::Powerups:
@@ -283,7 +298,10 @@ std::string Core_Vote_ErrorText(VoteError e, const VoteConfig &config, const Vot
 		return v ? "Already set: " + Core_Vote_SettingLabel(*s, *v) + "." : "Already set.";
 	}
 	case VoteError::TeamsOnly:
-		return "Friendly fire is only for team gametypes.";
+		return p.kind == VoteKind::ReadyTeam ? "Readyteam is only for team gametypes."
+		                                     : "Friendly fire is only for team gametypes.";
+	case VoteError::NoReadyUp:
+		return "Nobody is readying up now: ready votes are for the warmup.";
 	case VoteError::NoLimit:
 		return "There's no time limit, so the match needs a score limit.";
 	case VoteError::NoVote:
@@ -339,6 +357,18 @@ VoteError Vote::Call(int caller, VoteProposal proposal, const VoteChoices &choic
 	case VoteKind::Restart:
 		arg_ok = proposal.arg.empty();
 		break;
+	case VoteKind::ReadyAll:
+	case VoteKind::ReadyTeam:
+	{
+		const bool team = proposal.kind == VoteKind::ReadyTeam;
+		if (team && !choices.now.teams)
+			return VoteError::TeamsOnly;
+		if (!choices.now.ready_up)
+			return VoteError::NoReadyUp;
+		arg_ok = team ? proposal.arg == "red" || proposal.arg == "blue" : proposal.arg.empty();
+		proposal.label = team ? "ready " + proposal.arg : "ready everyone";
+		break;
+	}
 	case VoteKind::Timelimit:
 	case VoteKind::Scorelimit:
 	case VoteKind::Powerups:

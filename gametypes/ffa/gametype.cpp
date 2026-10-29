@@ -1,5 +1,5 @@
 // Free For All: stock deathmatch. No hooks, so id's code runs unchanged.
 #include "core/gametype.h"
 
-extern const GametypeDef gametype_ffa = {"ffa",   "Free For All", "deathmatch", nullptr,
+extern const GametypeDef gametype_ffa = {"ffa",   "Free For All", "deathmatch", nullptr, nullptr,
                                          nullptr, nullptr,        nullptr,      nullptr};

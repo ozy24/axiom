@@ -99,6 +99,7 @@ void		SetCTFStats(edict_t *ent);
 void		CTFDeadDropFlag(edict_t *self);
 void		CTFScoreboardMessage(edict_t *ent, edict_t *killer);
 void		CTFTeam_f(edict_t *ent);
+void		CTFChangeTeam(edict_t *ent, ctfteam_t desired_team); // [mod] CTFTeam_f's switch, for the Tab menu
 void		CTFID_f(edict_t *ent);
 #ifndef KEX_Q2_GAME
 void		CTFSay_Team(edict_t *who, const char *msg);

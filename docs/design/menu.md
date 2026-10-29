@@ -33,17 +33,21 @@ stock `gamerules` modes keep stock's.
 
 ## Pages
 
+A human new to the server arrives spectating with the main page open
+(docs/design/joining.md).
+
 - **Main.** The hostname, gametype and map. Then, while a vote is open, the
   proposal, a blank line, Vote Yes and Vote No, with the cursor on Yes.
   Then, by gametype:
   - team modes: Join Red, Join Blue, Spectate;
-  - Duel: Duel Queue;
+  - Duel: Join Queue or Leave Queue, and Duel Queue;
   - FFA: Join the Match or Spectate;
   - a spectator: Chase Camera or Stop Chasing;
   - in warmup: Ready or Not Ready;
   - a team's captain: Team (captain).
 
-  A locked team you can't join reads "Join Red (locked)" and is skipped.
+  A locked team always reads "Join Red [LOCKED]" (Chris, 2026-10-29); if
+  you aren't on its roster, the row is skipped.
 
   After those come Match Info, then Call a Vote when you may call one, and
   Close at the foot. A choice that is already the case (your team, your vote answer) is
@@ -54,7 +58,9 @@ stock `gamerules` modes keep stock's.
 - **Call a Vote.** The allowed kinds: Map and Gametype open their lists;
   Restart Match is called from here. Time Limit, Frag Limit (Capture Limit
   in CTF), Powerups and, in team modes, Friendly Fire each open a few
-  choices, the value now marked and skipped (decision 0015).
+  choices, the value now marked and skipped (decision 0015). In a ready-up
+  warmup, Ready Everyone and (on a team) Ready My Team call `readyall` /
+  `readyteam`.
 - **Maps.** The vote's map list. The current map is marked and skipped.
 - **Gametypes.** A gametype with one ruleset is voted from the list. One with
   variants opens a submenu, for example Duel → Duel / HoonyMode. The current

@@ -212,7 +212,36 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
 - Not done: a lock under `g_teamplay_force_join` only gates `team` and the
   menu (the server's auto-assignment isn't refused); not playtested yet.
 
-Next: Clan Arena as a TDM ruleset (elimination rounds that count the
+## Playtest batch 2026-10-29 (branch `playtest/teams`)
+- Tab menu: a locked team always reads "Join Red [LOCKED]".
+- Fixed: the menu's change of team did nothing (it stuffed `team blue`,
+  which the KEX client doesn't run); now `CTFChangeTeam` on the server.
+  Tier 17 reproduces it.
+- **Arriving spectating (decision 0017, docs/design/joining.md):** a human
+  new to the server spectates with the menu open; `join` / `spectate` in
+  every gametype; `g_auto_join` (default 0). The last level's players come
+  back as they were after `gamemap` and `map` (memory in `g_join_memory`),
+  which also keeps TDM/CTF teams across map changes. Duel's queue is
+  opt-in (Join Queue / Leave Queue). New `GametypeDef::waiting` hook.
+  Harness tier 18; tiers 11, 13, 14, 16 set `g_auto_join 1`.
+- An emptied team's unlock reads "RED is unlocked: no players left on it."
+- The team scoreboard marks each captain with a `*` (tier 17 checks it).
+- Ready votes: `callvote readyall` and `callvote readyteam` (voted on by
+  the caller's team alone) in a ready-up warmup, in the default
+  `g_vote_allow` and the Call a Vote page. Harness tier 19.
+
+Chris finished testing this batch on 2026-10-29.
+
+Next: the FFA column scoreboard (Chris, 2026-10-29), on its own branch:
+`#  Frg Dth  Player  FPH Time Ping`, where Time is whole minutes in the
+match. A dated header; spectators underneath with no chase target. When a
+full server doesn't fit, it shows the top N plus your own row. The stock
+board stays behind a cvar. A name test on Chris's KEX client showed that
+only the `ctf` layout row decodes a `##P` name token: `string`,
+`loc_string` and its `{}` arguments all show `##P0`, and `%s` isn't
+supported. So the name always comes after two numbers. Right-aligned
+`loc_rstring` numbers line up.
+Then Clan Arena as a TDM ruleset (elimination rounds that count the
 living, spawn loadout, `match_lock 1`). Then Phase 4's remainder - Chris has other features to work through first,
 then timeouts/pauses, admin controls, per-gametype scoreboards (an
 OpenFFA-style FFA board waits on his column list), then the M4 checklist on

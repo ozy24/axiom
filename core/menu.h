@@ -15,8 +15,8 @@ enum class MenuAction
 	None, // a text row: the cursor skips it
 	JoinRed,
 	JoinBlue,
-	JoinGame,  // FFA: a spectator joins
-	Spectate,  // FFA, TDM, CTF: a player stops playing
+	JoinGame,  // `join`: FFA, a spectator plays; Duel, joins the queue
+	Spectate,  // `spectate`: a player stops playing; Duel, leaves the queue
 	Chase,     // a spectator follows a player
 	StopChase, // ... and stops
 	Ready,
@@ -124,6 +124,7 @@ struct MenuView
 	bool duel = false;
 
 	bool playing = false;  // in the match (on a team, in FFA, duelling)
+	bool queued = false;   // Duel: asked to play (duelling or waiting)
 	bool chasing = false;  // a spectator following someone
 	int team = 0;          // teams: 0 none, 1 red, 2 blue
 	int red = 0, blue = 0; // teams: players on each (the cursor's default)

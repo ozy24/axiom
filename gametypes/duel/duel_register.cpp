@@ -3,15 +3,23 @@
 // loser to the back of the queue at the end.
 #include "g_local.h"
 
+#include "core/join_hooks.h"
 #include "core/player_name.h"
 #include "gametypes/duel/duel_queue.h"
 
+#include <algorithm>
 #include <string>
+#include <unordered_set>
 #include <vector>
+
+void Duel_Frame();
 
 namespace
 {
 DuelQueue queue;
+// Who has asked to play (`join`, the menu's Join Queue; bots, and the last
+// level's players, on arrival: core/join.h). Only they are queued.
+std::unordered_set<std::string> wants;
 
 edict_t *Slot(int i)
 {
@@ -29,13 +37,14 @@ std::string Key(const edict_t *ent)
 	return Core_PlayerKey(ent);
 }
 
+// The clients present who want to play.
 std::vector<std::string> Present()
 {
 	std::vector<std::string> keys;
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		const edict_t *ent = Slot((int)i);
-		if (IsPresent(ent))
+		if (IsPresent(ent) && wants.count(Key(ent)))
 			keys.push_back(Key(ent));
 	}
 	return keys;
@@ -65,7 +74,15 @@ constexpr gtime_t kReturnGrace = 30_sec;
 
 void Sync()
 {
-	queue.Sync(Present(), level.time < kReturnGrace);
+	const bool grace = level.time < kReturnGrace;
+	queue.Sync(Present(), grace);
+	// After the grace, someone gone is gone: back later, they ask again.
+	if (!grace)
+	{
+		for (auto it = wants.begin(); it != wants.end();)
+			it = std::find(queue.Order().begin(), queue.Order().end(), *it) == queue.Order().end() ? wants.erase(it)
+			                                                                                       : std::next(it);
+	}
 }
 
 bool IsPlaying(const edict_t *ent)
@@ -75,17 +92,10 @@ bool IsPlaying(const edict_t *ent)
 
 // PutClientInServer re-reads the "spectator" userinfo key (via
 // ClientUserinfoChanged), so the queue's decision has to be written there or
-// the next spawn undoes it; players also get their own cvar set, as
-// spectator_respawn does.
+// the next spawn undoes it (core/join_hooks.h).
 void SetSpectatorInfo(edict_t *ent, bool spectator)
 {
-	gi.Info_SetValueForKey(ent->client->pers.userinfo, "spectator", spectator ? "1" : "0");
-	if (!(ent->svflags & SVF_BOT))
-	{
-		gi.WriteByte(svc_stufftext);
-		gi.WriteString(spectator ? "spectator 1\n" : "spectator 0\n");
-		gi.unicast(ent, true);
-	}
+	Core_Join_SetSpectatorInfo(ent, spectator);
 }
 
 // Moves a client in or out of the game, bypassing spectator_respawn's
@@ -100,27 +110,64 @@ void SetPlaying(edict_t *ent, bool playing)
 	PutClientInServer(ent);
 	if (playing)
 		gi.LocBroadcast_Print(PRINT_HIGH, "{} steps up to duel.\n", ent->client->pers.netname);
-	else
+	else if (wants.count(Key(ent)))
 		gi.LocBroadcast_Print(PRINT_HIGH, "{} waits in the duel queue.\n", ent->client->pers.netname);
 }
 } // namespace
 
-// DMGame.ClientBegin: a newcomer who isn't in the front two spawns straight in
-// as a spectator, rather than appearing in the arena for a frame.
+// DMGame.ClientBegin: a bot, the last level's players and (g_auto_join) any
+// newcomer join the queue (core/join.h); anyone else arrives spectating, with
+// the menu's Join Queue. A newcomer who isn't in the front two spawns straight
+// in as a spectator, rather than appearing in the arena for a frame.
 static void Duel_ClientBegin(edict_t *ent)
 {
+	if (Core_Join_Plays(ent))
+		wants.insert(Key(ent));
 	Sync();
 	const bool playing = queue.IsPlayer(Key(ent));
 	SetSpectatorInfo(ent, !playing);
 	ent->client->pers.spectator = !playing;
 	ent->client->resp.spectator = !playing;
-	if (!playing)
+	if (!playing && wants.count(Key(ent)))
 		gi.LocBroadcast_Print(PRINT_HIGH, "{} waits in the duel queue.\n", ent->client->pers.netname);
 }
 
-// `queue`: who's duelling and who's next.
+bool Duel_Waiting(const edict_t *ent)
+{
+	return wants.count(Key(ent)) != 0;
+}
+
+// `join` / `spectate`: into the queue or out of it (out of a duel is a
+// forfeit); Duel_Frame moves them in or out of play.
+static bool JoinCommand(edict_t *ent, bool join)
+{
+	const std::string key = Key(ent);
+	if (join == (wants.count(key) != 0))
+	{
+		gi.LocClient_Print(ent, PRINT_HIGH,
+		                   join ? "You're already in the duel queue.\n" : "You're not in the duel queue.\n");
+		return true;
+	}
+	if (join)
+	{
+		wants.insert(key);
+		gi.LocBroadcast_Print(PRINT_HIGH, "{} joins the duel queue.\n", ent->client->pers.netname);
+	}
+	else
+	{
+		wants.erase(key);
+		queue.Leave(key);
+		gi.LocBroadcast_Print(PRINT_HIGH, "{} leaves the duel queue.\n", ent->client->pers.netname);
+	}
+	Duel_Frame();
+	return true;
+}
+
+// `queue`: who's duelling and who's next; `join` / `spectate`.
 bool Duel_ClientCommand(edict_t *ent, const char *cmd)
 {
+	if (!Q_strcasecmp(cmd, "join") || !Q_strcasecmp(cmd, "spectate"))
+		return JoinCommand(ent, !Q_strcasecmp(cmd, "join"));
 	if (Q_strcasecmp(cmd, "queue"))
 		return false;
 	// One line each, with the name as its own argument: the client decodes a

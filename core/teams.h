@@ -71,7 +71,7 @@ class Teams
 	std::vector<TeamsEvent> GoLive(bool match_lock);
 	// The match is back in warmup: every lock off, rosters cleared. Captains stay.
 	void Clear();
-	// A new level: nothing kept (every human reconnects and picks a team again).
+	// A new level: nothing kept (every human reconnects; the first back on a team is its captain).
 	void Reset();
 
 	// Lock: the humans on the team now become its roster. Unlock: the roster goes.

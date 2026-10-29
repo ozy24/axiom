@@ -14,7 +14,9 @@
 // waits after one of theirs fails. Votes can be called mid-match (a match
 // started with the wrong settings is voted away). Map, gametype, restart and
 // powerups reload a map, so the match starts again from warmup; the limits
-// and friendly fire apply in place.
+// and friendly fire apply in place. Two more ready players up in a ready-up
+// warmup: readyall (everyone playing) and readyteam (the caller's team, voted
+// on by that team alone).
 //
 // The adapter (core/vote_register.cpp) carries out the passed proposal and
 // shows the vote on the HUD's status line; the Tab menu issues the same
@@ -38,10 +40,12 @@ enum class VoteKind
 	Scorelimit,
 	Powerups,
 	FriendlyFire,
+	ReadyAll,
+	ReadyTeam,
 };
 
 // "map", "gametype", "restart", "timelimit", "scorelimit", "powerups",
-// "friendlyfire"; and back, case-insensitively ("ruleset" for gametype;
+// "friendlyfire", "readyall", "readyteam"; and back, case-insensitively ("ruleset" for gametype;
 // "fraglimit" and "capturelimit" for scorelimit).
 const char *VoteKindName(VoteKind kind);
 std::optional<VoteKind> Core_Vote_ParseKind(std::string_view name);
@@ -57,6 +61,7 @@ struct VoteSettingsNow
 	bool friendly_fire = false;
 	bool teams = false; // TDM, CTF
 	bool ctf = false;
+	bool ready_up = false; // the match waits for its players to ready up
 };
 
 // One votable setting (decision 0015). The table is compiled in: admins
@@ -80,7 +85,7 @@ struct VoteSetting
 };
 
 // The setting a kind changes (the score limit is CTF's capture limit there,
-// with its own range), or nullopt for map, gametype and restart.
+// with its own range), or nullopt for map, gametype, restart and the ready votes.
 std::optional<VoteSetting> Core_Vote_Setting(VoteKind kind, bool ctf);
 
 // A vote's argument as the setting's value: a number in range, or on / off
@@ -99,7 +104,7 @@ std::string Core_Vote_SettingLabel(const VoteSetting &s, int value);
 struct VoteProposal
 {
 	VoteKind kind = VoteKind::Restart;
-	std::string arg;   // the map or ruleset name; empty for restart
+	std::string arg;   // the map or ruleset name; readyteam's team (red, blue); empty for restart, readyall
 	std::string label; // shown instead of arg if set: "Duel: HoonyMode"
 
 	bool operator==(const VoteProposal &o) const
@@ -108,7 +113,7 @@ struct VoteProposal
 	}
 };
 
-// "map q2dm3", "gametype Duel: HoonyMode", "restart".
+// "map q2dm3", "gametype Duel: HoonyMode", "restart", "ready red".
 std::string Core_Vote_Describe(const VoteProposal &p);
 
 // The words of a list cvar (g_map_list, g_vote_allow), lowercased; anything
@@ -155,7 +160,8 @@ enum class VoteError
 	Cooldown,     // this player's last vote failed too recently
 	BadArg,       // not on the list (map, gametype, ruleset), out of range, or an argument to restart
 	AlreadySet,   // a setting vote for the value it has now
-	TeamsOnly,    // friendly fire outside team modes
+	TeamsOnly,    // friendly fire or readyteam outside team modes
+	NoReadyUp,    // a ready vote with no ready-up under way
 	NoLimit,      // no score limit with no time limit: the match would never end
 	NoVote,       // `vote` with nothing open
 	AlreadyVoted, // the same answer again

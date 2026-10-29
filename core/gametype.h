@@ -25,6 +25,9 @@ struct GametypeDef
 	const char *(*match_over)();                           // its own end condition: the reason, or null
 	void (*match_ended)();                                 // once, when the level reaches intermission
 	bool (*client_command)(edict_t *ent, const char *cmd); // true if handled
+	// A client not in play who has asked to play (Duel's queue): kept as
+	// playing across a map change, offered "Leave" rather than "Join".
+	bool (*waiting)(const edict_t *ent);
 };
 
 // The generated registry (build/generated/gametype_registry.cpp).

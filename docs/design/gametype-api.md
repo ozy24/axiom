@@ -53,7 +53,9 @@ per-frame tick, so they need no further edits to id's code: `frame` (every
 deathmatch frame), `match_over` (the gametype's own end condition while LIVE:
 it returns the reason, such as `"forfeit"` or `"capturelimit"`, or null),
 `match_ended` (once at intermission, whichever rules ended the level) and
-`client_command` (the gametype's commands, before `ready`). The
+`client_command` (the gametype's commands, before `ready`; also `join` /
+`spectate` from the menu) and `waiting` (a client not in play who has asked
+to play: Duel's queue; kept across a map change, docs/design/joining.md). The
 `DMGame.ClientBegin` gate is relaxed (`[mod]` in `p_client.cpp`) because Duel
 installs it.
 
@@ -62,7 +64,7 @@ installs it.
 | id | title | hooks | notes |
 |---|---|---|---|
 | `ffa` | Free For All | none | stock deathmatch; the default |
-| `duel` | Duel | `ClientBegin`; `frame`, `match_over`, `match_ended`, `client_command` | 1v1 play queue (`gametypes/duel/`): the front two play, the rest spectate (`queue` lists it); a duellist leaving is a forfeit; the loser rotates to the back. Ruleset `duel` |
+| `duel` | Duel | `ClientBegin`; `frame`, `match_over`, `match_ended`, `client_command`, `waiting` | 1v1 play queue (`gametypes/duel/`) of those who asked (`join`): the front two play, the rest spectate (`queue` lists it); a duellist leaving is a forfeit; the loser rotates to the back. Ruleset `duel` |
 | `tdm` | Team Deathmatch | none | stock teamplay (`retail_mode` `teamplay`). The match flow scores it by team frags; fraglimit is on team totals, as stock. Ruleset `tdm` |
 | `ctf` | Capture The Flag | `match_over` (capturelimit) | stock CTF (`retail_mode` `ctf`). The match flow scores it by captures; the arena reset sends the flags home. Ruleset `ctf` |
 

@@ -9,6 +9,7 @@
 #include "core/maps_hooks.h"
 #include "core/match_hooks.h"
 #include "core/menu.h"
+#include "core/join_hooks.h"
 #include "core/menu_hooks.h"
 #include "core/teams_hooks.h"
 #include "core/vote_hooks.h"
@@ -16,7 +17,6 @@
 #include <cstring>
 
 // id's, with no declaration in a header.
-void spectator_respawn(edict_t *ent);
 void CTFJoinTeam(edict_t *ent, ctfteam_t desired_team);
 void CTFChaseCam(edict_t *ent, pmenuhnd_t *p);
 
@@ -71,6 +71,7 @@ MenuView View(const edict_t *ent)
 	v.teams = G_TeamplayEnabled();
 	v.ctf = ctf->integer != 0;
 	v.duel = gt && !strcmp(gt->id, "duel");
+	v.queued = gt && gt->waiting && gt->waiting(ent);
 
 	v.playing = Core_Match_Playing(ent);
 	v.chasing = ent->client->chase_target != nullptr;
@@ -192,17 +193,6 @@ void StopChasing(edict_t *ent)
 	ent->client->ps.pmove.pm_flags &= ~(PMF_NO_POSITIONAL_PREDICTION | PMF_NO_ANGULAR_PREDICTION);
 }
 
-// FFA: the stock spectator toggle, as the `spectator` userinfo cvar drives it;
-// the client's cvar is set to match, so its next userinfo agrees.
-void SetSpectator(edict_t *ent, bool spectator)
-{
-	ent->client->pers.spectator = spectator;
-	spectator_respawn(ent);
-	gi.WriteByte(svc_stufftext);
-	gi.WriteString(spectator ? "spectator 1\n" : "spectator 0\n");
-	gi.unicast(ent, true);
-}
-
 void Select(edict_t *ent, pmenuhnd_t *hnd)
 {
 	const MenuState *state = (const MenuState *)hnd->arg;
@@ -227,28 +217,22 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 			CTFJoinTeam(ent, team); // as stock's join menu; closes the menu
 			break;
 		}
-		// A change of team is stock's `team` command, run by the client: it
-		// kills the player (dropping a carried flag and tech), and refuses
-		// under g_teamplay_force_join or a stock CTF match.
+		// A change of team is stock's `team` command's switch, run here: the
+		// KEX client doesn't run a stuffed `team blue` (playtest 2026-10-29).
+		// It kills the player (dropping a carried flag and tech), and refuses
+		// under g_teamplay_force_join, a stock CTF match or a lock, as `team` does.
 		PMenu_Close(ent);
-		gi.WriteByte(svc_stufftext);
-		gi.WriteString(team == CTF_TEAM1 ? "team red\n" : "team blue\n");
-		gi.unicast(ent, true);
+		CTFChangeTeam(ent, team);
 		break;
 	}
-	case MenuAction::JoinGame:
+	case MenuAction::JoinGame: // `join`: FFA into play, Duel into the queue
 		PMenu_Close(ent);
-		SetSpectator(ent, false);
+		Core_Join_Run(ent, true);
 		break;
-	case MenuAction::Spectate:
+	case MenuAction::Spectate: // `spectate`
 		PMenu_Close(ent);
-		if (G_TeamplayEnabled())
-		{
-			CTFObserver(ent); // `observer`; its respawn reopens the join menu
-			PMenu_Close(ent);
-		}
-		else
-			SetSpectator(ent, true);
+		Core_Join_Run(ent, false);
+		PMenu_Close(ent); // team modes: `observer`'s respawn reopens the join menu
 		break;
 	case MenuAction::Chase:
 		if (G_TeamplayEnabled())

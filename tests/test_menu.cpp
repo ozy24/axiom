@@ -62,7 +62,7 @@ MenuView Longest()
 	v.timelimit_min = 999;
 	v.voter = true;
 	v.vote_proposal = std::string(60, 'W');
-	v.vote_kinds = {"map", "gametype", "restart"};
+	v.vote_kinds = {"map", "gametype", "restart", "readyall", "readyteam"};
 	for (int i = 0; i < 40; ++i)
 	{
 		const std::string name = std::to_string(i) + std::string(30, 'W');
@@ -256,15 +256,20 @@ TEST_CASE("menu: teams list both sides; the cursor starts on the smaller team")
 	                                               MenuAction::Close});
 }
 
-TEST_CASE("menu: Duel offers the queue, never join or spectate (the queue decides)")
+TEST_CASE("menu: Duel offers joining or leaving the queue, and the queue itself")
 {
 	MenuView v = Ffa();
 	v.duel = true;
+	MenuPage page = Core_Menu_Main(v);
+	CHECK(Actions(page) == std::vector<MenuAction>{MenuAction::JoinGame, MenuAction::Queue, MenuAction::Chase,
+	                                               MenuAction::MatchInfo, MenuAction::Close});
+	CHECK(Row(page, "Join Queue")->action == MenuAction::JoinGame);
+	CHECK(Core_Menu_MainCursor(page, v) == RowOf(page, MenuAction::JoinGame)); // a new arrival's first choice
+	v.queued = true;                                                           // waiting
+	CHECK(Row(Core_Menu_Main(v), "Leave Queue")->action == MenuAction::Spectate);
+	v.playing = true; // duelling
 	CHECK(Actions(Core_Menu_Main(v)) ==
-	      std::vector<MenuAction>{MenuAction::Queue, MenuAction::Chase, MenuAction::MatchInfo, MenuAction::Close});
-	v.playing = true;
-	CHECK(Actions(Core_Menu_Main(v)) ==
-	      std::vector<MenuAction>{MenuAction::Queue, MenuAction::MatchInfo, MenuAction::Close});
+	      std::vector<MenuAction>{MenuAction::Spectate, MenuAction::Queue, MenuAction::MatchInfo, MenuAction::Close});
 }
 
 TEST_CASE("menu: match info names the rules, and returns to the main page")
@@ -333,6 +338,20 @@ TEST_CASE("menu: Call a Vote lists the allowed kinds; restart is called from it"
 	CHECK(Row(page, "Restart Match")->arg == "restart");
 	v.vote_kinds = {"map"};
 	CHECK(Actions(Core_Menu_CallVote(v)) == std::vector<MenuAction>{MenuAction::VoteMaps, MenuAction::Back});
+}
+
+TEST_CASE("menu: Call a Vote offers the ready votes in a ready-up; readyteam on a team")
+{
+	MenuView v = Voting(Teams());
+	v.vote_kinds = {"readyall", "readyteam"};
+	CHECK(Actions(Core_Menu_CallVote(v)) == std::vector<MenuAction>{MenuAction::Back});
+	v.ready_up = true;
+	CHECK(Row(Core_Menu_CallVote(v), "Ready Everyone")->arg == "readyall");
+	CHECK_FALSE(Row(Core_Menu_CallVote(v), "Ready My Team"));
+	v.team = 2;
+	CHECK(Row(Core_Menu_CallVote(v), "Ready My Team")->arg == "readyteam");
+	v.vote_kinds = {"readyteam"};
+	CHECK_FALSE(Row(Core_Menu_CallVote(v), "Ready Everyone"));
 }
 
 TEST_CASE("menu: vote maps call the vote; the current one is marked and skipped")
@@ -413,26 +432,27 @@ TEST_CASE("menu: setting votes follow the kinds, each opening its choices")
 	CHECK(Row(Core_Menu_VoteSetting(v, "powerups"), "Off")->arg == "powerups off");
 }
 
-TEST_CASE("menu: a locked team shows locked and can't be chosen, unless you're on its roster")
+TEST_CASE("menu: a locked team always shows [LOCKED]; only its roster can choose it")
 {
 	MenuView v = Teams();
 	v.team_locked[1] = true;
 	v.team_may_join[1] = false;
 	MenuPage page = Core_Menu_Main(v);
-	CHECK(Shows(page, "Join Red (locked)"));
+	CHECK(Shows(page, "Join Red [LOCKED]"));
 	CHECK(RowOf(page, MenuAction::JoinRed) == -1);
+	CHECK(Shows(page, "Join Blue"));
 	CHECK(RowOf(page, MenuAction::JoinBlue) >= 0);
 
-	v.team_may_join[1] = true; // a rostered player coming back
+	v.team_may_join[1] = true; // a rostered player coming back: still marked
 	page = Core_Menu_Main(v);
-	CHECK(RowOf(page, MenuAction::JoinRed) >= 0);
+	CHECK(Row(page, "Join Red [LOCKED]")->action == MenuAction::JoinRed);
 
 	// Your own team stays listed as yours, locked or not.
 	v.team = 1;
 	v.team_may_join[1] = false;
 	page = Core_Menu_Main(v);
-	REQUIRE(Row(page, "Join Red"));
-	CHECK(Row(page, "Join Red")->highlight);
+	REQUIRE(Row(page, "Join Red [LOCKED]"));
+	CHECK(Row(page, "Join Red [LOCKED]")->highlight);
 }
 
 TEST_CASE("menu: match info names each team's captain and lock")
@@ -441,7 +461,7 @@ TEST_CASE("menu: match info names each team's captain and lock")
 	v.team_captain[1] = "Ozy";
 	v.team_locked[1] = true;
 	const MenuPage page = Core_Menu_MatchInfo(v);
-	CHECK(Shows(page, "Red (locked): Ozy"));
+	CHECK(Shows(page, "Red [LOCKED]: Ozy"));
 	CHECK(Shows(page, "Blue: none"));
 	CHECK_FALSE(Shows(Core_Menu_MatchInfo(Ffa()), "Blue: none"));
 }

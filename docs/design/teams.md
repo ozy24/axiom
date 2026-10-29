@@ -38,9 +38,9 @@ whole argument, so a name with spaces needs no quotes.
   LIVE). After that it's an ordinary lock: the captain can unlock it to
   let a substitute in, then lock it again.
 - **Locks belong to the match.** The match back in warmup unlocks both
-  teams; a new level starts with no locks and no captains (every human
-  reconnects at a map change and picks a team again). Rounds and overtime
-  never change them.
+  teams; a new level starts with no locks and no captains (players come
+  back on their team, docs/design/joining.md, and the first back on each
+  is captain). Rounds and overtime never change them.
 - **An emptied team unlocks itself** when its last human leaves:
   otherwise nobody could join it, and the match could never start again.
 - **Not locked:** spectating, chasing, bots (the server places them), and
@@ -59,10 +59,11 @@ whole argument, so a name with spaces needs no quotes.
 
 - `RED is locked.` / `RED is unlocked.` to everyone; `Alice is captain of RED.`
   when the captaincy changes; `RED is locked.` to a player refused.
-- The Tab menu: a locked team you can't join reads "Join Red (locked)" and
-  is skipped. Match Info shows each team's captain and lock. A captain has
+- The Tab menu: a locked team reads "Join Red [LOCKED]", and is skipped
+  if you aren't on its roster. Match Info shows each team's captain and lock. A captain has
   a **Team** page: Lock or Unlock Team, Ready Team in ready-up, and their
   teammates; each opens Make Captain and Kick from Team.
+- The scoreboard: a `*` left of each captain's name (as MMREX draws it).
 - The server log: `Teams: RED locked`, `Teams: RED captain Alice`, and so on.
 
 ## Clan Arena

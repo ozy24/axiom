@@ -7,6 +7,7 @@
 #include "core/vote_hooks.h" // [mod]
 #include "core/maps_hooks.h" // [mod]
 #include "core/teams_hooks.h" // [mod]
+#include "core/join_hooks.h" // [mod]
 #include "m_player.h"
 
 void SelectNextItem(edict_t *ent, item_flags_t itflags, bool menu = true)
@@ -1621,6 +1622,8 @@ void ClientCommand(edict_t *ent)
 	if (Core_Maps_ClientCommand(ent, cmd)) // [mod] maplist
 		return; // [mod]
 	if (Core_Teams_ClientCommand(ent, cmd)) // [mod] captain, lockteam, unlockteam, teamkick, readyteam
+		return; // [mod]
+	if (Core_Join_ClientCommand(ent, cmd)) // [mod] join, spectate
 		return; // [mod]
 
 	if (Q_strcasecmp(cmd, "players") == 0)

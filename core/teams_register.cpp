@@ -88,7 +88,7 @@ void Announce(const std::vector<TeamsEvent> &events)
 			gi.LocBroadcast_Print(PRINT_HIGH, "{} is locked.\n", TeamName(e.team));
 			break;
 		case TeamsEvent::Kind::Unlocked:
-			gi.LocBroadcast_Print(PRINT_HIGH, "{} is unlocked: nobody left on it.\n", TeamName(e.team));
+			gi.LocBroadcast_Print(PRINT_HIGH, "{} is unlocked: no players left on it.\n", TeamName(e.team));
 			break;
 		}
 		gi.Com_PrintFmt("Teams: {} {}{}\n", TeamName(e.team),
@@ -247,7 +247,7 @@ void Core_Teams_Frame()
 	if (!match_lock)
 		match_lock = gi.cvar("match_lock", "0", CVAR_NOFLAGS);
 	// A new level: level.time starts again from zero, and every client
-	// reconnects and picks a team again.
+	// reconnects (back on their team: core/join.h).
 	if (!begun || level.time < last_time || !Active())
 	{
 		teams.Reset();
@@ -274,11 +274,12 @@ void Core_Teams_Frame()
 	was_warmup = warmup;
 }
 
-bool Core_Teams_MayJoin(edict_t *ent, int team)
+bool Core_Teams_MayJoin(edict_t *ent, int team, bool tell)
 {
 	if (!Active() || teams.MayJoin(Core_PlayerKey(ent), team, (ent->svflags & SVF_BOT) != 0))
 		return true;
-	gi.LocClient_Print(ent, PRINT_HIGH, "{} is locked.\n", TeamName(team));
+	if (tell)
+		gi.LocClient_Print(ent, PRINT_HIGH, "{} is locked.\n", TeamName(team));
 	return false;
 }
 
@@ -396,4 +397,12 @@ void Core_Teams_MenuInfo(const edict_t *ent, MenuView &v)
 		if (mate != ent && Present(mate) && !(mate->svflags & SVF_BOT) && TeamOf(mate) == team)
 			v.teammates.push_back({(int)i, Core_PlayerName(mate)});
 	}
+}
+
+std::string Core_Teams_ScoreboardMark(const edict_t *ent, int x, int y)
+{
+	const int team = Active() ? TeamOf(ent) : 0;
+	if (!team || teams.Captain(team) != Core_PlayerKey(ent))
+		return {};
+	return fmt::format("xv {} yv {} string2 \"*\" ", x, y);
 }

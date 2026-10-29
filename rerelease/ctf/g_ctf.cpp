@@ -1583,6 +1583,17 @@ void CTFTeam_f(edict_t *ent)
 				   CTFTeamName(ent->client->resp.ctf_team));
 		return;
 	}
+	CTFChangeTeam(ent, desired_team); // [mod]
+} // [mod]
+
+// [mod] CTFTeam_f's switch, split out so the Tab menu runs it on the server
+void CTFChangeTeam(edict_t *ent, ctfteam_t desired_team) // [mod]
+{ // [mod]
+	if (ctfgame.match > MATCH_SETUP || (g_teamplay_force_join->integer && !(ent->svflags & SVF_BOT))) // [mod] CTFTeam_f's refusals, for the menu
+	{ // [mod]
+		gi.LocClient_Print(ent, PRINT_HIGH, "$g_cant_change_teams"); // [mod]
+		return; // [mod]
+	} // [mod]
 	if (!Core_Teams_MayJoin(ent, desired_team)) // [mod] a locked team
 		return; // [mod]
 
@@ -1739,12 +1750,12 @@ void CTFScoreboardMessage(edict_t *ent, edict_t *killer)
 			cl = &game.clients[sorted[0][i]];
 			cl_ent = g_edicts + 1 + sorted[0][i];
 
-			std::string_view entry = G_Fmt("ctf -40 {} {} {} {} {} ",
+			std::string entry = Core_Teams_ScoreboardMark(cl_ent, -64, 42 + i * 8) + std::string(G_Fmt("ctf -40 {} {} {} {} {} ", // [mod] captain's *
 						42 + i * 8,
 						sorted[0][i],
 						cl->resp.score,
 						cl->ping > 999 ? 999 : cl->ping,
-						cl_ent->client->pers.inventory[IT_FLAG2] ? "sbfctf2" : "\"\"");
+						cl_ent->client->pers.inventory[IT_FLAG2] ? "sbfctf2" : "\"\"")); // [mod]
 
 			if (string.size() + entry.size() < MAX_CTF_STAT_LENGTH)
 			{
@@ -1759,12 +1770,12 @@ void CTFScoreboardMessage(edict_t *ent, edict_t *killer)
 			cl = &game.clients[sorted[1][i]];
 			cl_ent = g_edicts + 1 + sorted[1][i];
 
-			std::string_view entry = G_Fmt("ctf 200 {} {} {} {} {} ",
+			std::string entry = Core_Teams_ScoreboardMark(cl_ent, 174, 42 + i * 8) + std::string(G_Fmt("ctf 200 {} {} {} {} {} ", // [mod] captain's *
 						42 + i * 8,
 						sorted[1][i],
 						cl->resp.score,
 						cl->ping > 999 ? 999 : cl->ping,
-						cl_ent->client->pers.inventory[IT_FLAG1] ? "sbfctf1" : "\"\"");
+						cl_ent->client->pers.inventory[IT_FLAG1] ? "sbfctf1" : "\"\"")); // [mod]
 			
 			if (string.size() + entry.size() < MAX_CTF_STAT_LENGTH)
 			{

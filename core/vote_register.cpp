@@ -32,7 +32,8 @@ void RegisterCvars()
 		return;
 	g_vote = gi.cvar("g_vote", "1", CVAR_NOFLAGS);
 	g_vote_allow =
-	    gi.cvar("g_vote_allow", "map gametype restart timelimit scorelimit powerups friendlyfire", CVAR_NOFLAGS);
+	    gi.cvar("g_vote_allow", "map gametype restart timelimit scorelimit powerups friendlyfire readyall readyteam",
+	            CVAR_NOFLAGS);
 	g_vote_midgame = gi.cvar("g_vote_midgame", "1", CVAR_NOFLAGS);
 	g_vote_time = gi.cvar("g_vote_time", "30", CVAR_NOFLAGS);
 	g_vote_cooldown = gi.cvar("g_vote_cooldown", "30", CVAR_NOFLAGS);
@@ -84,11 +85,25 @@ bool IsVoter(const edict_t *ent)
 	return Core_Match_Playing(ent) || (gt && !strcmp(gt->id, "duel"));
 }
 
-std::vector<int> Voters()
+// A client's team as readyteam names it: "red", "blue", or empty.
+std::string TeamWord(const edict_t *ent)
+{
+	if (!G_TeamplayEnabled())
+		return {};
+	return ent->client->resp.ctf_team == CTF_TEAM1 ? "red" : ent->client->resp.ctf_team == CTF_TEAM2 ? "blue" : "";
+}
+
+// Who counts on `p`: readyteam is its team's alone.
+bool IsVoterOn(const edict_t *ent, const VoteProposal &p)
+{
+	return IsVoter(ent) && (p.kind != VoteKind::ReadyTeam || TeamWord(ent) == p.arg);
+}
+
+std::vector<int> Voters(const VoteProposal &p)
 {
 	std::vector<int> out;
 	for (uint32_t i = 1; i <= game.maxclients; ++i)
-		if (IsVoter(g_edicts + i))
+		if (IsVoterOn(g_edicts + i, p))
 			out.push_back((int)i - 1);
 	return out;
 }
@@ -102,6 +117,7 @@ VoteSettingsNow SettingsNow()
 	now.scorelimit = now.ctf ? capturelimit->integer : fraglimit->integer;
 	now.powerups = !g_no_items->integer;
 	now.friendly_fire = g_friendly_fire->integer != 0;
+	now.ready_up = Core_Match_ReadyUp();
 	return now;
 }
 
@@ -156,9 +172,27 @@ std::string Commands(const VoteProposal &p)
 	case VoteKind::Scorelimit:
 	case VoteKind::Powerups:
 	case VoteKind::FriendlyFire:
+	case VoteKind::ReadyAll:
+	case VoteKind::ReadyTeam:
 		break;
 	}
 	return {};
+}
+
+// A passed readyall or readyteam: everyone it names who is playing is ready.
+void Ready(const VoteProposal &p)
+{
+	for (uint32_t i = 1; i <= game.maxclients; ++i)
+	{
+		edict_t *ent = g_edicts + i;
+		if (ent->inuse && ent->client && Core_Match_Playing(ent) &&
+		    (p.kind != VoteKind::ReadyTeam || TeamWord(ent) == p.arg))
+			Core_Match_SetReady(ent, true, false);
+	}
+	if (p.kind == VoteKind::ReadyTeam)
+		gi.LocBroadcast_Print(PRINT_HIGH, "{} is ready.\n", p.arg == "red" ? "RED" : "BLUE");
+	else
+		gi.LocBroadcast_Print(PRINT_HIGH, "Everyone is ready.\n");
 }
 
 // A passed setting vote (decision 0015): the cvar, as an admin's `set` would
@@ -191,6 +225,8 @@ void Apply(const VoteProposal &p)
 	case VoteKind::Map:
 	case VoteKind::Gametype:
 	case VoteKind::Restart:
+	case VoteKind::ReadyAll:
+	case VoteKind::ReadyTeam:
 		break;
 	}
 }
@@ -263,8 +299,10 @@ void Call(edict_t *ent, std::string_view kind_name, std::string_view arg)
 		if (const std::optional<Ruleset> r = Core_Rulesets_Find(p.arg))
 			p.label = Core_Rulesets_Title(*r);
 	}
+	if (p.kind == VoteKind::ReadyTeam && ent)
+		p.arg = TeamWord(ent); // a player readies their own team
 	const VoteError e =
-	    vote.Call(ent ? Slot(ent) : Vote::kServer, p, Choices(), Live(), Voters(), level.time.milliseconds());
+	    vote.Call(ent ? Slot(ent) : Vote::kServer, p, Choices(), Live(), Voters(p), level.time.milliseconds());
 	if (e != VoteError::None)
 	{
 		if (const std::string text = Core_Vote_ErrorText(e, vote.Config(), p, Choices()); !text.empty())
@@ -281,7 +319,7 @@ void Call(edict_t *ent, std::string_view kind_name, std::string_view arg)
 
 void Cast(edict_t *ent, bool yes)
 {
-	const VoteError e = vote.Cast(Slot(ent), yes, Voters());
+	const VoteError e = vote.Cast(Slot(ent), yes, Voters(vote.Proposal()));
 	if (e != VoteError::None)
 	{
 		Reply(ent, e, vote.Proposal());
@@ -308,7 +346,7 @@ void Core_Vote_Frame()
 
 	const VoteProposal p = vote.Proposal();
 	const std::string what = Core_Vote_Describe(p);
-	switch (vote.Update(Voters(), level.time.milliseconds()))
+	switch (vote.Update(Voters(p), level.time.milliseconds()))
 	{
 	case VoteEvent::None:
 		return;
@@ -330,6 +368,12 @@ void Core_Vote_Frame()
 		{
 			gi.Com_PrintFmt("Vote: setting {}\n", what);
 			Apply(p);
+			break;
+		}
+		if (p.kind == VoteKind::ReadyAll || p.kind == VoteKind::ReadyTeam)
+		{
+			gi.Com_PrintFmt("Vote: {}\n", what);
+			Ready(p);
 			break;
 		}
 		const std::string commands = Commands(p);
@@ -438,8 +482,8 @@ VoteMenuInfo Core_Vote_MenuInfo(const edict_t *ent)
 		return info;
 	RegisterCvars();
 	const VoteConfig &config = vote.Config();
-	info.voter = IsVoter(ent);
 	info.open = vote.Open();
+	info.voter = info.open ? IsVoterOn(ent, vote.Proposal()) : IsVoter(ent);
 	info.proposal = info.open ? Core_Vote_Describe(vote.Proposal()) : "";
 	if (const std::optional<bool> a = vote.Answer(Slot(ent)))
 		info.answer = *a ? 1 : 0;
