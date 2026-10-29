@@ -1,6 +1,6 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-10-28._
+_Updated at the end of every session. Last update: 2026-10-29 (handover)._
 
 ## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
@@ -257,11 +257,79 @@ In progress (branch `scoreboard/duel`, waiting for Chris's look):
   used to put an FFA spectator into play). Tier 18 checks the first two;
   the sim client can't change userinfo mid-game, so the third is untested.
   Tier 11 now reads the Duel rotation from `sv match`.
-Then Clan Arena as a TDM ruleset (elimination rounds that count the
-living, spawn loadout, `match_lock 1`). Then Phase 4's remainder - Chris has other features to work through first,
-then timeouts/pauses, admin controls, per-gametype scoreboards (an
-OpenFFA-style FFA board waits on his column list), then the M4 checklist on
-Q2REX and a retail listen server.
+
+## Handover (2026-10-29, end of a long session)
+
+**Branch `scoreboard/duel` is unmerged and waiting.** Five commits on
+`main` (`452d70f`..`47f52b8`), listed above. Every Q2RED tier passed on
+`6769546`; after that, tiers 11, 14, 16 and 18 were re-run (two later
+commits: the About spacing and the spectator fix). Chris was still
+playtesting them on the rig and hasn't said he's done. When he
+is: PR (full CI: hosted, Q2RED, Q2REX/Wine), squash-merge on green.
+
+**The playtest rig** (`~/q2playtest`, `./run.sh`, `./cmd.sh "<console>"`):
+Duel on q2dm1 with the branch's build. Deploy with a temp file and `mv`,
+then `map q2dm1` (`gamemap` keeps the old module loaded). Its version
+string shows a stale commit (the build id is read at configure time);
+`cmp` the .so against the build instead. With ready-up, bots ready
+themselves and start a match alone, so add them (`bot_count N`) after
+the human has entered.
+
+**Next, agreed with Chris: a team shuffle vote** (`callvote shuffle`, TDM
+and CTF). No `balance` vote: Chris says balancing only makes sense with a
+rating system, and we have none. Open question for him before building:
+what the shuffle sorts by. MMREX sorts by rating and alternates (1, 3,
+5 to red; a poor split). We could shuffle at random, or snake-draft by
+the current match score. In warmup only, or also mid-match followed by
+a restart? Probably also `sv shuffle` for admins.
+
+**After that, Chris's options** (he hadn't chosen): Clan Arena as a TDM
+ruleset (elimination rounds that count the living, a spawn loadout,
+`match_lock 1`); or timeouts/pauses plus in-game admin controls. Later in Phase 4:
+the M4 checklist on Q2REX and a retail listen server.
+
+**MMREX comparison (2026-10-29)**, from an agent's read of
+`repos/Q2REX/mmrex/src/sgame` (183k lines):
+- **What MMREX has that we lack, roughly by value:**
+  1. Timeouts and pauses (`timeout`/`timein`, one per player, a resume
+     countdown).
+  2. In-game admin (`admin <password>`, `startmatch`, `endmatch`,
+     `resetmatch`, `setteam`, `boot`, `forcevote`, an admin menu).
+  3. Team balance and shuffle.
+  4. A mercy limit.
+  5. Duel's `forfeit` command and repeating timed overtime.
+  6. Mid-match reconnect "ghost" reservations.
+  7. End-of-match stats (per-weapon accuracy, JSON/HTML exports, an
+     awards reel, Elo with profiles, a next-map pick).
+  8. Follow-cam commands, a MOTD, team-chat `loc` tags, an announcer,
+     danger-scored spawns.
+- **Where we're ahead:**
+  - The FFA and Duel scoreboards.
+  - Arrival and memory across map changes.
+  - Lock rosters (an emptied team unlocks; teamkick works in team modes).
+  - Readyteam as a vote.
+  - Tests: 19 harness tiers on two engines.
+  - About half the code per feature.
+- **MMREX features that do nothing:**
+  - `g_dm_spawn_farthest`
+  - CTF's manual flag drop
+  - `resetmatch` in warmup
+  - the `balance` vote's silent refusal
+  - a rating-alternating shuffle
+- **CPU:** we cost about 9% more server CPU than stock: an 8-bot FFA over
+  90 s took 2.25 s against stock's 2.07 s, so about 0.2 s a minute and
+  invisible. The per-frame string-key rebuilds aren't worth optimising
+  (Chris agreed); profile first if it ever shows.
+
+**Learned this session (KEX client):**
+- It doesn't run a stuffed `team blue`.
+- It sends a stuffed `spectator 0/1` back as a command, and its
+  userinfo has no `spectator` key.
+- In a scoreboard layout, only the `ctf` row decodes a `##P` name token.
+- Chris plays with the classic font (`scr_usekfont 0`).
+- An offline renderer for layouts, drawn in that font, lives in a
+  session scratchpad, not the repo. If boards are worked on again, it's
+  worth adding to `tools/`.
 
 ## Known issues
 - One intermittent Q2RED segfault in a CTF server with simulated players
