@@ -2,6 +2,7 @@
 #include "core/scoreboard.h"
 
 #include <algorithm>
+#include <cstdlib>
 
 namespace
 {
@@ -9,7 +10,10 @@ namespace
 // frags at its x, the deaths 27 to the right and the name 54 to the right
 // (16 characters of 8 end at 142). The position goes left of it, where the
 // team board draws a captain's `*`.
-constexpr int kRankX = -64, kRowX = -40, kFphX = 166, kTimeX = 206, kPingX = 246;
+constexpr int kRankX = -64, kRowX = -40, kFphX = 166, kTimeX = 206, kPingX = 246, kTickX = 274;
+// The team board's rows (stock's CTFScoreboardMessage) and their ticks: just
+// right of the captain's `*` (-64, 174), where MuffMode puts them.
+constexpr int kTeamRowX[2] = {-40, 200}, kTeamTickX[2] = {-56, 182}, kTeamFirstRowY = 42;
 constexpr int kStampY = 8, kTitleY = 24, kFirstRowY = 36, kRowHeight = 8;
 constexpr int kSpectatorX[2] = {-40, 160};
 // The spectators' title and one line ("xv -40 yv 132 loc_string2 0 ..."
@@ -48,6 +52,8 @@ std::string PlayerRow(const ScoreboardPlayer &p, int rank, int y, bool viewer)
 	              kFphX, text, std::min(Core_Scoreboard_Fph(p.frags, p.played_ms), 9999), "xv", kTimeX, text,
 	              std::min<int64_t>(p.played_ms / 60000, 999), "xv", kPingX, text, std::min(p.ping, 999));
 }
+
+void Spectators(std::string &out, std::vector<ScoreboardPlayer> watching, int rows, const ScoreboardInput &in);
 } // namespace
 
 int Core_Scoreboard_Fph(int frags, int64_t played_ms)
@@ -92,6 +98,7 @@ std::string Core_Scoreboard_Layout(const ScoreboardInput &in)
 	// The players from the top while they fit. If your own row is left out,
 	// the last of them make room for it.
 	std::vector<std::string> rows;
+	std::vector<ScoreboardPlayer> shown; // each row's player, in step with rows
 	size_t used = out.size();
 	bool viewer_in = false;
 	for (const ScoreboardPlayer &p : playing)
@@ -102,6 +109,7 @@ std::string Core_Scoreboard_Layout(const ScoreboardInput &in)
 			break;
 		used += row.size();
 		rows.push_back(row);
+		shown.push_back(p);
 		viewer_in |= p.slot == in.viewer;
 	}
 	const auto mine =
@@ -116,24 +124,44 @@ std::string Core_Scoreboard_Layout(const ScoreboardInput &in)
 			{
 				used += row.size();
 				rows.push_back(row);
+				shown.push_back(*mine);
 				break;
 			}
 			used -= rows.back().size();
 			rows.pop_back();
+			shown.pop_back();
 		}
 	}
 	for (const std::string &row : rows)
 		out += row;
 
-	// The spectators, two to a line, you first; as many as fit.
-	if (watching.empty())
+	// The spectators, then the ready ticks while there's room: a player's
+	// row matters more than their tick.
+	Spectators(out, watching, (int)rows.size(), in);
+	if (!in.ready_up)
 		return out;
+	for (size_t i = 0; i < shown.size(); ++i)
+	{
+		const std::string tick = Core_Scoreboard_Tick(kTickX, kFirstRowY + kRowHeight * (int)i);
+		if (shown[i].ready && out.size() + tick.size() <= in.budget)
+			out += tick;
+	}
+	return out;
+}
+
+namespace
+{
+// The spectators, two to a line, you first; as many as fit.
+void Spectators(std::string &out, std::vector<ScoreboardPlayer> watching, int rows, const ScoreboardInput &in)
+{
+	if (watching.empty())
+		return;
 	std::stable_partition(watching.begin(), watching.end(),
 	                      [&](const ScoreboardPlayer &p) { return p.slot == in.viewer; });
-	int y = kFirstRowY + kRowHeight * ((int)rows.size() + 1);
+	int y = kFirstRowY + kRowHeight * (rows + 1);
 	const std::string title = Tokens("xv", kRowX, "yv", y, "loc_string2 0 \"$g_pc_spectators\"");
 	if (out.size() + title.size() > in.budget)
-		return out;
+		return;
 	out += title;
 	y += kRowHeight;
 	for (size_t i = 0; i < watching.size(); ++i)
@@ -144,6 +172,36 @@ std::string Core_Scoreboard_Layout(const ScoreboardInput &in)
 		if (out.size() + row.size() > in.budget)
 			break;
 		out += row;
+	}
+}
+} // namespace
+
+std::string Core_Scoreboard_Tick(int x, int y)
+{
+	return Tokens("xv", x, "yv", y - 2, "picn wheel/p_compass_selected");
+}
+
+std::string Core_Scoreboard_TeamTicks(std::string_view layout, const std::set<int> &ready, size_t max)
+{
+	// Stock's team rows: "ctf <x> <y> <client> ...", x -40 or 200, y from 42.
+	// The spectators' rows use the same x but come after the "$g_pc_spectators"
+	// title; their clients are never ready (not playing), but stop there anyway.
+	std::string out;
+	const size_t end = std::min(layout.find("$g_pc_spectators"), layout.size());
+	for (size_t at = layout.find("ctf "); at < end; at = layout.find("ctf ", at + 4))
+	{
+		if (at > 0 && layout[at - 1] != ' ')
+			continue; // part of a longer token
+		const std::string row(layout.substr(at + 4, 32));
+		char *next = nullptr;
+		const long x = std::strtol(row.c_str(), &next, 10);
+		const long y = std::strtol(next, &next, 10);
+		const long client = std::strtol(next, &next, 10);
+		if ((x != kTeamRowX[0] && x != kTeamRowX[1]) || y < kTeamFirstRowY || !ready.count((int)client))
+			continue;
+		const std::string tick = Core_Scoreboard_Tick(kTeamTickX[x == kTeamRowX[1]], (int)y);
+		if (layout.size() + out.size() + tick.size() < max)
+			out += tick;
 	}
 	return out;
 }

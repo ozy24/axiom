@@ -1389,7 +1389,8 @@ def tier_human_readyvote(args, results):
     simulated players: Alice calls readyteam, which only RED votes on (Carol,
     on BLUE, is refused), and Bob's yes readies RED; then Carol calls
     readyall, BLUE and Alice say yes, everyone is ready and the match goes
-    live. Q2RED only."""
+    live. Between the two, Carol's team board ticks RED's two rows (MuffMode's
+    ready tick) and nobody on BLUE. Q2RED only."""
     label = "19 human-readyvote"
     rig, why = scenario_rig(args, "t19-readyvote")
     if not rig:
@@ -1407,6 +1408,7 @@ at 6 3 cmd team blue
 at 12 0 cmd callvote readyteam
 at 14 2 cmd vote yes
 at 15 1 cmd vote yes
+at 20 2 cmd score
 at 22 2 cmd callvote readyall
 at 24 3 cmd vote yes
 at 25 0 cmd vote yes
@@ -1434,6 +1436,13 @@ at 25 0 cmd vote yes
     ready = [r["args"][0] for r in locs if r["base"] == "{} is ready.\n" and r["to"] == -1]
     if ready != ["RED"]:
         detail.append(f"ready broadcasts {ready}, expected RED's alone (one line for the team)")
+    # Carol's team board once RED is ready: a tick beside each RED row
+    # (x -56), none on BLUE's side (182).
+    boards = [r["text"] for r in tap if r.get("type") == "layout" and r["to"] == humans["Carol"]
+              and "ctf -40" in r["text"] and "p_compass_selected" in r["text"]]
+    ticks = re.findall(r"xv (-?\d+) yv -?\d+ picn wheel/p_compass_selected", boards[0]) if boards else []
+    if ticks != ["-56", "-56"]:
+        detail.append(f"ready ticks at x {ticks} on Carol's board, expected RED's two (-56)")
     live = log.find("-> live")
     if live < 0:
         detail.append("the match never went live")

@@ -650,7 +650,8 @@ bool Core_Match_InPlay()
 
 bool Core_Match_IsReady(const edict_t *ent)
 {
-	return ready[(uint32_t)(ent - g_edicts) - 1];
+	// Bots can't type `ready`; the match counts them ready, and so do the boards.
+	return ready[(uint32_t)(ent - g_edicts) - 1] || (ent->svflags & SVF_BOT);
 }
 
 void Core_Match_SetReady(edict_t *ent, bool want_ready, bool announce)

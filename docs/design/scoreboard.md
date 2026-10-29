@@ -29,6 +29,10 @@ stock's back.
   clock and the intermission's "press a button" line stay as they were.
 - Your own row is green. Players are ordered by frags, then fewer deaths.
 - Spectators follow, two to a line, showing score and ping.
+- In ready-up, a tick (the weapon wheel's `wheel/p_compass_selected`, as
+  MuffMode and the Duel board use) right of Ping on each ready player's
+  row. Bots are always ready. Rows and spectators are fitted first; a tick
+  only goes in while the 1024 bytes allow.
 
 ## Duel
 
@@ -62,6 +66,14 @@ stock's back.
 Compared with MMREX's: the queue is numbered and the duellists show their
 records too; spectators show their record, not "0 0"; no "1st place with
 a score of N" line, which says nothing in a duel.
+
+## TDM and CTF
+
+Stock's team board, with two marks left of a row: the captain's `*`
+(decision 0016) and, in ready-up, the same tick for a ready player (x -56
+on RED, 182 on BLUE, as MuffMode). The ticks are added once stock's rows and
+spectators are in (`Core_Scoreboard_TeamTicks`, one marked call), so on a
+full board a tick is dropped before a player is.
 
 ## Limits (KEX client)
 

@@ -118,3 +118,50 @@ TEST_CASE("scoreboard: big numbers stay within the client's caps")
 	CHECK(layout.find("string 9999 ") != std::string::npos);
 	CHECK(layout.find("string 999 ") != std::string::npos);
 }
+
+TEST_CASE("scoreboard: in ready-up, a tick right of Ping on each ready player's row")
+{
+	ScoreboardInput in;
+	in.players = {Player(0, 0), Player(1, 0), Player(2, 0, 0, true)};
+	in.players[1].ready = true;
+	in.players[2].ready = true;                                          // a spectator: no row, no tick
+	CHECK(Count(Core_Scoreboard_Layout(in), "p_compass_selected") == 0); // not in ready-up
+	in.ready_up = true;
+	const std::string layout = Core_Scoreboard_Layout(in);
+	CHECK(Count(layout, "p_compass_selected") == 1);
+	// Slot 1 is the second row (y 44): its tick 2 above it.
+	CHECK(layout.find("xv 274 yv 42 picn wheel/p_compass_selected ") != std::string::npos);
+	CHECK(Core_Scoreboard_Tick(274, 44) == "xv 274 yv 42 picn wheel/p_compass_selected ");
+}
+
+TEST_CASE("scoreboard: ticks come after every row and spectator that fits")
+{
+	ScoreboardInput in;
+	in.ready_up = true;
+	for (int i = 0; i < 32; ++i)
+	{
+		in.players.push_back(Player(i, 100 - i, 999, i >= 24));
+		in.players.back().ready = true;
+	}
+	in.viewer = 20;
+	const std::string with = Core_Scoreboard_Layout(in);
+	in.ready_up = false;
+	const std::string without = Core_Scoreboard_Layout(in);
+	CHECK(with.size() <= in.budget);
+	CHECK(Slots(with) == Slots(without)); // the same rows: no player pushed off for a tick
+	CHECK(with.compare(0, without.size(), without) == 0);
+}
+
+TEST_CASE("scoreboard: the team board's ticks, beside each ready player's row")
+{
+	// Stock's rows: RED at -40, BLUE at 200, from y 42; then the spectators.
+	const std::string layout = "xv -64 yv 42 string2 \"*\" ctf -40 42 3 0 20 \"\" ctf 200 42 5 0 20 \"\" "
+	                           "ctf -40 50 7 0 20 sbfctf2 xv 0 yv 66 loc_string2 0 \"$g_pc_spectators\" "
+	                           "ctf -40 74 9 0 20 \"\" ";
+	CHECK(Core_Scoreboard_TeamTicks(layout, {3, 5, 9}, 1024) ==
+	      "xv -56 yv 40 picn wheel/p_compass_selected xv 182 yv 40 picn wheel/p_compass_selected ");
+	CHECK(Core_Scoreboard_TeamTicks(layout, {7}, 1024) == "xv -56 yv 48 picn wheel/p_compass_selected ");
+	CHECK(Core_Scoreboard_TeamTicks(layout, {}, 1024).empty());
+	// No room: no tick (stock's rows stay).
+	CHECK(Core_Scoreboard_TeamTicks(layout, {3}, layout.size() + 20).empty());
+}
