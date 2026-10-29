@@ -38,6 +38,7 @@ struct VoteMenuInfo
 	std::vector<std::string> kinds; // allowed: "map", "gametype", "restart"
 	std::vector<std::string> maps;
 	std::vector<MenuVoteGametype> gametypes; // each with its built-in rulesets
+	std::vector<MenuVoteSetting> settings;   // the allowed setting votes for this gametype
 	std::string gametype;                    // the current one's id
 	std::string ruleset;                     // g_ruleset
 };

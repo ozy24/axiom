@@ -190,7 +190,18 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
   also appears to kick a bot for a joining human on a full server; Q2RED
   doesn't (a Q2RED item).
 
-Next: Phase 4's remainder - Chris has other features to work through first,
+## Setting votes (2026-10-29, decision 0015)
+- `callvote timelimit|scorelimit|powerups|friendlyfire`, from one compiled
+  table (`Core_Vote_Setting`, `core/vote.cpp`); `g_vote_allow` picks which
+  kinds are allowed. Limits change in place (the clock still counts from
+  LIVE); powerups reload the map. A voted value lasts until the gametype
+  changes (`g_no_items`, `g_friendly_fire` joined the ruleset reset).
+  Harness tier 16.
+
+Next: team locks, captains and team kick for TDM/CTF (plan agreed
+2026-10-29: `match_lock` auto-locks at LIVE, on in the built-in tdm/ctf
+rulesets; rosters by social ID; an emptied team unlocks), then Clan Arena
+as a TDM ruleset (elimination rounds, spawn loadout). Then Phase 4's remainder - Chris has other features to work through first,
 then timeouts/pauses, admin controls, per-gametype scoreboards (an
 OpenFFA-style FFA board waits on his column list), then the M4 checklist on
 Q2REX and a retail listen server.

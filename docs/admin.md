@@ -71,13 +71,19 @@ Each switch starts clean: nothing a previous mode set carries over.
 | | Default | |
 |---|---|---|
 | `g_vote` | 1 | voting on |
-| `g_vote_allow` | `map gametype restart` | what players can call |
+| `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire` | what players can call; remove a word to turn that vote off |
 | `g_vote_midgame` | 1 | also during a match; 0 = warmup only |
 | `g_map_list` | (empty) | the map rotation, and the maps a vote may pick |
 | `g_map_list_shuffle` | 1 | play the rotation in a random order; 0 = as written |
 
-`sv callvote <map|gametype|restart> [choice]` puts a vote to the players
-from the console (the server casts no vote; the player limits don't apply).
+`sv callvote <kind> [choice]` puts a vote to the players from the console
+(the server casts no vote; the player limits don't apply).
+
+Players can also vote on the time limit (1-60 minutes), the frag or
+capture limit, powerups and, in team modes, friendly fire. A voted value
+lasts until the gametype changes, as if you had typed `set`; the next
+gametype starts from its own file again. The ranges are fixed
+(decision 0015).
 
 `g_map_list` and `g_map_list_shuffle` are gameplay, so set them in a
 gametype's file (`set g_map_list "q2dm1 q2dm2 q2dm6 q2dm8"` in

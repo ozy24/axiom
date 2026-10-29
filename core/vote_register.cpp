@@ -31,7 +31,8 @@ void RegisterCvars()
 	if (g_vote)
 		return;
 	g_vote = gi.cvar("g_vote", "1", CVAR_NOFLAGS);
-	g_vote_allow = gi.cvar("g_vote_allow", "map gametype restart", CVAR_NOFLAGS);
+	g_vote_allow =
+	    gi.cvar("g_vote_allow", "map gametype restart timelimit scorelimit powerups friendlyfire", CVAR_NOFLAGS);
 	g_vote_midgame = gi.cvar("g_vote_midgame", "1", CVAR_NOFLAGS);
 	g_vote_time = gi.cvar("g_vote_time", "30", CVAR_NOFLAGS);
 	g_vote_cooldown = gi.cvar("g_vote_cooldown", "30", CVAR_NOFLAGS);
@@ -92,12 +93,25 @@ std::vector<int> Voters()
 	return out;
 }
 
+VoteSettingsNow SettingsNow()
+{
+	VoteSettingsNow now;
+	now.ctf = ctf->integer != 0;
+	now.teams = G_TeamplayEnabled();
+	now.timelimit_min = (int)timelimit->value;
+	now.scorelimit = now.ctf ? capturelimit->integer : fraglimit->integer;
+	now.powerups = !g_no_items->integer;
+	now.friendly_fire = g_friendly_fire->integer != 0;
+	return now;
+}
+
 VoteChoices Choices()
 {
 	VoteChoices c;
 	c.maps = Core_Vote_MapList(g_map_list->string, ctf->integer != 0);
 	for (const Ruleset &r : Core_Rulesets_Available())
 		c.gametypes.push_back(r.name);
+	c.now = SettingsNow();
 	return c;
 }
 
@@ -117,8 +131,9 @@ std::string GametypeVoteRuleset(std::string arg)
 	return arg;
 }
 
-// The console text that carries out a passed vote. Every kind ends in `map`,
-// a fresh load of the level, so latched settings (g_gametype) take effect.
+// The console text that carries out a passed map, gametype or restart vote:
+// each ends in `map`, a fresh load of the level, so latched settings
+// (g_gametype) take effect. Setting votes are Apply's.
 std::string Commands(const VoteProposal &p)
 {
 	switch (p.kind)
@@ -137,8 +152,47 @@ std::string Commands(const VoteProposal &p)
 			return {};
 		return Core_Ruleset_Commands(*r) + "sv votemap " + r->gametype + "\n";
 	}
+	case VoteKind::Timelimit:
+	case VoteKind::Scorelimit:
+	case VoteKind::Powerups:
+	case VoteKind::FriendlyFire:
+		break;
 	}
 	return {};
+}
+
+// A passed setting vote (decision 0015): the cvar, as an admin's `set` would
+// leave it, until the gametype changes. The limits reach the match under way
+// without a restart; powerups only spawn as a map loads, so that reloads it.
+void Apply(const VoteProposal &p)
+{
+	const std::optional<VoteSetting> s = Core_Vote_Setting(p.kind, ctf->integer != 0);
+	const std::optional<int> value = s ? Core_Vote_SettingValue(*s, p.arg) : std::nullopt;
+	if (!value)
+		return;
+	const std::string v = std::to_string(*value);
+	switch (p.kind)
+	{
+	case VoteKind::Timelimit:
+		gi.cvar_set("timelimit", v.c_str());
+		Core_Match_LimitsChanged();
+		break;
+	case VoteKind::Scorelimit:
+		gi.cvar_set(ctf->integer ? "capturelimit" : "fraglimit", v.c_str());
+		Core_Match_LimitsChanged();
+		break;
+	case VoteKind::Powerups:
+		gi.cvar_set("g_no_items", *value ? "0" : "1");
+		gi.AddCommandString(fmt::format("map {}\n", level.mapname).c_str());
+		break;
+	case VoteKind::FriendlyFire:
+		gi.cvar_set("g_friendly_fire", v.c_str());
+		break;
+	case VoteKind::Map:
+	case VoteKind::Gametype:
+	case VoteKind::Restart:
+		break;
+	}
 }
 
 // Open menus redraw now, so their vote rows follow the vote.
@@ -191,10 +245,8 @@ void Call(edict_t *ent, std::string_view kind_name, std::string_view arg)
 	if (!kind)
 	{
 		std::string kinds;
-		if (!ent)
-			kinds = "map gametype restart";
-		else
-			for (VoteKind k : vote.Config().allowed)
+		for (VoteKind k : Core_Vote_AllKinds())
+			if (!ent || vote.Config().allowed.count(k))
 				kinds += std::string(kinds.empty() ? "" : " ") + VoteKindName(k);
 		reply(fmt::format("Usage: {}callvote <{}> [choice]", ent ? "" : "sv ", kinds.empty() ? "nothing" : kinds));
 		return;
@@ -274,6 +326,12 @@ void Core_Vote_Frame()
 		break;
 	case VoteEvent::Execute:
 	{
+		if (Core_Vote_Setting(p.kind, false))
+		{
+			gi.Com_PrintFmt("Vote: setting {}\n", what);
+			Apply(p);
+			break;
+		}
 		const std::string commands = Commands(p);
 		gi.Com_PrintFmt("Vote: running {}", commands);
 		gi.AddCommandString(commands.c_str());
@@ -389,6 +447,21 @@ VoteMenuInfo Core_Vote_MenuInfo(const edict_t *ent)
 	                !level.intermissiontime && (!Live() || config.midgame);
 	for (VoteKind k : config.allowed)
 		info.kinds.push_back(VoteKindName(k));
+	const VoteSettingsNow now = SettingsNow();
+	for (VoteKind k : Core_Vote_AllKinds())
+	{
+		const std::optional<VoteSetting> s = Core_Vote_Setting(k, now.ctf);
+		if (!s || !config.allowed.count(k) || (s->teams_only && !now.teams))
+			continue;
+		MenuVoteSetting row{VoteKindName(k), s->title, {}, Core_Vote_SettingArg(*s, Core_Vote_SettingNow(*s, now))};
+		for (int value : s->menu)
+		{
+			std::string text = Core_Vote_SettingText(*s, value);
+			text[0] = (char)toupper((unsigned char)text[0]);
+			row.choices.emplace_back(Core_Vote_SettingArg(*s, value), text);
+		}
+		info.settings.push_back(std::move(row));
+	}
 	info.maps = Choices().maps;
 	for (size_t i = 0; i < core_gametype_count; ++i)
 	{

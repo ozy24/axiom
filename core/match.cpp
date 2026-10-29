@@ -295,6 +295,20 @@ void Match::End(const char *why, std::vector<MatchAction> &out)
 	out.push_back({MatchActionKind::Sound, "world/xian1.wav", 0}); // the scoreboard jingle, as MuffMode
 }
 
+void Match::ChangeLimits(int64_t timelimit_ms, int fraglimit, int64_t now_ms)
+{
+	config_.timelimit_ms = timelimit_ms;
+	config_.fraglimit = fraglimit;
+	const bool regulation =
+	    state_ == MatchState::Live || ((state_ == MatchState::RoundOver || state_ == MatchState::RoundCountdown) &&
+	                                   round_return_ == MatchState::Live);
+	if (!regulation)
+		return;
+	time_end_ms_ = timelimit_ms > 0 ? live_since_ms_ + timelimit_ms : 0;
+	// Nothing spoken for the second it changed in.
+	last_warning_s_ = time_end_ms_ ? SecondsLeft(time_end_ms_ - now_ms, 0) : 0;
+}
+
 // LIVE with a timelimit: the stock voice at 30 and 20 seconds left, then every
 // second from 10, as MuffMode does.
 void Match::TimeWarning(int64_t now_ms, std::vector<MatchAction> &out)

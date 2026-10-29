@@ -770,3 +770,45 @@ TEST_CASE("match: with the flow off and no timelimit, no clock")
 	CHECK(Core_Match_StockHudText(5000, 0).clock.empty());
 	CHECK(Core_Match_StockHudText(5000, 0).status.empty());
 }
+
+TEST_CASE("match: a vote's new limits reach a live match without a restart")
+{
+	MatchConfig c = Enabled();
+	c.timelimit_ms = 10 * 60000;
+	Match m(c);
+	const int64_t live = ToLive(m);
+	CHECK(m.ClockEndMs() == live + 10 * 60000);
+	m.ChangeLimits(20 * 60000, 30, live + 5000);
+	CHECK(m.State() == MatchState::Live);
+	CHECK(m.ClockEndMs() == live + 20 * 60000); // still counted from LIVE
+	CHECK(m.Config().fraglimit == 30);
+	m.Update(At(live + 6000, {P(1, true, 29), P(2, true)}));
+	CHECK(m.State() == MatchState::Live);
+	m.Update(At(live + 7000, {P(1, true, 30), P(2, true)}));
+	CHECK(m.State() == MatchState::Intermission); // the new fraglimit ends it
+}
+
+TEST_CASE("match: a time limit already passed ends the match at once")
+{
+	Match m(Enabled()); // 1 minute
+	const int64_t live = ToLive(m);
+	m.ChangeLimits(5 * 60000, 0, live + 30000);
+	m.Update(At(live + 90000, {P(1, true), P(2, true)}));
+	CHECK(m.State() == MatchState::Live); // 1:30 of 5:00
+	m.ChangeLimits(1 * 60000, 0, live + 90000);
+	m.Update(At(live + 90050, {P(1, true), P(2, true)}));
+	CHECK(m.State() == MatchState::Intermission);
+}
+
+TEST_CASE("match: before LIVE, new limits wait for it")
+{
+	Match m(Enabled());
+	m.Begin(0);
+	m.ChangeLimits(15 * 60000, 0, 500);
+	CHECK(m.State() == MatchState::Warmup);
+	CHECK(m.Config().timelimit_ms == 15 * 60000);
+	m.Update(At(1000, {P(1, true), P(2, true)}));
+	m.Update(At(4000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK(m.ClockEndMs() == 4000 + 15 * 60000);
+}

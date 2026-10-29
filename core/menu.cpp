@@ -256,6 +256,8 @@ MenuPage Core_Menu_CallVote(const MenuView &v)
 		Add(page, "Gametype", MenuAction::VoteGametypes);
 	if (allowed("restart"))
 		Add(page, "Restart Match", MenuAction::VoteFor, MenuAlign::Left, false, "restart");
+	for (const MenuVoteSetting &s : v.vote_settings)
+		Add(page, Core_Menu_Clean(s.title), MenuAction::VoteSetting, MenuAlign::Left, false, s.kind);
 	Footer(page, {"$g_pc_return", MenuAlign::Left, MenuAction::Back, false, {}});
 	return page;
 }
@@ -337,4 +339,21 @@ MenuPage Core_Menu_VoteVariants(const MenuView &v, std::string_view gametype)
 	}
 	return ChoicePage(title, rows, "More: callvote gametype",
 	                  {"Back", MenuAlign::Left, MenuAction::VoteGametypes, false, {}});
+}
+
+MenuPage Core_Menu_VoteSetting(const MenuView &v, std::string_view kind)
+{
+	std::vector<MenuRow> rows;
+	std::string title = "Call a Vote";
+	std::string more;
+	for (const MenuVoteSetting &s : v.vote_settings)
+	{
+		if (s.kind != kind)
+			continue;
+		title = "Vote: " + s.title;
+		more = "More: callvote " + s.kind;
+		for (const auto &[arg, text] : s.choices)
+			rows.push_back(ChoiceRow(text, MenuAction::VoteFor, arg == s.current, s.kind + " " + arg));
+	}
+	return ChoicePage(title, rows, more, {"Back", MenuAlign::Left, MenuAction::CallVote, false, {}});
 }

@@ -72,6 +72,13 @@ MenuView Longest()
 			gt.rulesets.emplace_back(name + std::to_string(r), name);
 		v.vote_gametypes.push_back(gt);
 	}
+	for (const char *kind : {"timelimit", "scorelimit", "powerups", "friendlyfire"})
+	{
+		MenuVoteSetting setting{kind, std::string(60, 'W'), {}, "0"};
+		for (int c = 0; c < 40; ++c)
+			setting.choices.emplace_back(std::to_string(c), std::string(60, 'W'));
+		v.vote_settings.push_back(setting);
+	}
 	return v;
 }
 
@@ -131,7 +138,8 @@ TEST_CASE("menu pages fit stock's 18 rows and the client's 1024-byte layout")
 		v.vote_can_call = !v.vote_open;
 		for (const MenuPage &page :
 		     {Core_Menu_Main(v), Core_Menu_MatchInfo(v), Core_Menu_CallVote(v), Core_Menu_VoteMaps(v),
-		      Core_Menu_VoteGametypes(v), Core_Menu_VoteVariants(v, v.vote_gametypes[0].id)})
+		      Core_Menu_VoteGametypes(v), Core_Menu_VoteVariants(v, v.vote_gametypes[0].id),
+		      Core_Menu_VoteSetting(v, "timelimit")})
 		{
 			CHECK(page.size() == (size_t)kMenuRows);
 			for (const MenuRow &row : page)
@@ -376,4 +384,26 @@ TEST_CASE("menu: a list longer than the page points to callvote")
 	CHECK(Shows(page, "map13"));
 	CHECK_FALSE(Shows(page, "map14"));
 	CHECK(Shows(page, "More: callvote map"));
+}
+
+TEST_CASE("menu: setting votes follow the kinds, each opening its choices")
+{
+	MenuView v = Voting(Ffa());
+	v.vote_settings = {
+	    {"timelimit", "Time Limit", {{"5", "5 minutes"}, {"10", "10 minutes"}, {"20", "20 minutes"}}, "10"},
+	    {"powerups", "Powerups", {{"on", "On"}, {"off", "Off"}}, "on"}};
+	const MenuPage call = Core_Menu_CallVote(v);
+	CHECK(Row(call, "Time Limit")->action == MenuAction::VoteSetting);
+	CHECK(Row(call, "Time Limit")->arg == "timelimit");
+	CHECK(Row(call, "Powerups")->arg == "powerups");
+	CHECK(RowOf(call, MenuAction::VoteSetting) > RowOf(call, MenuAction::VoteFor)); // after Restart Match
+
+	const MenuPage time = Core_Menu_VoteSetting(v, "timelimit");
+	CHECK(time[0].text == "Vote: Time Limit");
+	CHECK(Row(time, "10 minutes")->action == MenuAction::None); // the setting now: marked, skipped
+	CHECK(Row(time, "10 minutes")->highlight);
+	CHECK(Row(time, "20 minutes")->action == MenuAction::VoteFor);
+	CHECK(Row(time, "20 minutes")->arg == "timelimit 20");
+	CHECK(time.back().action == MenuAction::CallVote);
+	CHECK(Row(Core_Menu_VoteSetting(v, "powerups"), "Off")->arg == "powerups off");
 }

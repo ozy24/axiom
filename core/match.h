@@ -185,6 +185,13 @@ class Match
 	// countdown, else 0 (hidden).
 	int CountdownSeconds(int64_t now_ms) const;
 
+	// A vote changed the time or frag limit (decision 0015). Before LIVE the
+	// match just starts with them. In regulation time (LIVE, or between its
+	// rounds) the end moves, still counted from LIVE: a limit already passed
+	// ends the match at the next update, as stock's CheckDMRules would.
+	// Overtime keeps its own end.
+	void ChangeLimits(int64_t timelimit_ms, int fraglimit, int64_t now_ms);
+
 	int64_t ClockEndMs() const
 	{
 		const bool timed = state_ == MatchState::Live || state_ == MatchState::Overtime ||

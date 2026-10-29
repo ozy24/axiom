@@ -31,6 +31,7 @@ enum class MenuAction
 	VoteMaps,      // the maps
 	VoteGametypes, // the gametypes (also Back from a gametype's variants)
 	VoteVariants,  // a gametype's variants; the row's arg is its id
+	VoteSetting,   // a setting's choices; the row's arg is its kind ("timelimit")
 	VoteFor,       // callvote with the row's arg ("map q2dm3", "gametype hoony", "restart")
 };
 
@@ -47,7 +48,7 @@ struct MenuRow
 	MenuAlign align = MenuAlign::Left;
 	MenuAction action = MenuAction::None;
 	bool highlight = false; // drawn in the alternate colour
-	std::string arg;        // VoteFor: what to call; VoteVariants: the gametype
+	std::string arg;        // VoteFor: what to call; VoteVariants: the gametype; VoteSetting: the kind
 };
 
 using MenuPage = std::vector<MenuRow>;
@@ -91,6 +92,16 @@ struct MenuVoteGametype
 	std::vector<std::pair<std::string, std::string>> rulesets; // (name, row text): ("hoony", "HoonyMode")
 };
 
+// A setting players can vote on (core/vote.h, decision 0015): its menu
+// choices and the value now.
+struct MenuVoteSetting
+{
+	std::string kind;                                         // "timelimit"
+	std::string title;                                        // "Time Limit"
+	std::vector<std::pair<std::string, std::string>> choices; // (arg, row text): ("20", "20 minutes")
+	std::string current;                                      // the arg it has now: "10"
+};
+
 // What the pages show: the adapter fills it from the level each refresh.
 struct MenuView
 {
@@ -130,7 +141,8 @@ struct MenuView
 	std::vector<std::string> vote_kinds; // allowed: "map", "gametype", "restart"
 	std::vector<std::string> vote_maps;
 	std::vector<MenuVoteGametype> vote_gametypes;
-	std::string gametype_id; // the current one, marked in its list
+	std::vector<MenuVoteSetting> vote_settings; // allowed, and for this gametype
+	std::string gametype_id;                    // the current one, marked in its list
 };
 
 // The main page, and the row its cursor starts on (team modes: the team
@@ -153,3 +165,6 @@ MenuPage Core_Menu_VoteGametypes(const MenuView &view);
 // A gametype's variants ("Duel", "HoonyMode"), the current ruleset marked and
 // skipped; Back returns to the gametypes.
 MenuPage Core_Menu_VoteVariants(const MenuView &view, std::string_view gametype);
+// A setting's choices ("5 minutes" ... "30 minutes"), the value now marked and
+// skipped; Back returns to Call a Vote.
+MenuPage Core_Menu_VoteSetting(const MenuView &view, std::string_view kind);
