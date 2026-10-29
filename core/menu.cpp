@@ -202,8 +202,8 @@ MenuPage Core_Menu_Main(const MenuView &v)
 	Add(page, "Match Info", MenuAction::MatchInfo);
 	if (v.vote_can_call)
 		Add(page, "Call a Vote", MenuAction::CallVote);
-	// About sits at the bottom, just above Close.
-	while ((int)page.size() < kMenuRows - 2)
+	// About sits at the bottom, a blank line above Close.
+	while ((int)page.size() < kMenuRows - 3)
 		page.push_back({});
 	Add(page, "About", MenuAction::About);
 	Footer(page, {"Close", MenuAlign::Left, MenuAction::Close, false, {}});

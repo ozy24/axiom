@@ -510,12 +510,13 @@ TEST_CASE("menu: a team too big for the page points to the console commands")
 	CHECK(page.size() == (size_t)kMenuRows);
 }
 
-TEST_CASE("menu: About sits just above Close, and shows the mod, its build and its page")
+TEST_CASE("menu: About sits a blank line above Close, and shows the mod, its build and its page")
 {
 	MenuView v = Ffa();
 	const MenuPage main = Core_Menu_Main(v);
 	REQUIRE(main.size() == (size_t)kMenuRows);
-	CHECK(main[kMenuRows - 2].action == MenuAction::About);
+	CHECK(main[kMenuRows - 3].action == MenuAction::About);
+	CHECK(main[kMenuRows - 2].text.empty());
 	CHECK(main[kMenuRows - 1].action == MenuAction::Close);
 	v.mod_name = "Mod";
 	v.mod_version = "1.2.3";

@@ -51,7 +51,7 @@ A human new to the server arrives spectating with the main page open
   you aren't on its roster, the row is skipped.
 
   After those come Match Info, then Call a Vote when you may call one, and
-  at the foot About, then Close. A choice that is already the case (your team, your vote answer) is
+  at the foot About, a blank line, then Close. A choice that is already the case (your team, your vote answer) is
   drawn in green and skipped by the cursor. Stock has no grey.
 - **About.** The mod's name and version, its build (the commit) and its
   page (mod.json's `repository`, which also names the project for
