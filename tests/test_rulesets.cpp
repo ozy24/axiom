@@ -87,6 +87,41 @@ TEST_CASE("every built-in sets ctf and teamplay to match its gametype")
 	}
 }
 
+TEST_CASE("every gametype's own built-in sets every match_* cvar")
+{
+	// A ruleset switch resets these anyway; spelling them out keeps each
+	// built-in readable as the whole of its match settings.
+	for (size_t i = 0; i < core_ruleset_count; ++i)
+	{
+		if (core_rulesets[i].variant)
+			continue;
+		const std::string cfg = core_rulesets[i].cfg;
+		CAPTURE(core_rulesets[i].name);
+		for (size_t c = 0; c < core_gameplay_cvar_count; ++c)
+		{
+			const std::string name = core_gameplay_cvars[c].name;
+			if (name.rfind("match_", 0) != 0)
+				continue;
+			CAPTURE(name);
+			CHECK(Find(cfg, "set " + name + " ") != std::string::npos);
+		}
+	}
+}
+
+TEST_CASE("team games lock their teams as the match goes live; the others have none to lock")
+{
+	// Competitive by default (Chris, 2026-10-29); the compiled default stays stock.
+	for (size_t i = 0; i < core_ruleset_count; ++i)
+	{
+		if (core_rulesets[i].variant)
+			continue;
+		const std::string gt = core_rulesets[i].gametype;
+		CAPTURE(gt);
+		const bool teams = gt == "tdm" || gt == "ctf";
+		CHECK(Find(core_rulesets[i].cfg, teams ? "set match_lock 1\n" : "set match_lock 0\n") != std::string::npos);
+	}
+}
+
 TEST_CASE("a variant states only its differences, never its gametype")
 {
 	const RulesetDef *hoony = Core_Ruleset_Find("hoony");

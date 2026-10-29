@@ -41,6 +41,9 @@ Tiers (plan Phase 1b):
                  no repeat at the reshuffle, g_map_list kept as written.
  16. human-settings  Setting votes: a time limit applied in a live match, the
                  refusals, a powerups vote reloading with the time kept (Q2RED).
+ 17. human-teamlock  Team locks and captains in TDM: locked at LIVE, a
+                 newcomer refused, a dropped player back in, unlock, kick,
+                 the captaincy passed on, an emptied team unlocked (Q2RED).
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -1233,9 +1236,88 @@ at 40 0 cmd vote yes
     results.append(("16 human-settings", not detail, detail))
 
 
+def tier_human_teamlock(args, results):
+    """Team locks and captains (decision 0016) through the human path: TDM
+    on the built-in ruleset (match_lock 1), five simulated players. The
+    first on each team is captain; both teams lock as the match goes live; a
+    newcomer is refused (told alone), a rostered player who drops gets back
+    in; the captain unlocks for the newcomer, relocks and kicks them, and
+    they're refused again; the captain leaves and the next teammate takes
+    over; a team whose players all leave unlocks itself. Q2RED only."""
+    label = "17 human-teamlock"
+    rig, why = scenario_rig(args, "t17-teamlock")
+    if not rig:
+        results.append((label, True, [f"skipped: {why}"]))
+        return
+    # Live at about 20 s (the join grace, then a 3 s countdown).
+    script = """seconds 66
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Carol social=sim-carol puppet
+client 3 name=Dave social=sim-dave puppet
+client 4 name=Eve social=sim-eve puppet
+at 6 0 cmd team red
+at 6 2 cmd team blue
+at 8 1 cmd team red
+at 8 3 cmd team blue
+at 27 4 cmd team red
+at 29 1 disconnect
+at 32 1 rejoin
+at 37 1 cmd team red
+at 40 0 cmd unlockteam
+at 42 4 cmd team red
+at 45 0 cmd lockteam
+at 47 0 cmd teamkick Eve
+at 50 4 cmd team red
+at 54 0 disconnect
+at 58 2 disconnect
+at 58 3 disconnect
+"""
+    rulesets = rig.dir / "baseq2" / "rulesets"
+    rulesets.mkdir(parents=True, exist_ok=True)
+    (rulesets / "tdm.cfg").write_text("set match_ready 0\nset match_countdown 3\nset timelimit 5\n")
+    startup = scenario_startup(rig, ["+set", "g_ruleset", "tdm", "+map", "q2dm1"])
+    log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 130)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    if not {"Alice", "Bob", "Carol", "Dave", "Eve"} <= set(humans):
+        results.append((label, False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
+        return
+    teams = [l.split("Teams: ", 1)[1].strip() for l in log.splitlines() if "Teams: " in l]
+    # In this order (the captains of the two teams may come either way round).
+    chain = ["RED locked", "RED unlocked by Alice", "RED locked by Alice", "Eve kicked from RED by Alice",
+             "RED captain Bob", "BLUE unlocked (empty)"]
+    for want in ("RED captain Alice", "BLUE captain Carol", "BLUE locked"):
+        if want not in teams:
+            detail.append(f"no 'Teams: {want}' (saw {teams})")
+    at = 0
+    for want in chain:
+        if want not in teams[at:]:
+            detail.append(f"no 'Teams: {want}' after {chain[:chain.index(want)]} (saw {teams})")
+            break
+        at = teams.index(want, at) + 1
+    if "-> live" not in log:
+        detail.append("the match never went live")
+    locs = [r for r in tap if r.get("type") == "locprint"]
+    refusals = [r for r in locs if r["base"] == "{} is locked.\n" and r["to"] != -1]
+    eve = humans["Eve"]
+    if [r["to"] for r in refusals] != [eve, eve]:
+        detail.append(f"refusals to slots {[r['to'] for r in refusals]}, expected Eve's ({eve}) twice")
+    joins = [r for r in locs if r["base"] == "$g_joined_team"]
+    # Alice, Bob, Carol, Dave; Bob back after his drop; Eve after the unlock.
+    if len(joins) != 6:
+        detail.append(f"{len(joins)} team joins, expected 6")
+    detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append((label, not detail, detail))
+
+
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_rounds, tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
-         tier_human_rounds, tier_human_vote, tier_maps, tier_human_settings)
+         tier_human_rounds, tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock)
 
 
 def run_tier(tier, args):
@@ -1337,7 +1419,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps", "human_settings"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps", "human_settings", "human_teamlock"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

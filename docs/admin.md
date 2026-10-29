@@ -66,6 +66,22 @@ your `rulesets/ctf.cfg`.
 
 Each switch starts clean: nothing a previous mode set carries over.
 
+## Team locks and captains
+
+In TDM and CTF the first player on each team is its captain, and a captain
+can `lockteam`, `unlockteam`, `teamkick <player>` and `readyteam`. A locked
+team takes back its own players (one who dropped can rejoin) and nobody
+else.
+
+| | Default | |
+|---|---|---|
+| `match_lock` | 1 in `tdm` and `ctf` | lock both teams as the match goes live; 0 = only when a captain locks |
+
+From the console: `sv lockteam red|blue`, `sv unlockteam red|blue`, and
+`sv teams` to see each team's lock, captain and players. For a public
+server, put `set match_lock 0` in `rulesets/tdm.cfg` and `rulesets/ctf.cfg`.
+Details: docs/design/teams.md, docs/decisions/0016.
+
 ## Voting and maps
 
 | | Default | |

@@ -79,6 +79,11 @@ MenuView Longest()
 			setting.choices.emplace_back(std::to_string(c), std::string(60, 'W'));
 		v.vote_settings.push_back(setting);
 	}
+	v.captain = true;
+	v.team_locked[1] = v.team_locked[2] = true;
+	v.team_captain[1] = v.team_captain[2] = std::string(60, 'W');
+	for (int i = 0; i < 40; ++i)
+		v.teammates.emplace_back(i, std::string(60, 'W'));
 	return v;
 }
 
@@ -139,7 +144,7 @@ TEST_CASE("menu pages fit stock's 18 rows and the client's 1024-byte layout")
 		for (const MenuPage &page :
 		     {Core_Menu_Main(v), Core_Menu_MatchInfo(v), Core_Menu_CallVote(v), Core_Menu_VoteMaps(v),
 		      Core_Menu_VoteGametypes(v), Core_Menu_VoteVariants(v, v.vote_gametypes[0].id),
-		      Core_Menu_VoteSetting(v, "timelimit")})
+		      Core_Menu_VoteSetting(v, "timelimit"), Core_Menu_Team(v), Core_Menu_TeamMate(v, 39)})
 		{
 			CHECK(page.size() == (size_t)kMenuRows);
 			for (const MenuRow &row : page)
@@ -406,4 +411,79 @@ TEST_CASE("menu: setting votes follow the kinds, each opening its choices")
 	CHECK(Row(time, "20 minutes")->arg == "timelimit 20");
 	CHECK(time.back().action == MenuAction::CallVote);
 	CHECK(Row(Core_Menu_VoteSetting(v, "powerups"), "Off")->arg == "powerups off");
+}
+
+TEST_CASE("menu: a locked team shows locked and can't be chosen, unless you're on its roster")
+{
+	MenuView v = Teams();
+	v.team_locked[1] = true;
+	v.team_may_join[1] = false;
+	MenuPage page = Core_Menu_Main(v);
+	CHECK(Shows(page, "Join Red (locked)"));
+	CHECK(RowOf(page, MenuAction::JoinRed) == -1);
+	CHECK(RowOf(page, MenuAction::JoinBlue) >= 0);
+
+	v.team_may_join[1] = true; // a rostered player coming back
+	page = Core_Menu_Main(v);
+	CHECK(RowOf(page, MenuAction::JoinRed) >= 0);
+
+	// Your own team stays listed as yours, locked or not.
+	v.team = 1;
+	v.team_may_join[1] = false;
+	page = Core_Menu_Main(v);
+	REQUIRE(Row(page, "Join Red"));
+	CHECK(Row(page, "Join Red")->highlight);
+}
+
+TEST_CASE("menu: match info names each team's captain and lock")
+{
+	MenuView v = Teams();
+	v.team_captain[1] = "Ozy";
+	v.team_locked[1] = true;
+	const MenuPage page = Core_Menu_MatchInfo(v);
+	CHECK(Shows(page, "Red (locked): Ozy"));
+	CHECK(Shows(page, "Blue: none"));
+	CHECK_FALSE(Shows(Core_Menu_MatchInfo(Ffa()), "Blue: none"));
+}
+
+TEST_CASE("menu: only a captain gets the Team page; it locks, readies and lists teammates")
+{
+	MenuView v = Teams();
+	v.team = 1;
+	v.playing = true;
+	CHECK(RowOf(Core_Menu_Main(v), MenuAction::Team) == -1);
+	v.captain = true;
+	CHECK(RowOf(Core_Menu_Main(v), MenuAction::Team) >= 0);
+
+	v.teammates = {{3, "Alpha"}, {5, "Bravo"}};
+	MenuPage page = Core_Menu_Team(v);
+	CHECK(RowOf(page, MenuAction::TeamLock) >= 0);
+	CHECK(RowOf(page, MenuAction::TeamReady) == -1); // no ready-up now
+	const MenuRow *bravo = Row(page, "Bravo");
+	REQUIRE(bravo);
+	CHECK(bravo->action == MenuAction::TeamMate);
+	CHECK(bravo->arg == "5");
+
+	v.team_locked[1] = true;
+	v.ready_up = true;
+	page = Core_Menu_Team(v);
+	CHECK(RowOf(page, MenuAction::TeamUnlock) >= 0);
+	CHECK(RowOf(page, MenuAction::TeamLock) == -1);
+	CHECK(RowOf(page, MenuAction::TeamReady) >= 0);
+
+	const MenuPage mate = Core_Menu_TeamMate(v, 5);
+	CHECK(Row(mate, "Make Captain")->arg == "5");
+	CHECK(Row(mate, "Kick from Team")->action == MenuAction::TeamKick);
+	CHECK(mate.back().action == MenuAction::Team);
+	// Gone from the team since the page was opened: nothing to do.
+	CHECK(Actions(Core_Menu_TeamMate(v, 9)) == std::vector<MenuAction>{MenuAction::Team});
+}
+
+TEST_CASE("menu: a team too big for the page points to the console commands")
+{
+	MenuView v = Longest();
+	v.team = 1;
+	const MenuPage page = Core_Menu_Team(v);
+	CHECK(Shows(page, "More: teamkick / captain"));
+	CHECK(page.size() == (size_t)kMenuRows);
 }

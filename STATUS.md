@@ -198,10 +198,22 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
   changes (`g_no_items`, `g_friendly_fire` joined the ruleset reset).
   Harness tier 16.
 
-Next: team locks, captains and team kick for TDM/CTF (plan agreed
-2026-10-29: `match_lock` auto-locks at LIVE, on in the built-in tdm/ctf
-rulesets; rosters by social ID; an emptied team unlocks), then Clan Arena
-as a TDM ruleset (elimination rounds, spawn loadout). Then Phase 4's remainder - Chris has other features to work through first,
+## Team locks and captains (2026-10-29, decision 0016)
+- TDM/CTF: `captain [player]`, `lockteam`, `unlockteam`, `teamkick`,
+  `readyteam`; `sv lockteam|unlockteam red|blue`, `sv teams`. One lock per
+  team with a roster by social ID (a dropped player gets back in); an
+  emptied team unlocks itself; locks clear at warmup and on a new level,
+  never on a round. `match_lock` locks both teams at LIVE: compiled 0, 1 in
+  the built-in tdm/ctf rulesets (competitive by default, Chris).
+- `core/teams.*` (12 unit tests), two marked hooks (`CTFTeam_f`,
+  `CTFJoinTeam`); Tab menu: locked join rows, captains in Match Info, a
+  captain's Team page. `Core_PlayerKey` is shared with Duel's queue.
+- Harness tier 17 (checked against a build with the lock check disabled).
+- Not done: a lock under `g_teamplay_force_join` only gates `team` and the
+  menu (the server's auto-assignment isn't refused); not playtested yet.
+
+Next: Clan Arena as a TDM ruleset (elimination rounds that count the
+living, spawn loadout, `match_lock 1`). Then Phase 4's remainder - Chris has other features to work through first,
 then timeouts/pauses, admin controls, per-gametype scoreboards (an
 OpenFFA-style FFA board waits on his column list), then the M4 checklist on
 Q2REX and a retail listen server.

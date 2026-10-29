@@ -23,14 +23,10 @@ bool IsPresent(const edict_t *ent)
 	return ent->inuse && ent->client && ent->client->pers.connected && ent->client->pers.spawned;
 }
 
-// The queue's key for a client: a human's social ID, which survives a
-// reconnect into another slot, or the slot for a bot (or a human without one).
+// The queue's key for a client (core/player_name.h).
 std::string Key(const edict_t *ent)
 {
-	const int slot = (int)(ent - g_edicts) - 1;
-	if (!(ent->svflags & SVF_BOT) && ent->client->pers.social_id[0])
-		return std::string("id:") + ent->client->pers.social_id;
-	return "slot:" + std::to_string(slot);
+	return Core_PlayerKey(ent);
 }
 
 std::vector<std::string> Present()

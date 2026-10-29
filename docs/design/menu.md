@@ -40,14 +40,17 @@ stock `gamerules` modes keep stock's.
   - Duel: Duel Queue;
   - FFA: Join the Match or Spectate;
   - a spectator: Chase Camera or Stop Chasing;
-  - in warmup: Ready or Not Ready.
+  - in warmup: Ready or Not Ready;
+  - a team's captain: Team (captain).
+
+  A locked team you can't join reads "Join Red (locked)" and is skipped.
 
   After those come Match Info, then Call a Vote when you may call one, and
   Close at the foot. A choice that is already the case (your team, your vote answer) is
   drawn in green and skipped by the cursor. Stock has no grey.
 - **Match Info.** The gametype, ruleset and map, the time limit, the frag
   or capture limit, and with the match flow on, overtime, ready-up and
-  rounds.
+  rounds. In team modes, each team's captain and whether it's locked.
 - **Call a Vote.** The allowed kinds: Map and Gametype open their lists;
   Restart Match is called from here. Time Limit, Frag Limit (Capture Limit
   in CTF), Powerups and, in team modes, Friendly Fire each open a few
@@ -56,5 +59,10 @@ stock `gamerules` modes keep stock's.
 - **Gametypes.** A gametype with one ruleset is voted from the list. One with
   variants opens a submenu, for example Duel → Duel / HoonyMode. The current
   one is marked.
+
+- **Team** (a captain's). Lock Team or Unlock Team, Ready Team in ready-up,
+  then the human teammates. A teammate opens their own page: Make Captain,
+  Kick from Team, Back. A team too big for the page ends in a row pointing
+  to `teamkick` / `captain` (docs/design/teams.md).
 
 See docs/design/voting.md for the vote rules.

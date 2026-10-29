@@ -33,6 +33,13 @@ enum class MenuAction
 	VoteVariants,  // a gametype's variants; the row's arg is its id
 	VoteSetting,   // a setting's choices; the row's arg is its kind ("timelimit")
 	VoteFor,       // callvote with the row's arg ("map q2dm3", "gametype hoony", "restart")
+	Team,          // a captain's Team page (also Back from a teammate's page)
+	TeamLock,      // lockteam
+	TeamUnlock,    // unlockteam
+	TeamReady,     // readyteam
+	TeamMate,      // a teammate's page; the row's arg is their client number
+	TeamKick,      // teamkick the row's arg (a client number)
+	TeamCaptain,   // captain the row's arg (a client number)
 };
 
 enum class MenuAlign
@@ -143,6 +150,13 @@ struct MenuView
 	std::vector<MenuVoteGametype> vote_gametypes;
 	std::vector<MenuVoteSetting> vote_settings; // allowed, and for this gametype
 	std::string gametype_id;                    // the current one, marked in its list
+
+	// Team locks and captains (core/teams.h); [1] red, [2] blue.
+	bool team_locked[3] = {};
+	bool team_may_join[3] = {true, true, true};         // unlocked, or on its roster
+	std::string team_captain[3];                        // the captain's name; empty: none
+	bool captain = false;                               // this player captains their team
+	std::vector<std::pair<int, std::string>> teammates; // a captain's: (client number, name), humans but them
 };
 
 // The main page, and the row its cursor starts on (team modes: the team
@@ -168,3 +182,9 @@ MenuPage Core_Menu_VoteVariants(const MenuView &view, std::string_view gametype)
 // A setting's choices ("5 minutes" ... "30 minutes"), the value now marked and
 // skipped; Back returns to Call a Vote.
 MenuPage Core_Menu_VoteSetting(const MenuView &view, std::string_view kind);
+
+// A captain's Team page: lock or unlock, ready the team (in ready-up), and
+// their teammates, each opening a teammate's page. Back to the main page.
+MenuPage Core_Menu_Team(const MenuView &view);
+// A teammate's page (`client` their number): make captain, kick; Back to Team.
+MenuPage Core_Menu_TeamMate(const MenuView &view, int client);
