@@ -772,12 +772,14 @@ def state_line(tap):
     """The HUD's match status and clock, from the game tap: whether the status
     bar draws both (status top middle, clock bottom middle), and every text either showed, in order
     (repeats collapsed).
-    The status is the configstring that first says WARMUP; the clock is the
-    next one (docs/design/hud.md)."""
+    The status is the configstring that first shows a warmup text (WAITING
+    FOR ..., READY UP n/m, WARMUP); the clock is the next one
+    (docs/design/hud.md)."""
     cs = [r for r in tap if r.get("type") == "configstring"]
     bars = [r["text"] for r in cs if "hnum" in r["text"]]
     drawn = any("yt 43 loc_stat_cstring2 " in t and "yb -61 loc_stat_cstring2 " in t for t in bars)
-    status = next((r["index"] for r in cs if r["text"].startswith("WARMUP")), None)
+    status = next((r["index"] for r in cs
+                   if r["text"].startswith(("WARMUP", "READY UP ", "WAITING FOR "))), None)
     texts = []
     for r in cs:
         if status is not None and r["index"] in (status, status + 1) and r["text"] and \
@@ -877,9 +879,10 @@ at 30 0 cmd score
     drawn, texts = state_line(tap)
     if not drawn:
         detail.append("the status bar doesn't draw the match status and clock")
-    if "WARMUP" not in texts or "COUNTDOWN" not in texts \
+    # Ready-up shows how many of the two duellists are ready (Chris, 2026-10-29).
+    if not any(re.fullmatch(r"READY UP [0-2]/2", t) for t in texts) or "COUNTDOWN" not in texts \
             or not any(re.fullmatch(r"\d+:\d\d", t) for t in texts):
-        detail.append(f"state line texts {texts[:4]}...{texts[-3:]}, expected WARMUP, "
+        detail.append(f"state line texts {texts[:4]}...{texts[-3:]}, expected READY UP n/2, "
                       "COUNTDOWN, then the clock")
 
     # A warmup suicide doesn't score (`sv match` during warmup).

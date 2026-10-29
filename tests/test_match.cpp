@@ -549,7 +549,7 @@ TEST_CASE("the HUD: the match length in warmup and the countdown, then the clock
 	MatchConfig c = Enabled(); // countdown 3 s, timelimit 60 s
 	Match m(c);
 	m.Begin(0);
-	CHECK(m.HudText(At(500, {P(1, true), P(2, false)})) == Hud("WARMUP", "1:00"));
+	CHECK(m.HudText(At(500, {P(1, true), P(2, false)})) == Hud("READY UP 1/2", "1:00"));
 	CHECK(m.HudText(At(500, {P(1, false)})) == Hud("WAITING FOR PLAYERS", "1:00")); // match_minplayers 2
 	CHECK(m.CountdownSeconds(500) == 0);
 	m.Update(At(1000, {P(1, true), P(2, true)}));
@@ -577,7 +577,21 @@ TEST_CASE("the HUD: warmup says what the start waits for, teams included")
 	blue.team = 2;
 	CHECK(m.HudText(At(500, {red})) == Hud("WAITING FOR PLAYERS", "1:00"));
 	CHECK(m.HudText(At(500, {red, red2})) == Hud("WAITING FOR TEAMS", "1:00"));
-	CHECK(m.HudText(At(500, {red, blue})) == Hud("WARMUP", "1:00"));
+	CHECK(m.HudText(At(500, {red, blue})) == Hud("READY UP 0/2", "1:00"));
+}
+
+TEST_CASE("the HUD: ready-up counts the ready players; spectators don't count; no ready-up says WARMUP")
+{
+	MatchConfig c = Enabled();
+	Match m(c);
+	m.Begin(0);
+	MatchPlayer spectator = P(4, true);
+	spectator.playing = false;
+	CHECK(m.HudText(At(500, {P(1, true), P(2, false), P(3, true), spectator})) == Hud("READY UP 2/3", "1:00"));
+	c.ready_required = false; // match_ready 0: the start waits only for players
+	Match pub(c);
+	pub.Begin(0);
+	CHECK(pub.HudText(At(500, {P(1, false), P(2, false)})) == Hud("WARMUP", "1:00"));
 }
 
 TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
@@ -586,7 +600,7 @@ TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
 	c.timelimit_ms = 0;
 	Match up(c);
 	up.Begin(0);
-	CHECK(up.HudText(At(500, {P(1, true), P(2, false)})) == Hud("WARMUP", "0:00")); // it will count up
+	CHECK(up.HudText(At(500, {P(1, true), P(2, false)})) == Hud("READY UP 1/2", "0:00")); // it will count up
 	up = Match(c);
 	const int64_t live = ToLive(up);
 	CHECK(up.HudText(At(live + 75000, {P(1, true), P(2, true)})) == Hud("", "1:15"));

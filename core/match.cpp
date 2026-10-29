@@ -239,12 +239,19 @@ MatchHudText Match::HudText(const MatchInput &in) const
 	{
 	case MatchState::Warmup:
 		// What the start waits for, as Quake Live says it (Chris, 2026-10-27):
-		// more players, then someone on each team, then WARMUP (ready-up or
-		// the warmup timer).
+		// more players, then someone on each team, then in ready-up how many of
+		// the players are ready (bots always are: Chris, 2026-10-29); without
+		// ready-up, WARMUP (the countdown is about to start).
 		if (PlayingCount(in) < std::max(1, config_.min_players))
 			return {"WAITING FOR PLAYERS", length};
 		if (!Staffed(config_, in))
 			return {"WAITING FOR TEAMS", length};
+		if (config_.ready_required)
+		{
+			const int ready = (int)std::count_if(in.players.begin(), in.players.end(),
+			                                     [](const MatchPlayer &p) { return p.playing && p.ready; });
+			return {"READY UP " + std::to_string(ready) + "/" + std::to_string(PlayingCount(in)), length};
+		}
 		return {"WARMUP", length};
 	case MatchState::Countdown:
 		return {"COUNTDOWN", length}; // the seconds: the big digits (CountdownSeconds)
