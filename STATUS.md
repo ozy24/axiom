@@ -242,7 +242,7 @@ only the `ctf` layout row decodes a `##P` name token: `string`,
 `loc_string` and its `{}` arguments all show `##P0`, and `%s` isn't
 supported. So the name always comes after two numbers. Right-aligned
 `loc_rstring` numbers line up.
-In progress (branch `scoreboard/duel`, waiting for Chris's look):
+Done (branch `scoreboard/duel`; Chris finished testing it on 2026-10-29):
 - Duel's scoreboard (decision 0019); the menu's Duel Queue row is gone
   (the board shows the queue).
 - Warmup loadout: `match_warmup_weapons 1` (default) gives everyone in
@@ -260,12 +260,8 @@ In progress (branch `scoreboard/duel`, waiting for Chris's look):
 
 ## Handover (2026-10-29, end of a long session)
 
-**Branch `scoreboard/duel` is unmerged and waiting.** Five commits on
-`main` (`452d70f`..`47f52b8`), listed above. Every Q2RED tier passed on
-`6769546`; after that, tiers 11, 14, 16 and 18 were re-run (two later
-commits: the About spacing and the spectator fix). Chris was still
-playtesting them on the rig and hasn't said he's done. When he
-is: PR (full CI: hosted, Q2RED, Q2REX/Wine), squash-merge on green.
+**Branch `scoreboard/duel`:** Chris finished testing it on 2026-10-29; PR,
+full CI, squash-merge on green.
 
 **The playtest rig** (`~/q2playtest`, `./run.sh`, `./cmd.sh "<console>"`):
 Duel on q2dm1 with the branch's build. Deploy with a temp file and `mv`,
@@ -277,11 +273,9 @@ the human has entered.
 
 **Next, agreed with Chris: a team shuffle vote** (`callvote shuffle`, TDM
 and CTF). No `balance` vote: Chris says balancing only makes sense with a
-rating system, and we have none. Open question for him before building:
-what the shuffle sorts by. MMREX sorts by rating and alternates (1, 3,
-5 to red; a poor split). We could shuffle at random, or snake-draft by
-the current match score. In warmup only, or also mid-match followed by
-a restart? Probably also `sv shuffle` for admins.
+rating system, and we have none. Settled 2026-10-29: a plain random
+split (even sizes), callable in warmup only. Probably also `sv shuffle`
+for admins.
 
 **After that, Chris's options** (he hadn't chosen): Clan Arena as a TDM
 ruleset (elimination rounds that count the living, a spawn loadout,
