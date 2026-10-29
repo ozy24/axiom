@@ -13,8 +13,8 @@
 // are text of our own. Your own row is green (the `ctf` row's own
 // highlight). Spectators follow, two to a line. When a full server doesn't
 // fit, it shows the top players and your own row (at its real position),
-// then the spectators that still fit. In ready-up, a tick right of the Ping
-// column marks each ready player, while the bytes allow (rows come first).
+// then the spectators that still fit. In ready-up, a green R right of the
+// Ping column marks each ready player, while the bytes allow (rows come first).
 #pragma once
 
 #include <cstddef>
@@ -40,7 +40,7 @@ struct ScoreboardInput
 	std::vector<ScoreboardPlayer> players;
 	int viewer = -1;       // the slot it's for
 	std::string stamp;     // the header: "2026-10-29 19:40"
-	bool ready_up = false; // show the ready ticks
+	bool ready_up = false; // show the ready marks
 	size_t budget = 980;   // bytes it may use: stock's 1024, less its clock and frag limit
 };
 
@@ -53,12 +53,13 @@ std::vector<ScoreboardPlayer> Core_Scoreboard_Order(std::vector<ScoreboardPlayer
 // The layout text, at most `budget` bytes.
 std::string Core_Scoreboard_Layout(const ScoreboardInput &in);
 
-// The ready tick (MuffMode's, and Duel's board's): the weapon wheel's
-// selected-compass picture, its top 2 above row `y`.
-std::string Core_Scoreboard_Tick(int x, int y);
+// The ready mark on a row at `y`: a green R, one character, so it fits the
+// row. (Duel's board ticks its blocks with a picture; a stock client draws
+// that 24 pixels high, three rows, and covers the text: playtest 2026-10-29.)
+std::string Core_Scoreboard_ReadyMark(int x, int y);
 
-// The team board's ticks, for stock's CTFScoreboardMessage: one left of each
-// team row (`ctf -40 ...` RED, `ctf 200 ...` BLUE) in `layout` whose client
-// is in `ready`, beside the captain's `*`, while the layout stays under
-// `max` bytes. Returns the text to append.
-std::string Core_Scoreboard_TeamTicks(std::string_view layout, const std::set<int> &ready, size_t max);
+// The team board's ready marks, for stock's CTFScoreboardMessage: one left of
+// each team row (`ctf -40 ...` RED, `ctf 200 ...` BLUE) in `layout` whose
+// client is in `ready`, beside the captain's `*`, while the layout stays
+// under `max` bytes. Returns the text to append.
+std::string Core_Scoreboard_TeamReady(std::string_view layout, const std::set<int> &ready, size_t max);

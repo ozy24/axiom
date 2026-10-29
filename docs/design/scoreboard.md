@@ -29,10 +29,9 @@ stock's back.
   clock and the intermission's "press a button" line stay as they were.
 - Your own row is green. Players are ordered by frags, then fewer deaths.
 - Spectators follow, two to a line, showing score and ping.
-- In ready-up, a tick (the weapon wheel's `wheel/p_compass_selected`, as
-  MuffMode and the Duel board use) right of Ping on each ready player's
-  row. Bots are always ready. Rows and spectators are fitted first; a tick
-  only goes in while the 1024 bytes allow.
+- In ready-up, a green `R` right of Ping on each ready player's row. Bots
+  are always ready. Rows and spectators are fitted first; a mark only goes
+  in while the 1024 bytes allow.
 
 ## Duel
 
@@ -70,10 +69,15 @@ a score of N" line, which says nothing in a duel.
 ## TDM and CTF
 
 Stock's team board, with two marks left of a row: the captain's `*`
-(decision 0016) and, in ready-up, the same tick for a ready player (x -56
-on RED, 182 on BLUE, as MuffMode). The ticks are added once stock's rows and
-spectators are in (`Core_Scoreboard_TeamTicks`, one marked call), so on a
-full board a tick is dropped before a player is.
+(decision 0016) and, in ready-up, a green `R` for a ready player (x -56 on
+RED, 182 on BLUE: where MuffMode puts its tick). The marks are added once
+stock's rows and spectators are in (`Core_Scoreboard_TeamReady`, one marked
+call), so on a full board a mark is dropped before a player is.
+
+Not MuffMode's tick picture: a stock client draws `wheel/p_compass_selected`
+at its 24x24 (MuffMode's own client code shrinks it to 12x12), three rows
+high, covering the score (playtest 2026-10-29). Duel's board keeps the
+tick: its player blocks have room for it.
 
 ## Limits (KEX client)
 

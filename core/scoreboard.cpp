@@ -10,10 +10,10 @@ namespace
 // frags at its x, the deaths 27 to the right and the name 54 to the right
 // (16 characters of 8 end at 142). The position goes left of it, where the
 // team board draws a captain's `*`.
-constexpr int kRankX = -64, kRowX = -40, kFphX = 166, kTimeX = 206, kPingX = 246, kTickX = 274;
-// The team board's rows (stock's CTFScoreboardMessage) and their ticks: just
-// right of the captain's `*` (-64, 174), where MuffMode puts them.
-constexpr int kTeamRowX[2] = {-40, 200}, kTeamTickX[2] = {-56, 182}, kTeamFirstRowY = 42;
+constexpr int kRankX = -64, kRowX = -40, kFphX = 166, kTimeX = 206, kPingX = 246, kReadyX = 274;
+// The team board's rows (stock's CTFScoreboardMessage) and their ready marks:
+// just right of the captain's `*` (-64, 174), where MuffMode puts its tick.
+constexpr int kTeamRowX[2] = {-40, 200}, kTeamReadyX[2] = {-56, 182}, kTeamFirstRowY = 42;
 constexpr int kStampY = 8, kTitleY = 24, kFirstRowY = 36, kRowHeight = 8;
 constexpr int kSpectatorX[2] = {-40, 160};
 // The spectators' title and one line ("xv -40 yv 132 loc_string2 0 ..."
@@ -135,16 +135,16 @@ std::string Core_Scoreboard_Layout(const ScoreboardInput &in)
 	for (const std::string &row : rows)
 		out += row;
 
-	// The spectators, then the ready ticks while there's room: a player's
-	// row matters more than their tick.
+	// The spectators, then the ready marks while there's room: a player's
+	// row matters more than their mark.
 	Spectators(out, watching, (int)rows.size(), in);
 	if (!in.ready_up)
 		return out;
 	for (size_t i = 0; i < shown.size(); ++i)
 	{
-		const std::string tick = Core_Scoreboard_Tick(kTickX, kFirstRowY + kRowHeight * (int)i);
-		if (shown[i].ready && out.size() + tick.size() <= in.budget)
-			out += tick;
+		const std::string mark = Core_Scoreboard_ReadyMark(kReadyX, kFirstRowY + kRowHeight * (int)i);
+		if (shown[i].ready && out.size() + mark.size() <= in.budget)
+			out += mark;
 	}
 	return out;
 }
@@ -176,12 +176,12 @@ void Spectators(std::string &out, std::vector<ScoreboardPlayer> watching, int ro
 }
 } // namespace
 
-std::string Core_Scoreboard_Tick(int x, int y)
+std::string Core_Scoreboard_ReadyMark(int x, int y)
 {
-	return Tokens("xv", x, "yv", y - 2, "picn wheel/p_compass_selected");
+	return Tokens("xv", x, "yv", y, "string2 R");
 }
 
-std::string Core_Scoreboard_TeamTicks(std::string_view layout, const std::set<int> &ready, size_t max)
+std::string Core_Scoreboard_TeamReady(std::string_view layout, const std::set<int> &ready, size_t max)
 {
 	// Stock's team rows: "ctf <x> <y> <client> ...", x -40 or 200, y from 42.
 	// The spectators' rows use the same x but come after the "$g_pc_spectators"
@@ -199,9 +199,9 @@ std::string Core_Scoreboard_TeamTicks(std::string_view layout, const std::set<in
 		const long client = std::strtol(next, &next, 10);
 		if ((x != kTeamRowX[0] && x != kTeamRowX[1]) || y < kTeamFirstRowY || !ready.count((int)client))
 			continue;
-		const std::string tick = Core_Scoreboard_Tick(kTeamTickX[x == kTeamRowX[1]], (int)y);
-		if (layout.size() + out.size() + tick.size() < max)
-			out += tick;
+		const std::string mark = Core_Scoreboard_ReadyMark(kTeamReadyX[x == kTeamRowX[1]], (int)y);
+		if (layout.size() + out.size() + mark.size() < max)
+			out += mark;
 	}
 	return out;
 }

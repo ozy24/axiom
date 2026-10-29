@@ -19,7 +19,7 @@ void Core_Scoreboard_Died(const edict_t *self);
 // as the match starts.
 void Core_Scoreboard_Frame();
 
-// The team board's ready ticks (TDM, CTF), in ready-up: appended to stock's
+// The team board's ready marks (TDM, CTF), in ready-up: appended to stock's
 // layout once its rows and spectators are in, within `max` bytes. From
 // CTFScoreboardMessage, before it sends the layout.
-void Core_Scoreboard_TeamTicks(std::string &layout, size_t max);
+void Core_Scoreboard_TeamReady(std::string &layout, size_t max);

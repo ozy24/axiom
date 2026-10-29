@@ -131,7 +131,7 @@ void Core_Scoreboard_Died(const edict_t *self)
 	CountOf((uint32_t)(self - g_edicts) - 1).deaths++;
 }
 
-void Core_Scoreboard_TeamTicks(std::string &layout, size_t max)
+void Core_Scoreboard_TeamReady(std::string &layout, size_t max)
 {
 	if (!Core_Match_ReadyUp())
 		return;
@@ -142,7 +142,7 @@ void Core_Scoreboard_TeamTicks(std::string &layout, size_t max)
 		if (Present(other) && Core_Match_Playing(other) && Core_Match_IsReady(other))
 			ready.insert((int)i);
 	}
-	layout += Core_Scoreboard_TeamTicks(layout, ready, max);
+	layout += Core_Scoreboard_TeamReady(layout, ready, max);
 }
 
 bool Core_Scoreboard_Columns(const edict_t *ent, std::string &layout)

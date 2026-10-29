@@ -1835,7 +1835,7 @@ void CTFScoreboardMessage(edict_t *ent, edict_t *killer)
 		fmt::format_to(std::back_inserter(string), FMT_STRING("xv 208 yv {} loc_string 1 $g_ctf_and_more {} "),
 					42 + (last[1] + 1) * 8, total[1] - last[1] - 1);
 
-	Core_Scoreboard_TeamTicks(string, MAX_CTF_STAT_LENGTH); // [mod] ready ticks, in ready-up
+	Core_Scoreboard_TeamReady(string, MAX_CTF_STAT_LENGTH); // [mod] ready marks, in ready-up
 
 	if (level.intermissiontime)
 		fmt::format_to(std::back_inserter(string), FMT_STRING("ifgef {} yb -48 xv 0 loc_cstring2 0 \"$m_eou_press_button\" endif "), (level.intermission_server_frame + (5_sec).frames()));
