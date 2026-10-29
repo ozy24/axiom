@@ -12,6 +12,7 @@ const RulesetDef core_rulesets[] = {
      "set match_warmup 1\n"
      "set match_ready 1\n"
      "set match_minplayers 2\n"
+     "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
@@ -32,6 +33,7 @@ const RulesetDef core_rulesets[] = {
      "set match_warmup 1\n"
      "set match_ready 1\n"
      "set match_minplayers 2\n"
+     "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
@@ -52,6 +54,7 @@ const RulesetDef core_rulesets[] = {
      "set match_warmup 1\n"
      "set match_ready 1\n"
      "set match_minplayers 2\n"
+     "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
@@ -71,6 +74,7 @@ const RulesetDef core_rulesets[] = {
      "set match_warmup 1\n"
      "set match_ready 1\n"
      "set match_minplayers 2\n"
+     "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
@@ -104,6 +108,7 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"match_warmup", "0"},
     {"match_ready", "1"},
     {"match_minplayers", "2"},
+    {"match_allow_no_humans", "0"},
     {"match_warmup_time", "0"},
     {"match_countdown", "10"},
     {"match_overtime", "0"},

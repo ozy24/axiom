@@ -36,6 +36,18 @@ set fraglimit 100
 
 It applies every time TDM starts, by vote or by `sv ruleset tdm`.
 
+A public FFA that starts as soon as two players are in, with no ready-up:
+
+```
+// rulesets/ffa.cfg
+set match_ready 0
+```
+
+`match_minplayers` (2) counts bots, so one player and the server's bots
+(`bot_minPlayers`) can start a match; a match always needs a human, so
+bots alone stay in warmup, and a match whose last human leaves goes back
+to warmup. For a bot-only server, `set match_allow_no_humans 1`.
+
 ## Adding a variant
 
 A variant is another way to play a gametype. HoonyMode (Duel) is built in.

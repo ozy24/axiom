@@ -8,16 +8,17 @@ namespace
 {
 // Layout x, from the left of stock's 320-wide area. The `ctf` row draws the
 // frags at its x, the deaths 27 to the right and the name 54 to the right
-// (16 characters of 8 end at 142). The position goes left of it, where the
-// team board draws a captain's `*`.
-constexpr int kRankX = -64, kRowX = -40, kFphX = 166, kTimeX = 206, kPingX = 246, kReadyX = 274;
+// (16 characters of 8 end at 142). The position goes left of it. The board
+// spans -8 (the position) to 326 (Ping and the ready R): centred on 160, as
+// the header is (it sat 56 left of it: playtest 2026-10-29).
+constexpr int kRankX = -8, kRowX = 16, kFphX = 222, kTimeX = 262, kPingX = 302, kReadyX = 330;
 // The team board's rows (stock's CTFScoreboardMessage) and their ready marks:
 // just right of the captain's `*` (-64, 174), where MuffMode puts its tick.
 constexpr int kTeamRowX[2] = {-40, 200}, kTeamReadyX[2] = {-56, 182}, kTeamFirstRowY = 42;
 constexpr int kStampY = 8, kTitleY = 24, kFirstRowY = 36, kRowHeight = 8;
-constexpr int kSpectatorX[2] = {-40, 160};
-// The spectators' title and one line ("xv -40 yv 132 loc_string2 0 ..."
-// and "ctf -40 140 31 0 999 \"\" "), with room to spare.
+constexpr int kSpectatorX[2] = {16, 216};
+// The spectators' title and one line ("xv 16 yv 132 loc_string2 0 ..."
+// and "ctf 16 140 31 0 999 \"\" "), with room to spare.
 constexpr size_t kWatcherReserve = 80;
 
 std::string Text(const char *s)

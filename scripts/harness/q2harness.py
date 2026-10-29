@@ -19,6 +19,7 @@ Tiers (plan Phase 1b):
                  modes, boot q2dm1 with bots, log their "Gametype:" line and
                  shut down cleanly.
   5. match-flow  match_warmup on: warmup -> countdown -> live -> intermission
+                 (bot-only tiers set match_allow_no_humans 1: a match needs a human)
                  on the timelimit, counted from LIVE.
   6. duel        Three bots: two duel, one queues; the match ends, the loser
                  rotates to the back and a match record is written.
@@ -549,7 +550,7 @@ def tier_match_flow(args, results):
     """Warmup on: bots (always ready) run warmup -> countdown -> live, and the
     timelimit, counted from LIVE, ends it (docs/design/match-flow.md)."""
     rig = RIGS[args.engine_kind](args, args.candidate, "t5-match")
-    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1",
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1", "+set", "match_allow_no_humans", "1",
                 "+set", "match_countdown", "3", "+set", "timelimit", "0.25"] + rig.bot_args() + ["+map", "q2dm1"])
     # On both engines the bots count as playing clients (on Q2REX they begin
     # but don't fight), so the whole match runs.
@@ -576,7 +577,7 @@ def tier_duel(args, results):
     bots = (["+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "3", "+set", "bot_skill", "3"]
             if rig.kind == "q2red" else ["+set", "bot_minPlayers", "3"])
     startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", "duel",
-                "+set", "match_warmup", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
+                "+set", "match_warmup", "1", "+set", "match_allow_no_humans", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
                 "+set", "g_matchlog_dir", "matches"] + bots + ["+map", "q2dm1"])
     log = rig.run(startup, [rig.wait_ready(), ("wait", r"Duel: .* next: ", 90), ("sleep", 2), ("cmd", "quit")],
                   timeout=args.boot_timeout + 150)
@@ -639,7 +640,7 @@ def tier_duel_rotation(args, results):
         results.append(("10 duel-rotation", True, ["skipped: only two bots begin on this engine"]))
         return
     startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", "duel",
-                "+set", "match_warmup", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
+                "+set", "match_warmup", "1", "+set", "match_allow_no_humans", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
                 "+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "3", "+set", "bot_skill", "3",
                 "+map", "q2dm1"])
     log = rig.run(startup, [rig.wait_ready(), ("wait", r"Duel: .* next: ", 90), ("sleep", 2),
@@ -1032,7 +1033,7 @@ def tier_teams(args, results):
         bots = (["+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "4", "+set", "bot_skill", "3"]
                 if rig.kind == "q2red" else ["+set", "bot_minPlayers", "4"])
         startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", gt,
-                    "+set", "match_warmup", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
+                    "+set", "match_warmup", "1", "+set", "match_allow_no_humans", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
                     "+set", "g_matchlog_dir", "matches"] + bots + ["+map", GAMETYPE_MAP.get(gt, "q2dm1")])
         log = rig.run(startup, [rig.wait_ready(), ("wait", r"Match: ended", 90), ("sleep", 2), ("cmd", "quit")],
                       timeout=args.boot_timeout + 150)
@@ -1106,7 +1107,7 @@ def tier_rounds(args, results):
     if not rig.expects_frags:
         results.append(("7 rounds", True, ["skipped: bots don't fight in a bot-only match on this engine"]))
         return
-    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1",
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1", "+set", "match_allow_no_humans", "1",
                 "+set", "match_countdown", "3", "+set", "match_rounds", "1", "+set", "match_round_countdown", "2",
                 "+set", "timelimit", "3"] + rig.bot_args() + ["+map", "q2dm1"])
     # A frag ends the round (the pause), everyone respawns frozen (the
@@ -1259,7 +1260,7 @@ at 40 0 cmd vote yes
         detail.append("Alice was never shown the column scoreboard")
     else:
         board = boards[0]
-        rows = {int(m[0]): (int(m[1]), int(m[2])) for m in re.findall(r"ctf -40 \d+ (\d+) (-?\d+) (\d+) ", board)}
+        rows = {int(m[0]): (int(m[1]), int(m[2])) for m in re.findall(r"ctf 16 \d+ (\d+) (-?\d+) (\d+) ", board)}
         if set(rows) != set(humans.values()):
             detail.append(f"board rows for slots {sorted(rows)}, expected {sorted(humans.values())}")
         elif rows[humans["Bob"]] != (-1, 1):
@@ -1393,13 +1394,15 @@ def tier_human_readyvote(args, results):
     on BLUE, is refused), and Bob's yes readies RED; then Carol calls
     readyall, BLUE and Alice say yes, everyone is ready and the match goes
     live. Between the two, Carol's team board marks RED's two rows ready (a
-    green R) and nobody on BLUE. Q2RED only."""
+    green R) and nobody on BLUE. Dave suicides in the countdown and must be
+    back in before LIVE (playtest 2026-10-29: the countdown's fire hold also
+    held the respawn button). Q2RED only."""
     label = "19 human-readyvote"
     rig, why = scenario_rig(args, "t19-readyvote")
     if not rig:
         results.append((label, True, [f"skipped: {why}"]))
         return
-    script = """seconds 40
+    script = """seconds 50
 client 0 name=Alice social=sim-alice puppet
 client 1 name=Bob social=sim-bob puppet
 client 2 name=Carol social=sim-carol puppet
@@ -1415,13 +1418,17 @@ at 20 2 cmd score
 at 22 2 cmd callvote readyall
 at 24 3 cmd vote yes
 at 25 0 cmd vote yes
+at 31 3 cmd kill
 """
     rulesets = rig.dir / "baseq2" / "rulesets"
     rulesets.mkdir(parents=True, exist_ok=True)
-    (rulesets / "tdm.cfg").write_text("set match_ready 1\nset match_countdown 3\nset timelimit 5\n")
+    (rulesets / "tdm.cfg").write_text("set match_ready 1\nset match_countdown 10\nset timelimit 5\n")
     startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_vote_cooldown", "0",
                                      "+set", "g_ruleset", "tdm", "+map", "q2dm1"])
-    log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 100)
+    # Dave dies about 3 s into the countdown; 5 s later, still before LIVE,
+    # he must be playing again.
+    during = [("wait", r"Match: warmup -> countdown", 60), ("sleep", 8), ("cmd", "sv match")]
+    log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 110)
     tap = read_jsonl(rig.dir / "tap.jsonl")
     detail = []
     humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
@@ -1446,6 +1453,14 @@ at 25 0 cmd vote yes
     marks = re.findall(r"xv (-?\d+) yv -?\d+ string2 R ", boards[0]) if boards else []
     if marks != ["-56", "-56"]:
         detail.append(f"ready marks at x {marks} on Carol's board, expected RED's two (-56)")
+    countdown = log.find("Match: warmup -> countdown")
+    dumps_at = [m.start() for m in re.finditer(r"Match: countdown\n", log)]
+    if countdown < 0 or not re.search(r"Dave [^\n]*(suicide|kill)", log[countdown:]):
+        detail.append("Dave didn't die in the countdown")
+    elif not dumps_at:
+        detail.append("no `sv match` during the countdown (it went live too soon?)")
+    elif re.search(r"^\S*\s+-?\d+ Dave \(dead\)$", log[dumps_at[-1]:dumps_at[-1] + 400], re.M):
+        detail.append("Dave was still dead late in the countdown: he couldn't respawn")
     live = log.find("-> live")
     if live < 0:
         detail.append("the match never went live")

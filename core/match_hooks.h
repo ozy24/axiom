@@ -16,7 +16,8 @@ bool Core_Match_OwnsRules();
 bool Core_Match_Frozen(const edict_t *ent);
 
 // Whether a client may move but not fire: the match countdown. From
-// ClientThink, which then drops the fire button.
+// ClientThink, which then drops the fire button. Never the dead, so they can
+// press it to respawn.
 bool Core_Match_HoldFire(const edict_t *ent);
 
 // A suicide (or a death to the world) with match_suicide_point 1 and exactly

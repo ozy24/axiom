@@ -41,7 +41,11 @@ game plays.
   2026-10-29). The log names the loadout once a level (`Warmup: loadout
   ...`). The match going live respawns everyone with stock's start. Each
   player toggles `ready` (console command). The countdown starts when every
-  required player is ready, and there are at least `match_minplayers`. If
+  required player is ready, and there are at least `match_minplayers`
+  playing, bots counted (as MuffMode's `minplayers`: one human and the
+  engine's bot fill can start a match). A match also needs a human: bots
+  alone only ever warm up, unless `match_allow_no_humans 1` (Chris,
+  2026-10-29). If
   `match_warmup_time` > 0 it also starts when that runs out. It never starts
   in a level's first 10 seconds, nor while a human is still loading the map
   (up to 30 seconds in, so a stuck client can't hold it):
@@ -54,11 +58,18 @@ game plays.
   timelimit (then timed overtime); sudden death has no clock. `sv match`
   prints the state, every client's score and the team scores.
 - **COUNTDOWN:** `match_countdown` seconds, announced by centre-print each
-  second. Players can move but neither fire nor pick anything up. If a required player un-readies or leaves, back to WARMUP.
+  second. Players can move but neither fire nor pick anything up; the dead
+  can still press fire to respawn. If a required player un-readies or
+  leaves, back to WARMUP.
 - **LIVE:** on entry, the **arena reset** (below) runs and scores are zeroed.
   The end conditions are stock's (`timelimit`, `fraglimit`) plus the
   gametype's (`CheckDMRules` hook), so a gametype that ends on something else
-  (rounds, captures) uses its hook.
+  (rounds, captures) uses its hook. While one human is playing the match
+  goes on; when every human has left (LIVE, overtime or between rounds),
+  it goes back to WARMUP with the arena reset and scores zeroed, so the
+  next to arrive don't find a match the bots played (not with
+  `match_allow_no_humans 1`). Dropping below `match_minplayers` doesn't end
+  a match (MuffMode's does).
 - **Teams** (TDM, CTF): the match needs someone playing on each team to start
   (a client on no team isn't playing), and the lead, ties and sudden death go
   by **team score**: frags in TDM, captures in CTF. TDM's `fraglimit` applies
@@ -109,7 +120,8 @@ isn't a spectator. Every transition prints a `Match:` console line.
 |---|---|---|
 | `match_warmup` | `0` | 1: start in WARMUP (0 = stock: live immediately) |
 | `match_ready` | `1` | in warmup, require every player to `ready` |
-| `match_minplayers` | `2` | players needed before the countdown can start |
+| `match_minplayers` | `2` | players needed before the countdown can start, bots counted |
+| `match_allow_no_humans` | `0` | 1: bots may start and play a match with no human (a bot server); 0: a match needs a human, and goes back to warmup when the last one leaves |
 | `match_warmup_time` | `0` | seconds of warmup before starting anyway (0 = wait for ready) |
 | `match_countdown` | `10` | seconds (10 since the 2026-10-26 playtest) |
 | `match_overtime` | `0` | 0 none, -1 sudden death, N minutes |

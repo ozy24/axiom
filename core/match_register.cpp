@@ -40,8 +40,8 @@ cvar_t *g_matchlog_dir;
 gtime_t last_time;
 std::array<bool, MAX_CLIENTS> ready{};
 
-cvar_t *match_warmup, *match_ready, *match_minplayers, *match_warmup_time, *match_countdown, *match_overtime,
-    *match_rounds, *match_round_countdown, *match_round_pause, *match_suicide_point;
+cvar_t *match_warmup, *match_ready, *match_minplayers, *match_allow_no_humans, *match_warmup_time, *match_countdown,
+    *match_overtime, *match_rounds, *match_round_countdown, *match_round_pause, *match_suicide_point;
 
 void RegisterCvars()
 {
@@ -50,6 +50,7 @@ void RegisterCvars()
 	match_warmup = gi.cvar("match_warmup", "0", CVAR_NOFLAGS);
 	match_ready = gi.cvar("match_ready", "1", CVAR_NOFLAGS);
 	match_minplayers = gi.cvar("match_minplayers", "2", CVAR_NOFLAGS);
+	match_allow_no_humans = gi.cvar("match_allow_no_humans", "0", CVAR_NOFLAGS);
 	match_warmup_time = gi.cvar("match_warmup_time", "0", CVAR_NOFLAGS);
 	match_countdown = gi.cvar("match_countdown", "10", CVAR_NOFLAGS);
 	match_overtime = gi.cvar("match_overtime", "0", CVAR_NOFLAGS);
@@ -69,6 +70,7 @@ MatchConfig ReadConfig()
 	c.enabled = deathmatch->integer && match_warmup->integer;
 	c.ready_required = match_ready->integer != 0;
 	c.min_players = match_minplayers->integer;
+	c.allow_no_humans = match_allow_no_humans->integer != 0;
 	c.warmup_time_ms = (int64_t)(match_warmup_time->value * 1000);
 	c.countdown_ms = (int64_t)(match_countdown->value * 1000);
 	c.overtime = match_overtime->integer;
@@ -123,6 +125,7 @@ MatchInput Snapshot()
 		if (!ent->inuse && !p.joining)
 			continue;
 		p.playing = Playing(ent);
+		p.bot = (ent->svflags & SVF_BOT) != 0;
 		// Bots can't type `ready`; they never hold a match up.
 		p.ready = ready[i] || (ent->svflags & SVF_BOT);
 		p.score = ent->client->resp.score;
@@ -519,7 +522,9 @@ bool Core_Match_ServerCommand(const char *cmd)
 		if (!ent->inuse || !ent->client || !ent->client->pers.connected)
 			continue;
 		gi.Com_PrintFmt("  {:4} {}{}\n", ent->client->resp.score, Core_PlayerName(ent).c_str(),
-		                Playing(ent) ? "" : " (not playing)");
+		                !Playing(ent)   ? " (not playing)"
+		                : ent->deadflag ? " (dead)"
+		                                : "");
 	}
 	return true;
 }
@@ -578,7 +583,9 @@ void Core_Match_SetStats(edict_t *ent)
 
 bool Core_Match_HoldFire(const edict_t *ent)
 {
-	return Core_Match_OwnsRules() && match.HoldFire() && Playing(ent);
+	// Not the dead: fire is also the respawn button, and someone who died as
+	// the countdown began was stuck until LIVE (playtest 2026-10-29).
+	return Core_Match_OwnsRules() && match.HoldFire() && Playing(ent) && !ent->deadflag;
 }
 
 bool Core_Match_Frozen(const edict_t *ent)
