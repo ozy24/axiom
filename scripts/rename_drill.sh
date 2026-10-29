@@ -21,6 +21,8 @@ import json, sys
 path, name, ident = sys.argv[1:]
 mod = json.load(open(path))
 mod["name"], mod["id"] = name, ident
+if "repository" in mod:  # a renamed mod has its own page (the Tab menu's About shows it)
+    mod["repository"] = f"https://example.invalid/{ident}"
 json.dump(mod, open(path, "w"), indent=2)
 PY
 
