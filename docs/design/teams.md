@@ -59,8 +59,8 @@ whole argument, so a name with spaces needs no quotes.
 
 - `RED is locked.` / `RED is unlocked.` to everyone; `Alice is captain of RED.`
   when the captaincy changes; `RED is locked.` to a player refused.
-- The Tab menu: a locked team you can't join reads "Join Red (locked)" and
-  is skipped. Match Info shows each team's captain and lock. A captain has
+- The Tab menu: a locked team reads "Join Red [LOCKED]", and is skipped
+  if you aren't on its roster. Match Info shows each team's captain and lock. A captain has
   a **Team** page: Lock or Unlock Team, Ready Team in ready-up, and their
   teammates; each opens Make Captain and Kick from Team.
 - The server log: `Teams: RED locked`, `Teams: RED captain Alice`, and so on.

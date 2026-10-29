@@ -413,26 +413,27 @@ TEST_CASE("menu: setting votes follow the kinds, each opening its choices")
 	CHECK(Row(Core_Menu_VoteSetting(v, "powerups"), "Off")->arg == "powerups off");
 }
 
-TEST_CASE("menu: a locked team shows locked and can't be chosen, unless you're on its roster")
+TEST_CASE("menu: a locked team always shows [LOCKED]; only its roster can choose it")
 {
 	MenuView v = Teams();
 	v.team_locked[1] = true;
 	v.team_may_join[1] = false;
 	MenuPage page = Core_Menu_Main(v);
-	CHECK(Shows(page, "Join Red (locked)"));
+	CHECK(Shows(page, "Join Red [LOCKED]"));
 	CHECK(RowOf(page, MenuAction::JoinRed) == -1);
+	CHECK(Shows(page, "Join Blue"));
 	CHECK(RowOf(page, MenuAction::JoinBlue) >= 0);
 
-	v.team_may_join[1] = true; // a rostered player coming back
+	v.team_may_join[1] = true; // a rostered player coming back: still marked
 	page = Core_Menu_Main(v);
-	CHECK(RowOf(page, MenuAction::JoinRed) >= 0);
+	CHECK(Row(page, "Join Red [LOCKED]")->action == MenuAction::JoinRed);
 
 	// Your own team stays listed as yours, locked or not.
 	v.team = 1;
 	v.team_may_join[1] = false;
 	page = Core_Menu_Main(v);
-	REQUIRE(Row(page, "Join Red"));
-	CHECK(Row(page, "Join Red")->highlight);
+	REQUIRE(Row(page, "Join Red [LOCKED]"));
+	CHECK(Row(page, "Join Red [LOCKED]")->highlight);
 }
 
 TEST_CASE("menu: match info names each team's captain and lock")
@@ -441,7 +442,7 @@ TEST_CASE("menu: match info names each team's captain and lock")
 	v.team_captain[1] = "Ozy";
 	v.team_locked[1] = true;
 	const MenuPage page = Core_Menu_MatchInfo(v);
-	CHECK(Shows(page, "Red (locked): Ozy"));
+	CHECK(Shows(page, "Red [LOCKED]: Ozy"));
 	CHECK(Shows(page, "Blue: none"));
 	CHECK_FALSE(Shows(Core_Menu_MatchInfo(Ffa()), "Blue: none"));
 }

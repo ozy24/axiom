@@ -43,7 +43,8 @@ stock `gamerules` modes keep stock's.
   - in warmup: Ready or Not Ready;
   - a team's captain: Team (captain).
 
-  A locked team you can't join reads "Join Red (locked)" and is skipped.
+  A locked team always reads "Join Red [LOCKED]" (Chris, 2026-10-29); if
+  you aren't on its roster, the row is skipped.
 
   After those come Match Info, then Call a Vote when you may call one, and
   Close at the foot. A choice that is already the case (your team, your vote answer) is
