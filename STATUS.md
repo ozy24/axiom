@@ -260,10 +260,8 @@ Done (branch `scoreboard/duel`; Chris finished testing it on 2026-10-29):
 
 ## Handover (2026-10-29, end of a long session)
 
-**Branch `scoreboard/duel`:** Chris finished testing it on 2026-10-29; PR
-#34. The rename drill failed on it: About puts mod.json's `repository` in
-the binary, and the drill kept the real URL. The drill now gives the
-renamed mod a dummy repository too.
+**Branch `scoreboard/duel`:** merged as #34 (2026-10-29). The rename drill
+now gives the renamed mod a dummy `repository` too (About shows it).
 
 **The playtest rig** (`~/q2playtest`, `./run.sh`, `./cmd.sh "<console>"`):
 Duel on q2dm1 with the branch's build. Deploy with a temp file and `mv`,
@@ -281,7 +279,13 @@ does, not stock's suicide-per-player team change). In `g_vote_allow`'s
 default; "Shuffle Teams" on the Call a Vote page. No `balance` vote: no
 ratings (Chris). Harness tier 20 (checked against a build that logs the
 split but doesn't move anyone: fails on the team skins). Tiers 12, 17,
-19 and 20 pass locally. Not playtested; waiting for Chris's look on the rig.
+19 and 20 pass locally. On the same branch, ready marks: a green `R` by
+each ready player in ready-up, on the team board right of the captain's
+`*` (x -56 / 182) and on the FFA board right of Ping; bots always ready.
+Not MuffMode's tick picture: a stock client draws it 24x24 and covers the
+row (MuffMode shrinks it in its own client code). Duel keeps its tick.
+Chris checked the shuffle and the team board's R on the rig (2026-10-29);
+the FFA R is untested on a client. PR once he's done.
 
 **After that, Chris's options** (he hadn't chosen): Clan Arena as a TDM
 ruleset (elimination rounds that count the living, a spawn loadout,
