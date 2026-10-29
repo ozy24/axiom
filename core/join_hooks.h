@@ -27,3 +27,7 @@ void Core_Join_Run(edict_t *ent, bool join);
 // it. The key is written here, as PutClientInServer re-reads it.
 void Core_Join_SetSpectator(edict_t *ent, bool spectator);
 void Core_Join_SetSpectatorInfo(edict_t *ent, bool spectator); // the key alone
+
+// From the end of ClientUserinfoChanged: the userinfo a KEX client sends has
+// no `spectator` key, so the server's decision (above) is put back.
+void Core_Join_UserinfoChanged(edict_t *ent);

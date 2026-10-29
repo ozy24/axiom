@@ -2675,6 +2675,7 @@ void ClientUserinfoChanged(edict_t *ent, const char *userinfo)
 
 	// save off the userinfo in case we want to check something later
 	Q_strlcpy(ent->client->pers.userinfo, userinfo, sizeof(ent->client->pers.userinfo));
+	Core_Join_UserinfoChanged(ent); // [mod] the server's spectator decision, which KEX userinfo lacks
 }
 
 inline bool IsSlotIgnored(edict_t *slot, edict_t **ignore, size_t num_ignore)

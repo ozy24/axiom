@@ -813,7 +813,7 @@ at 30 0 cmd score
     # ozbot presses no button at intermission, so the level change that a
     # human's press would trigger is issued here (`gamemap`, as ExitLevel does).
     during = [("sleep", 11), ("cmd", "sv match"), ("wait", r"Duel: .* next: ", 80), ("sleep", 3),
-              ("cmd", "gamemap q2dm1")]
+              ("cmd", "gamemap q2dm1"), ("sleep", 12), ("cmd", "sv match")]
     log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 180)
     tap = read_jsonl(rig.dir / "tap.jsonl")
     detail = []
@@ -893,12 +893,12 @@ at 30 0 cmd score
         detail.append("no Duel result line")
     else:
         loser = m.group(1)
-        ended = next((r["t"] for r in tap if r.get("type") == "layout" and "m_eou_press_button" in r["text"]), 0)
-        later = [r for r in tap if r.get("type") == "stufftext" and r["t"] > ended and "spectator" in r["text"]]
-        spec = {r["to"]: r["text"].strip() for r in later}
-        if spec.get(humans.get(loser)) != "spectator 1" or spec.get(carol) != "spectator 0":
-            detail.append(f"after the map change: {spec} (slots {humans}), expected {loser} spectating "
-                          "and Carol playing")
+        # `sv match` after the map change: who plays (the KEX client gets no
+        # stuffed `spectator`, so the server's report is what shows it).
+        dumps = sv_match_dumps(log)
+        after = dumps[-1] if len(dumps) >= 2 else {}
+        if after.get(loser) is not False or after.get("Carol") is not True:
+            detail.append(f"after the map change: playing {after}, expected {loser} spectating and Carol playing")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]
@@ -1475,6 +1475,7 @@ client 1 name=Bob social=sim-bob puppet
 client 2 name=Dave social=sim-dave puppet
 at 6 0 cmd join
 at 7 1 cmd invuse
+at 8 2 cmd spectator 1
 """, [("sleep", 14), ("cmd", "sv match"), ("cmd", "gamemap q2dm2"), ("sleep", 20), ("cmd", "sv match"),
       ("cmd", "map q2dm3"), ("sleep", 20), ("cmd", "sv match")]),
         "duel": ("""seconds 50
@@ -1531,6 +1532,18 @@ at 6 1 cmd team blue
                 detail.append(f"Dave's menu opened on {sorted(menus)}, expected on {sorted(levels)}")
             if gt == "duel" and "Bob joins the duel queue" not in log:
                 detail.append("Bob didn't join the queue from the menu")
+            # The KEX client sends a stuffed `spectator 1` straight back as a
+            # command (playtest 2026-10-29: "invalid game command"): the
+            # watcher is sent none, and the echo is answered with nothing.
+            dave = humans.get("Dave")
+            stuffed = [r["text"].strip() for r in tap if r.get("type") == "stufftext" and r.get("to") == dave
+                       and "spectator" in r["text"]]
+            if stuffed:
+                detail.append(f"Dave (watching) was sent {stuffed}")
+            said = [" ".join([r.get("base", r.get("text", ""))] + r.get("args", [])) for r in tap
+                    if r.get("type") in ("locprint", "print") and r.get("to") == dave]
+            if gt == "ffa" and any("invalid game command" in t for t in said):
+                detail.append("Dave's `spectator 1` was answered with 'invalid game command'")
         detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
         if rig.returncode != 0:
             detail.append(f"server exited with code {rig.returncode}")

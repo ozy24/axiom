@@ -28,6 +28,11 @@ bool begun = false;
 gtime_t last_time;
 std::array<bool, MAX_CLIENTS> plays{};        // Core_Join_Begin's decision
 std::array<bool, MAX_CLIENTS> menu_pending{}; // open the menu once they're in
+// FFA and Duel: each client's spectating as the server decided it, by key
+// (core/player_name.h). The KEX client keeps no `spectator` userinfo, so
+// every userinfo it sends would otherwise clear the key (and, five seconds
+// later, put a spectator into play).
+std::array<std::pair<std::string, bool>, MAX_CLIENTS> decided{};
 
 // At a level change every human reconnects, one by one; for this long into
 // a level, the last level's players come back as they were (as Duel's queue).
@@ -108,13 +113,20 @@ int Smaller(const edict_t *ent)
 
 void Core_Join_SetSpectatorInfo(edict_t *ent, bool spectator)
 {
+	// The server's copy only: a stuffed `spectator 1` isn't a setting on the
+	// KEX client, which sends it back as an unknown command (playtest
+	// 2026-10-29: "invalid game command"). Core_Join_UserinfoChanged keeps it.
 	gi.Info_SetValueForKey(ent->client->pers.userinfo, "spectator", spectator ? "1" : "0");
-	if (!(ent->svflags & SVF_BOT))
-	{
-		gi.WriteByte(svc_stufftext);
-		gi.WriteString(spectator ? "spectator 1\n" : "spectator 0\n");
-		gi.unicast(ent, true);
-	}
+	decided[SlotOf(ent)] = {Core_PlayerKey(ent), spectator};
+}
+
+void Core_Join_UserinfoChanged(edict_t *ent)
+{
+	const auto &[key, spectator] = decided[SlotOf(ent)];
+	if (key.empty() || key != Core_PlayerKey(ent))
+		return;
+	gi.Info_SetValueForKey(ent->client->pers.userinfo, "spectator", spectator ? "1" : "0");
+	ent->client->pers.spectator = spectator;
 }
 
 void Core_Join_SetSpectator(edict_t *ent, bool spectator)
@@ -241,6 +253,10 @@ void Core_Join_Run(edict_t *ent, bool join)
 
 bool Core_Join_ClientCommand(edict_t *ent, const char *cmd)
 {
+	// Stock's spectator_respawn stuffs `spectator 0` / `1`, which the KEX
+	// client sends straight back as a command: nothing to do, nothing to say.
+	if (!Q_strcasecmp(cmd, "spectator"))
+		return true;
 	const bool join = !Q_strcasecmp(cmd, "join");
 	if (!join && Q_strcasecmp(cmd, "spectate"))
 		return false;

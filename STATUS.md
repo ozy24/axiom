@@ -250,6 +250,13 @@ In progress (branch `scoreboard/duel`, waiting for Chris's look):
   death. Tiers 9 and 14 check it. In the countdown, no item pickups (as
   no firing); not covered by a harness check yet.
 - Tab menu: About (name, version, build, mod.json's `repository`).
+- Fixed: "invalid game command \"spectator\"" on the KEX client, which sends a
+  stuffed `spectator 0/1` back as a command. We no longer stuff it, the echo
+  of stock's own is ignored, and the server's spectator choice survives a
+  userinfo change (KEX userinfo has no `spectator` key, so a name change
+  used to put an FFA spectator into play). Tier 18 checks the first two;
+  the sim client can't change userinfo mid-game, so the third is untested.
+  Tier 11 now reads the Duel rotation from `sv match`.
 Then Clan Arena as a TDM ruleset (elimination rounds that count the
 living, spawn loadout, `match_lock 1`). Then Phase 4's remainder - Chris has other features to work through first,
 then timeouts/pauses, admin controls, per-gametype scoreboards (an
