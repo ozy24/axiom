@@ -22,7 +22,8 @@ enum class MenuAction
 	Ready,
 	NotReady,
 	MatchInfo,
-	Back, // to the main page
+	About, // the mod's name, version and page
+	Back,  // to the main page
 	Close,
 	VoteYes, // the open vote (core/vote.h)
 	VoteNo,
@@ -157,6 +158,12 @@ struct MenuView
 	std::string team_captain[3];                        // the captain's name; empty: none
 	bool captain = false;                               // this player captains their team
 	std::vector<std::pair<int, std::string>> teammates; // a captain's: (client number, name), humans but them
+
+	// About (mod.json, through mod_identity.h).
+	std::string mod_name;    // MOD_NAME
+	std::string mod_version; // "0.1.0"
+	std::string mod_build;   // the commit: "452d70fb"
+	std::string mod_page;    // MOD_REPOSITORY: the project's page; may be empty
 };
 
 // The main page, and the row its cursor starts on (team modes: the team
@@ -166,6 +173,9 @@ int Core_Menu_MainCursor(const MenuPage &page, const MenuView &view);
 
 // The settings the match runs under.
 MenuPage Core_Menu_MatchInfo(const MenuView &view);
+
+// About: the mod's name, version, build and page.
+MenuPage Core_Menu_About(const MenuView &view);
 
 // Call a Vote: the allowed kinds; restart is called from here, the others
 // open their choice list.

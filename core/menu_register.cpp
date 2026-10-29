@@ -4,6 +4,7 @@
 // forward / back for a free spectator), selecting (invuse, fire, jump),
 // putaway, closing for the scoreboard, and the 3-second refresh.
 #include "g_local.h"
+#include "mod_identity.h"
 
 #include "core/gametype.h"
 #include "core/maps_hooks.h"
@@ -26,6 +27,7 @@ enum class Page : int32_t
 {
 	Main,
 	MatchInfo,
+	About,
 	CallVote,
 	VoteMaps,
 	VoteGametypes,
@@ -63,6 +65,10 @@ MenuView View(const edict_t *ent)
 	MenuView v;
 	const GametypeDef *gt = Core_Gametype_Active();
 	v.hostname = gi.cvar("hostname", "", CVAR_NOFLAGS)->string;
+	v.mod_name = MOD_NAME;
+	v.mod_version = MOD_VERSION;
+	v.mod_build = MOD_BUILD;
+	v.mod_page = MOD_REPOSITORY;
 	v.gametype = gt ? gt->title : "";
 	v.map = *level.level_name ? level.level_name : level.mapname;
 	v.map_file = level.mapname;
@@ -140,6 +146,8 @@ MenuPage Build(const edict_t *ent, Page page, const char *gametype)
 		return Core_Menu_Main(view);
 	case Page::MatchInfo:
 		return Core_Menu_MatchInfo(view);
+	case Page::About:
+		return Core_Menu_About(view);
 	case Page::CallVote:
 		return Core_Menu_CallVote(view);
 	case Page::VoteMaps:
@@ -254,6 +262,9 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 		break;
 	case MenuAction::MatchInfo:
 		Open(ent, Page::MatchInfo);
+		break;
+	case MenuAction::About:
+		Open(ent, Page::About);
 		break;
 	case MenuAction::Back:
 		Open(ent, Page::Main);

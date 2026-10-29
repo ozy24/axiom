@@ -202,6 +202,10 @@ MenuPage Core_Menu_Main(const MenuView &v)
 	Add(page, "Match Info", MenuAction::MatchInfo);
 	if (v.vote_can_call)
 		Add(page, "Call a Vote", MenuAction::CallVote);
+	// About sits at the bottom, just above Close.
+	while ((int)page.size() < kMenuRows - 2)
+		page.push_back({});
+	Add(page, "About", MenuAction::About);
 	Footer(page, {"Close", MenuAlign::Left, MenuAction::Close, false, {}});
 	return page;
 }
@@ -219,6 +223,27 @@ int Core_Menu_MainCursor(const MenuPage &page, const MenuView &v)
 			return i;
 	}
 	return Core_Menu_Next(page, -1);
+}
+
+MenuPage Core_Menu_About(const MenuView &v)
+{
+	MenuPage page;
+	Title(page, "About", true);
+	Add(page, "");
+	Add(page, Core_Menu_Clean(v.mod_name + " " + v.mod_version), MenuAction::None, MenuAlign::Center);
+	Add(page, Core_Menu_Clean("build " + v.mod_build), MenuAction::None, MenuAlign::Center);
+	if (!v.mod_page.empty())
+	{
+		// The page without its scheme: shorter, and how people type it.
+		std::string link = v.mod_page;
+		for (const char *scheme : {"https://", "http://"})
+			if (link.rfind(scheme, 0) == 0)
+				link = link.substr(std::string(scheme).size());
+		Add(page, "");
+		Add(page, Core_Menu_Clean(link), MenuAction::None, MenuAlign::Center, true);
+	}
+	Footer(page, {"$g_pc_return", MenuAlign::Left, MenuAction::Back, false, {}});
+	return page;
 }
 
 MenuPage Core_Menu_MatchInfo(const MenuView &v)

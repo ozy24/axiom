@@ -161,11 +161,13 @@ TEST_CASE("menu cursor: skips text rows and wraps, as stock's")
 	const int join = RowOf(page, MenuAction::JoinGame);
 	const int chase = RowOf(page, MenuAction::Chase);
 	const int info = RowOf(page, MenuAction::MatchInfo);
+	const int about = RowOf(page, MenuAction::About);
 	const int close = RowOf(page, MenuAction::Close);
 	CHECK(Core_Menu_Next(page, -1) == join);
 	CHECK(Core_Menu_Next(page, join) == chase);
 	CHECK(Core_Menu_Next(page, chase) == info);
-	CHECK(Core_Menu_Next(page, info) == close);
+	CHECK(Core_Menu_Next(page, info) == about);
+	CHECK(Core_Menu_Next(page, about) == close);
 	CHECK(Core_Menu_Next(page, close) == join); // wraps
 	CHECK(Core_Menu_Prev(page, join) == close);
 	CHECK(Core_Menu_Next(MenuPage(3), -1) == -1);
@@ -207,15 +209,15 @@ TEST_CASE("menu: FFA spectator joins or chases; a player can spectate")
 {
 	MenuView v = Ffa();
 	MenuPage page = Core_Menu_Main(v);
-	CHECK(Actions(page) ==
-	      std::vector<MenuAction>{MenuAction::JoinGame, MenuAction::Chase, MenuAction::MatchInfo, MenuAction::Close});
+	CHECK(Actions(page) == std::vector<MenuAction>{MenuAction::JoinGame, MenuAction::Chase, MenuAction::MatchInfo,
+	                                               MenuAction::About, MenuAction::Close});
 	CHECK(Shows(page, "Join the Match"));
 	v.chasing = true;
 	CHECK(RowOf(Core_Menu_Main(v), MenuAction::StopChase) >= 0);
 	v.playing = true;
 	v.chasing = false;
 	CHECK(Actions(Core_Menu_Main(v)) ==
-	      std::vector<MenuAction>{MenuAction::Spectate, MenuAction::MatchInfo, MenuAction::Close});
+	      std::vector<MenuAction>{MenuAction::Spectate, MenuAction::MatchInfo, MenuAction::About, MenuAction::Close});
 }
 
 TEST_CASE("menu: ready-up only for a player, only while it's on")
@@ -253,7 +255,7 @@ TEST_CASE("menu: teams list both sides; the cursor starts on the smaller team")
 	CHECK(Shows(page, "Join Red"));
 	CHECK(std::any_of(page.begin(), page.end(), [](const MenuRow &r) { return r.text == "Join Red" && r.highlight; }));
 	CHECK(Actions(page) == std::vector<MenuAction>{MenuAction::JoinBlue, MenuAction::Spectate, MenuAction::MatchInfo,
-	                                               MenuAction::Close});
+	                                               MenuAction::About, MenuAction::Close});
 }
 
 TEST_CASE("menu: Duel offers joining or leaving the queue (the queue is on its scoreboard)")
@@ -261,15 +263,15 @@ TEST_CASE("menu: Duel offers joining or leaving the queue (the queue is on its s
 	MenuView v = Ffa();
 	v.duel = true;
 	MenuPage page = Core_Menu_Main(v);
-	CHECK(Actions(page) ==
-	      std::vector<MenuAction>{MenuAction::JoinGame, MenuAction::Chase, MenuAction::MatchInfo, MenuAction::Close});
+	CHECK(Actions(page) == std::vector<MenuAction>{MenuAction::JoinGame, MenuAction::Chase, MenuAction::MatchInfo,
+	                                               MenuAction::About, MenuAction::Close});
 	CHECK(Row(page, "Join Queue")->action == MenuAction::JoinGame);
 	CHECK(Core_Menu_MainCursor(page, v) == RowOf(page, MenuAction::JoinGame)); // a new arrival's first choice
 	v.queued = true;                                                           // waiting
 	CHECK(Row(Core_Menu_Main(v), "Leave Queue")->action == MenuAction::Spectate);
 	v.playing = true; // duelling
 	CHECK(Actions(Core_Menu_Main(v)) ==
-	      std::vector<MenuAction>{MenuAction::Spectate, MenuAction::MatchInfo, MenuAction::Close});
+	      std::vector<MenuAction>{MenuAction::Spectate, MenuAction::MatchInfo, MenuAction::About, MenuAction::Close});
 }
 
 TEST_CASE("menu: match info names the rules, and returns to the main page")
@@ -506,4 +508,24 @@ TEST_CASE("menu: a team too big for the page points to the console commands")
 	const MenuPage page = Core_Menu_Team(v);
 	CHECK(Shows(page, "More: teamkick / captain"));
 	CHECK(page.size() == (size_t)kMenuRows);
+}
+
+TEST_CASE("menu: About sits just above Close, and shows the mod, its build and its page")
+{
+	MenuView v = Ffa();
+	const MenuPage main = Core_Menu_Main(v);
+	REQUIRE(main.size() == (size_t)kMenuRows);
+	CHECK(main[kMenuRows - 2].action == MenuAction::About);
+	CHECK(main[kMenuRows - 1].action == MenuAction::Close);
+	v.mod_name = "Mod";
+	v.mod_version = "1.2.3";
+	v.mod_build = "abcd1234";
+	v.mod_page = "https://github.com/someone/mod";
+	const MenuPage about = Core_Menu_About(v);
+	CHECK(Row(about, "Mod 1.2.3"));
+	CHECK(Row(about, "build abcd1234"));
+	CHECK(Row(about, "github.com/someone/mod"));
+	CHECK(about.back().action == MenuAction::Back);
+	v.mod_page.clear();
+	CHECK_FALSE(Row(Core_Menu_About(v), "github.com/someone/mod"));
 }

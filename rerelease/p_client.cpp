@@ -6,6 +6,7 @@
 #include "core/vote_hooks.h" // [mod]
 #include "core/join_hooks.h" // [mod]
 #include "core/scoreboard_hooks.h" // [mod]
+#include "core/warmup_hooks.h" // [mod]
 #include "m_player.h"
 #include "bots/bot_includes.h"
 
@@ -575,7 +576,8 @@ DIE(player_die) (edict_t *self, edict_t *inflictor, edict_t *attacker, int damag
 
 		CTFFragBonuses(self, inflictor, attacker);
 		// ZOID
-		TossClientWeapon(self);
+		if (!Core_Warmup_KeepsWeapons(self)) // [mod] warmup: no drops
+			TossClientWeapon(self);
 		// ZOID
 		CTFPlayerResetGrapple(self);
 		CTFDeadDropFlag(self);
@@ -2298,6 +2300,8 @@ void PutClientInServer(edict_t *ent)
 		if (!deathmatch->integer)
 			client->pers.inventory[IT_KEY_NUKE] = 1;
 	}
+
+	Core_Warmup_Loadout(ent); // [mod] warmup: the map's weapons, full ammo, the best in hand
 
 	// force the current weapon up
 	client->newweapon = client->pers.weapon;

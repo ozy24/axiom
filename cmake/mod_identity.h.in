@@ -5,3 +5,4 @@
 #define MOD_ID "@MOD_ID@"
 #define MOD_VERSION "@MOD_VERSION@"
 #define MOD_BUILD "@MOD_BUILD@"
+#define MOD_REPOSITORY "@MOD_REPOSITORY@" // may be empty

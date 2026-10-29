@@ -94,6 +94,7 @@ else.
 
 | | Default | |
 |---|---|---|
+| `match_warmup_weapons` | 1 | in warmup, everyone has every weapon the map places, with full ammo; 0 = stock's start |
 | `match_lock` | 1 in `tdm` and `ctf` | lock both teams as the match goes live; 0 = only when a captain locks |
 
 From the console: `sv lockteam red|blue`, `sv unlockteam red|blue`, and

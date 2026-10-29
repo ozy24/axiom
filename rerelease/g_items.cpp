@@ -1,6 +1,7 @@
 // Copyright (c) ZeniMax Media Inc.
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
+#include "core/match_hooks.h" // [mod]
 #include "core/eyecam_hooks.h" // [mod]
 #include "bots/bot_includes.h"
 
@@ -931,6 +932,8 @@ TOUCH(Touch_Item) (edict_t *ent, edict_t *other, const trace_t &tr, bool other_t
 	// ZOID
 	if (CTFMatchSetup())
 		return; // can't pick stuff up right now
+	if (Core_Match_HoldFire(other)) // [mod] the match countdown: no pickups either
+		return;                       // [mod]
 				// ZOID
 
 	taken = ent->item->pickup(ent, other);

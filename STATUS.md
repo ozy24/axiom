@@ -242,8 +242,14 @@ only the `ctf` layout row decodes a `##P` name token: `string`,
 `loc_string` and its `{}` arguments all show `##P0`, and `%s` isn't
 supported. So the name always comes after two numbers. Right-aligned
 `loc_rstring` numbers line up.
-In progress: Duel's scoreboard (decision 0019, branch `scoreboard/duel`),
-waiting for Chris's look.
+In progress (branch `scoreboard/duel`, waiting for Chris's look):
+- Duel's scoreboard (decision 0019); the menu's Duel Queue row is gone
+  (the board shows the queue).
+- Warmup loadout: `match_warmup_weapons 1` (default) gives everyone in
+  warmup every weapon the map places, with full ammo, and no drops on
+  death. Tiers 9 and 14 check it. In the countdown, no item pickups (as
+  no firing); not covered by a harness check yet.
+- Tab menu: About (name, version, build, mod.json's `repository`).
 Then Clan Arena as a TDM ruleset (elimination rounds that count the
 living, spawn loadout, `match_lock 1`). Then Phase 4's remainder - Chris has other features to work through first,
 then timeouts/pauses, admin controls, per-gametype scoreboards (an

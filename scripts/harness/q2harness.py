@@ -1081,6 +1081,11 @@ def tier_warmup(args, results):
         detail.append("no scores in the `sv match` report")
     elif any(scores):
         detail.append(f"scores {scores} in warmup, expected all 0")
+    # The warmup loadout (match_warmup_weapons, on by default): every weapon
+    # q2dm1 places - not the BFG, which it doesn't.
+    loadout = next((l for l in log.splitlines() if "Warmup: loadout " in l), "")
+    if "weapon_railgun" not in loadout or "weapon_bfg" in loadout:
+        detail.append(f"warmup loadout line {loadout!r}, expected q2dm1's weapons with the railgun")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]
@@ -1128,7 +1133,9 @@ def tier_human_vote(args, results):
     rulesets/ffa.cfg that holds the warmup open). A map vote two of them refuse fails; its caller
     can't call again at once; a map off the list is refused with the list;
     then a vote one other player answers with stock's `yes` passes, shows on
-    the HUD's status line, and loads the map. Q2RED only."""
+    the HUD's status line, and loads the map. In the warmup Carol has the
+    map's railgun (the warmup loadout) but not the BFG it doesn't place.
+    Q2RED only."""
     rig, why = scenario_rig(args, "t14-vote")
     if not rig:
         results.append(("14 human-vote", True, [f"skipped: {why}"]))
@@ -1141,6 +1148,8 @@ at 8 0 cmd callvote map q2dm2
 at 9 1 cmd vote no
 at 9 2 cmd vote no
 at 12 0 cmd callvote map q2dm3
+at 10 2 cmd use railgun
+at 11 2 cmd use bfg10k
 at 13 1 cmd callvote map q2dm9
 at 14 1 cmd callvote map q2dm3
 at 15 2 cmd yes
@@ -1172,6 +1181,9 @@ at 15 2 cmd yes
         detail.append("Alice's second call wasn't refused for the cooldown")
     if not any("Maps: q2dm1 q2dm2" in t for t in to("Bob")):
         detail.append("Bob's call for q2dm9 wasn't answered with the map list")
+    out_of = [r["args"] for r in locs if r["to"] == humans["Carol"] and r["base"] == "$g_out_of_item"]
+    if out_of != [["$item_bfg10k"]]:
+        detail.append(f"Carol's `use` refusals {out_of}, expected the BFG's alone (the railgun is the loadout's)")
     texts = [r["text"] for r in tap if r.get("type") == "configstring" and r["text"].startswith("VOTE")]
     for line in ("VOTE: MAP Q2DM2 - YES 1/3 - ", "VOTE: MAP Q2DM3 - YES 1/3 - ", "VOTE PASSED"):
         if not any(t.startswith(line) for t in texts):
