@@ -37,7 +37,7 @@ int Core_SuicideOpponent(const std::vector<MatchPlayer> &players, int self);
 
 struct MatchConfig
 {
-	bool enabled = false;              // match_warmup: false = stock (live immediately)
+	bool enabled = false;              // match_flow: false = stock (live immediately)
 	bool ready_required = true;        // match_ready
 	int min_players = 2;               // match_minplayers: playing clients, bots too
 	bool allow_no_humans = false;      // match_allow_no_humans: bots may play a match alone

@@ -20,7 +20,7 @@ keeps the model MuffMode had before them, a cfg per gametype:
    Arena or Instagib CTF) applies on top of its gametype's config. A built-in
    variant states only its differences (`hoony`: rounds, the suicide point,
    first to 5). An admin's own variant is `rulesets/<gametype>_<name>.cfg`,
-   offered for voting by listing it in `g_rulesets`.
+   offered for voting by listing it in `g_ruleset_variants`.
 
 Every switch (`sv ruleset`, a vote, a new `g_ruleset` at the next map) runs
 the same steps:

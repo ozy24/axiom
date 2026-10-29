@@ -18,7 +18,7 @@ Tiers (plan Phase 1b):
   4. gametype-boot  Every registered gametype, and Rogue's stock gamerules
                  modes, boot q2dm1 with bots, log their "Gametype:" line and
                  shut down cleanly.
-  5. match-flow  match_warmup on: warmup -> countdown -> live -> intermission
+  5. match-flow  match_flow on: warmup -> countdown -> live -> intermission
                  (bot-only tiers set match_allow_no_humans 1: a match needs a human)
                  on the timelimit, counted from LIVE.
   6. duel        Three bots: two duel, one queues; the match ends, the loser
@@ -550,7 +550,7 @@ def tier_match_flow(args, results):
     """Warmup on: bots (always ready) run warmup -> countdown -> live, and the
     timelimit, counted from LIVE, ends it (docs/design/match-flow.md)."""
     rig = RIGS[args.engine_kind](args, args.candidate, "t5-match")
-    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1", "+set", "match_allow_no_humans", "1",
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_flow", "1", "+set", "match_allow_no_humans", "1",
                 "+set", "match_countdown", "3", "+set", "timelimit", "0.25"] + rig.bot_args() + ["+map", "q2dm1"])
     # On both engines the bots count as playing clients (on Q2REX they begin
     # but don't fight), so the whole match runs.
@@ -577,7 +577,7 @@ def tier_duel(args, results):
     bots = (["+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "3", "+set", "bot_skill", "3"]
             if rig.kind == "q2red" else ["+set", "bot_minPlayers", "3"])
     startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", "duel",
-                "+set", "match_warmup", "1", "+set", "match_allow_no_humans", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
+                "+set", "match_flow", "1", "+set", "match_allow_no_humans", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
                 "+set", "g_matchlog_dir", "matches"] + bots + ["+map", "q2dm1"])
     log = rig.run(startup, [rig.wait_ready(), ("wait", r"Duel: .* next: ", 90), ("sleep", 2), ("cmd", "quit")],
                   timeout=args.boot_timeout + 150)
@@ -640,7 +640,7 @@ def tier_duel_rotation(args, results):
         results.append(("10 duel-rotation", True, ["skipped: only two bots begin on this engine"]))
         return
     startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", "duel",
-                "+set", "match_warmup", "1", "+set", "match_allow_no_humans", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
+                "+set", "match_flow", "1", "+set", "match_allow_no_humans", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
                 "+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "3", "+set", "bot_skill", "3",
                 "+map", "q2dm1"])
     log = rig.run(startup, [rig.wait_ready(), ("wait", r"Duel: .* next: ", 90), ("sleep", 2),
@@ -672,10 +672,11 @@ def tier_maps(args, results):
     leads to the announced map (the harness loads it with `gamemap`, as the
     intermission's exit would: bots press no button); the first pass plays
     every listed map once, the next pass doesn't open with the map that just
-    played, and g_map_list stays as written."""
+    played, and g_map_list stays as written. The play order (g_map_order) is
+    internal: the console can't set it."""
     rig = RIGS[args.engine_kind](args, args.candidate, "t15-maps")
     rotation = ["q2dm3", "q2dm4", "q2dm5"]
-    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "0",
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_flow", "0",
                 "+set", "timelimit", "0.25", "+set", "g_map_list", " ".join(rotation),
                 "+set", "g_map_list_shuffle", "1"] + rig.bot_args() + ["+map", "q2dm1"])
     announced = r"Maps: next (\S+)"
@@ -686,6 +687,8 @@ def tier_maps(args, results):
     steps = [rig.wait_ready()]
     for n in range(1, 5):
         steps += [("wait", announced, 90, n), ("sleep", 2)]
+        if n == 1:
+            steps += [("cmd", "set g_map_order junk"), ("cmd", "g_map_order")]
         if n < 4:
             steps += [("cmdf", go_next)]
     steps += [("cmd", "sv maplist"), ("cmd", "g_map_list"), ("sleep", 2), ("cmd", "quit")]
@@ -703,6 +706,8 @@ def tier_maps(args, results):
         detail.append("no `sv maplist` rotation line")
     if not re.search(r'"g_map_list" is "%s' % " ".join(rotation), log):
         detail.append("g_map_list was rewritten")
+    if '"g_map_order" is "junk' in log or not re.search(r'"g_map_order" is "q2dm', log):
+        detail.append("the console set g_map_order (it's internal: CVAR_NOSET)")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]
@@ -813,7 +818,7 @@ at 13 0 cmd queue
 at 30 0 cmd score
 """
     # match_countdown is left at its default: the playtest asked for 10 s.
-    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_scoreboard", "1", "+set", "g_gametype", "duel", "+set", "match_warmup", "1",
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_scoreboard", "1", "+set", "g_gametype", "duel", "+set", "match_flow", "1",
                                      "+set", "timelimit", "0.5", "+map", "q2dm1"])
     # ozbot presses no button at intermission, so the level change that a
     # human's press would trigger is issued here (`gamemap`, as ExitLevel does).
@@ -936,7 +941,7 @@ at 14 3 cmd team blue
 at 16 2 cmd ready
 at 16 3 cmd ready
 """
-        startup = scenario_startup(rig, ["+set", "g_gametype", gt, "+set", "match_warmup", "1",
+        startup = scenario_startup(rig, ["+set", "g_gametype", gt, "+set", "match_flow", "1",
                                          "+set", "timelimit", "0.5", "+set", "g_matchlog_dir", "matches",
                                          "+map", GAMETYPE_MAP.get(gt, "q2dm1")])
         log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 160)
@@ -991,7 +996,7 @@ at 6 1 cmd ready
 at 26 0 cmd kill
 at 40 1 cmd kill
 """
-    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_gametype", "duel", "+set", "match_warmup", "1",
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_gametype", "duel", "+set", "match_flow", "1",
                                      "+set", "match_rounds", "1", "+set", "match_round_countdown", "3",
                                      "+set", "match_overtime", "0", "+set", "fraglimit", "0",
                                      "+set", "timelimit", "1", "+map", "q2dm1"])
@@ -1033,7 +1038,7 @@ def tier_teams(args, results):
         bots = (["+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "4", "+set", "bot_skill", "3"]
                 if rig.kind == "q2red" else ["+set", "bot_minPlayers", "4"])
         startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", gt,
-                    "+set", "match_warmup", "1", "+set", "match_allow_no_humans", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
+                    "+set", "match_flow", "1", "+set", "match_allow_no_humans", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
                     "+set", "g_matchlog_dir", "matches"] + bots + ["+map", GAMETYPE_MAP.get(gt, "q2dm1")])
         log = rig.run(startup, [rig.wait_ready(), ("wait", r"Match: ended", 90), ("sleep", 2), ("cmd", "quit")],
                       timeout=args.boot_timeout + 150)
@@ -1072,7 +1077,7 @@ def tier_warmup(args, results):
     if not rig.expects_frags:
         results.append(("9 warmup", True, ["skipped: bots don't fight in a bot-only match on this engine"]))
         return
-    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1",
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_flow", "1",
                 "+set", "match_minplayers", "99", "+set", "timelimit", "10"] + rig.bot_args() + ["+map", "q2dm1"])
     log = rig.run(startup, [rig.wait_ready(), ("sleep", args.dm_seconds), ("cmd", "sv match"),
                             ("sleep", 2), ("cmd", "quit")],
@@ -1107,7 +1112,7 @@ def tier_rounds(args, results):
     if not rig.expects_frags:
         results.append(("7 rounds", True, ["skipped: bots don't fight in a bot-only match on this engine"]))
         return
-    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1", "+set", "match_allow_no_humans", "1",
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_flow", "1", "+set", "match_allow_no_humans", "1",
                 "+set", "match_countdown", "3", "+set", "match_rounds", "1", "+set", "match_round_countdown", "2",
                 "+set", "timelimit", "3"] + rig.bot_args() + ["+map", "q2dm1"])
     # A frag ends the round (the pause), everyone respawns frozen (the

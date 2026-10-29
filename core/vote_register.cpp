@@ -174,7 +174,7 @@ std::string Commands(const VoteProposal &p)
 		const std::optional<Ruleset> r = Core_Rulesets_Find(p.arg);
 		if (!r || !GametypeById(r->gametype))
 			return {};
-		return Core_Ruleset_Commands(*r) + "sv votemap " + r->gametype + "\n";
+		return Core_Rulesets_Switch(*r) + "sv votemap " + r->gametype + "\n";
 	}
 	case VoteKind::Timelimit:
 	case VoteKind::Scorelimit:

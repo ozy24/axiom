@@ -16,7 +16,7 @@ stats. Keeping it means TDM and CTF are stock-faithful by construction, and
 harness tiers 4 and 8 check them on both engines.
 
 CTF's own match and election system (`competition`, `matchtime`, the `admin`
-and vote commands) is not removed. With `match_warmup 0` it works as in
+and vote commands) is not removed. With `match_flow 0` it works as in
 stock. With the match flow on, the flow owns the rules (`CheckDMRules`, and so
 `CTFCheckRules`, isn't run) and Axiom's `ready` / `notready` are handled first;
 a server using the match flow shouldn't also enable `competition`.

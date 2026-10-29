@@ -66,7 +66,7 @@ TEST_CASE("each gametype has one built-in of its own, named after it, that selec
 		REQUIRE(def);
 		CHECK_FALSE(def->variant);
 		CHECK(Find(def->cfg, "set g_gametype " + gt + "\n") != std::string::npos);
-		CHECK(Find(def->cfg, "set match_warmup 1\n") != std::string::npos);
+		CHECK(Find(def->cfg, "set match_flow 1\n") != std::string::npos);
 	}
 }
 
@@ -144,7 +144,7 @@ TEST_CASE("names are restricted so exec can't leave rulesets/")
 	CHECK_FALSE(Core_Ruleset_ValidName(std::string(33, 'a')));
 }
 
-TEST_CASE("resolve: built-ins, and an admin's variants listed in g_rulesets")
+TEST_CASE("resolve: built-ins, and an admin's variants listed in g_ruleset_variants")
 {
 	// HoonyMode is off (2026-10-29); an admin can list their own.
 	CHECK_FALSE(Core_Ruleset_Resolve("hoony", "", kGametypes));
@@ -192,7 +192,8 @@ TEST_CASE("a switch resets every gameplay cvar, then the gametype, then the vari
 	CHECK(Find(text, "set g_gametype duel\n") < Find(text, "exec rulesets/duel.cfg\n"));
 	// 3. the variant's file
 	CHECK(Find(text, "exec rulesets/duel.cfg\n") < Find(text, "exec rulesets/duel_x.cfg\n"));
-	const std::string tail = "set g_ruleset duel_x\nset g_ruleset_applied duel_x\n";
+	const std::string tail = "set g_ruleset duel_x\n";
+	CHECK(Find(text, "g_ruleset_applied") == std::string::npos); // write-protected: the adapter sets it
 	CHECK(text.substr(text.size() - tail.size()) == tail);
 }
 
@@ -230,7 +231,7 @@ TEST_CASE("the settings set at load: the reset, then the gametype's and the vari
 	};
 	CHECK(settings.front().first == core_gameplay_cvars[0].name); // the reset comes first
 	CHECK(last("g_gametype") == "duel");
-	CHECK(last("match_warmup") == "1"); // the duel's own
+	CHECK(last("match_flow") == "1"); // the duel's own
 	CHECK(last("match_rounds") == "0");
 	CHECK(last("timelimit") == "10");
 	CHECK(last("g_map_list") == ""); // reset, quotes stripped

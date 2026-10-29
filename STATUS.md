@@ -7,7 +7,7 @@ _Updated at the end of every session. Last update: 2026-10-29 (shuffle vote)._
 ## Phase 2b, part 1 (match flow) done
 - `core/match.*` state machine (24 unit-test cases) and adapter: warmup,
   ready/notready, countdown, live (timelimit from LIVE), overtime (sudden
-  death or N min), intermission. Off by default: `match_warmup 0` is stock,
+  death or N min), intermission. Off by default: `match_flow 0` is stock,
   so tiers 1-3 keep proving stock behaviour.
 - Arena reset at LIVE: projectiles and dropped items removed, map items
   respawned, scores zeroed, players respawned. Doors/plats not reset yet.
@@ -145,7 +145,7 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
 - **Rulesets, decision 0013** (`docs/admin.md`): `server.cfg` for the server
   and its starting mode (`set g_ruleset ffa`), `rulesets/<gametype>.cfg` for
   an admin's changes, `rulesets/<gametype>_<name>.cfg` for their own
-  variants (listed in `g_rulesets`). Each switch resets every gameplay cvar
+  variants (listed in `g_ruleset_variants`). Each switch resets every gameplay cvar
   first, so nothing leaks between modes. Built-ins ffa, duel, hoony, tdm, ctf.
 - **HUD** (`docs/design/hud.md`): status top middle in green, clock always
   shown left of centre above the stock HUD, big countdown digits, the

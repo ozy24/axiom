@@ -138,7 +138,7 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   `gamerules` 2 and 3 (`--stock-gamerules`) boot q2dm1 (ctf: q2ctf1) with bots
   for 20 s, check the Q2REX lobby cvars, log their
   `Gametype:` line and shut down cleanly.
-- **Tier 5 match-flow:** `match_warmup 1` with bots: the `Match:` lines must
+- **Tier 5 match-flow:** `match_flow 1` with bots: the `Match:` lines must
   run warmup → countdown → live → intermission, ended by the timelimit counted
   from LIVE, on both engines (Q2REX's bots begin as clients even though they
   don't fight in a bot-only match).
@@ -172,7 +172,8 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
 - **Tier 15 maps:** a shuffled three-map `g_map_list` (q2dm3-5), started off the list
   on q2dm1, with bots: four level ends, each followed by a `gamemap` to the
   announced map; the first pass plays every listed map once, the next pass
-  doesn't open with the map just played, and `g_map_list` is unchanged.
+  doesn't open with the map just played, `g_map_list` is unchanged,
+  and the console can't set the internal `g_map_order` (decision 0004).
 - **Tier 16 human-settings:** three simulated players in a live FFA match:
   a time limit vote moves the clock without a restart, friendly fire and
   an out-of-range time are refused, and a powerups vote reloads the map

@@ -45,7 +45,7 @@ void RegisterCvars()
 	// 0: a human new to the server arrives spectating, with the menu open.
 	g_auto_join = gi.cvar("g_auto_join", "0", CVAR_NOFLAGS);
 	// Who was playing (core/join.h): the game's own state, not a setting.
-	g_join_memory = gi.cvar("g_join_memory", "", CVAR_NOFLAGS);
+	g_join_memory = gi.cvar("g_join_memory", "", CVAR_NOSET); // internal: only the module sets it
 }
 
 uint32_t SlotOf(const edict_t *ent)
@@ -205,7 +205,7 @@ void Core_Join_Frame()
 		recalled = JoinMemory();
 	const std::string text = now.Encode();
 	if (text != g_join_memory->string)
-		gi.cvar_set("g_join_memory", text.c_str());
+		gi.cvar_forceset("g_join_memory", text.c_str());
 
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{

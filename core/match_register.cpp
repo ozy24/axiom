@@ -40,14 +40,14 @@ cvar_t *g_matchlog_dir;
 gtime_t last_time;
 std::array<bool, MAX_CLIENTS> ready{};
 
-cvar_t *match_warmup, *match_ready, *match_minplayers, *match_allow_no_humans, *match_warmup_time, *match_countdown,
+cvar_t *match_flow, *match_ready, *match_minplayers, *match_allow_no_humans, *match_warmup_time, *match_countdown,
     *match_overtime, *match_rounds, *match_round_countdown, *match_round_pause, *match_suicide_point;
 
 void RegisterCvars()
 {
-	if (match_warmup)
+	if (match_flow)
 		return;
-	match_warmup = gi.cvar("match_warmup", "0", CVAR_NOFLAGS);
+	match_flow = gi.cvar("match_flow", "0", CVAR_NOFLAGS);
 	match_ready = gi.cvar("match_ready", "1", CVAR_NOFLAGS);
 	match_minplayers = gi.cvar("match_minplayers", "2", CVAR_NOFLAGS);
 	match_allow_no_humans = gi.cvar("match_allow_no_humans", "0", CVAR_NOFLAGS);
@@ -67,7 +67,7 @@ MatchConfig ReadConfig()
 {
 	MatchConfig c;
 	// Only deathmatch has matches; single player and coop stay stock.
-	c.enabled = deathmatch->integer && match_warmup->integer;
+	c.enabled = deathmatch->integer && match_flow->integer;
 	c.ready_required = match_ready->integer != 0;
 	c.min_players = match_minplayers->integer;
 	c.allow_no_humans = match_allow_no_humans->integer != 0;

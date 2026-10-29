@@ -5,7 +5,7 @@
 //                               picks the mode it starts in
 //   rulesets/<gametype>.cfg     the admin's changes to a gametype's built-in settings
 //   rulesets/<gametype>_<x>.cfg an admin's own variant, offered for votes by
-//                               listing it in g_rulesets
+//                               listing it in g_ruleset_variants
 //
 //   sv ruleset <name>   switch: the settings now, the gametype (latched) at the next map
 //   sv rulesets         list them
@@ -63,26 +63,30 @@ struct Ruleset
 };
 
 // `name` as a ruleset: a built-in, or an admin's variant listed in
-// g_rulesets and named <gametype>_<variant> after a known gametype (its
+// g_ruleset_variants and named <gametype>_<variant> after a known gametype (its
 // label: "ctf_instagib" is "Instagib", "ffa_rocket_arena" "Rocket Arena").
-std::optional<Ruleset> Core_Ruleset_Resolve(std::string_view name, std::string_view g_rulesets,
+std::optional<Ruleset> Core_Ruleset_Resolve(std::string_view name, std::string_view g_ruleset_variants,
                                             const std::vector<std::string> &gametypes);
 
 // Every ruleset, by gametype in `gametypes` order: each gametype's own
 // first, then its built-in variants, then the admin's.
-std::vector<Ruleset> Core_Ruleset_All(std::string_view g_rulesets, const std::vector<std::string> &gametypes);
+std::vector<Ruleset> Core_Ruleset_All(std::string_view g_ruleset_variants, const std::vector<std::string> &gametypes);
 
 // The console text for a switch: the reset, the gametype's built-in settings
 // and `exec rulesets/<gametype>.cfg`, then for a variant its built-in
-// settings and `exec rulesets/<name>.cfg`; then g_ruleset.
+// settings and `exec rulesets/<name>.cfg`; then g_ruleset. (g_ruleset_applied
+// is write-protected: Core_Rulesets_Switch sets it.)
 std::string Core_Ruleset_Commands(const Ruleset &ruleset);
 
 // From the engine (core/rulesets_register.cpp): with this server's
-// g_rulesets and gametypes. The title is what players see: "Duel",
+// g_ruleset_variants and gametypes. The title is what players see: "Duel",
 // "Duel: HoonyMode".
 std::optional<Ruleset> Core_Rulesets_Find(std::string_view name);
 std::vector<Ruleset> Core_Rulesets_Available();
 std::string Core_Rulesets_Title(const Ruleset &ruleset);
+// A switch to `ruleset`: records it as applied (g_ruleset_applied, which the
+// console can't set) and returns Core_Ruleset_Commands' text to queue.
+std::string Core_Rulesets_Switch(const Ruleset &ruleset);
 
 // The cvar values a switch sets itself, in order (the reset, then the
 // built-ins' `set` lines): what the module can apply at once, before the

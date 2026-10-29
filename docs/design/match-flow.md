@@ -21,10 +21,10 @@ game plays.
 ## States
 
 ```
-            match_warmup 1                    all ready (or warmup timer)
+            match_flow 1                    all ready (or warmup timer)
  (map load) ──────────────► WARMUP ─────────────────────────────► COUNTDOWN
      │                       ▲   players play freely, no score       │ match_countdown s
-     │ match_warmup 0        │   counts; `ready` toggles              │ (cancelled if a
+     │ match_flow 0        │   counts; `ready` toggles              │ (cancelled if a
      │                       └────── player un-readies / leaves ◄─────┘  needed player leaves)
      ▼                                                                ▼
    LIVE ◄─────────────────────────────────────────────── arena reset, scores zeroed
@@ -118,7 +118,7 @@ isn't a spectator. Every transition prints a `Match:` console line.
 
 | Cvar | Default | Meaning |
 |---|---|---|
-| `match_warmup` | `0` | 1: start in WARMUP (0 = stock: live immediately) |
+| `match_flow` | `0` | 1: start in WARMUP (0 = stock: live immediately) |
 | `match_ready` | `1` | in warmup, require every player to `ready` |
 | `match_minplayers` | `2` | players needed before the countdown can start, bots counted |
 | `match_allow_no_humans` | `0` | 1: bots may start and play a match with no human (a bot server); 0: a match needs a human, and goes back to warmup when the last one leaves |

@@ -64,7 +64,7 @@ set capturelimit 5
 
 ```
 // server.cfg
-set g_rulesets "ctf_instagib"
+set g_ruleset_variants "ctf_instagib"
 ```
 
 Players then find it in the vote menu under Capture The Flag, as

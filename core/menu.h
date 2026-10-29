@@ -138,7 +138,7 @@ struct MenuView
 	int capturelimit = 0;
 	int overtime = 0; // match_overtime: minutes, -1 sudden death, 0 none
 	bool rounds = false;
-	bool match_flow = false; // match_warmup: warmup, countdown and the HUD
+	bool match_flow = false; // match_flow: warmup, countdown and the HUD
 	bool warmup = false;     // the match flow, before LIVE (warmup or the countdown)
 
 	// Voting (core/vote.h).
