@@ -108,6 +108,8 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/core/menu.cpp"
     "${CMAKE_SOURCE_DIR}/core/miniscore.cpp"
     "${CMAKE_SOURCE_DIR}/core/miniscore_register.cpp"
+    "${CMAKE_SOURCE_DIR}/core/scoreboard.cpp"
+    "${CMAKE_SOURCE_DIR}/core/scoreboard_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/menu_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/vote.cpp"
     "${CMAKE_SOURCE_DIR}/core/vote_register.cpp"
@@ -206,6 +208,7 @@ if(GAME_BUILD_TESTS)
         tests/test_miniscore.cpp
         tests/test_teams.cpp
         tests/test_join.cpp
+        tests/test_scoreboard.cpp
         core/identity.cpp
         core/match_record.cpp
         core/host_files.cpp
@@ -218,6 +221,7 @@ if(GAME_BUILD_TESTS)
         core/stat_slots.cpp
         core/teams.cpp
         core/join.cpp
+        core/scoreboard.cpp
         tests/test_duel_queue.cpp
         tests/test_eyecam.cpp
         core/gametype.cpp

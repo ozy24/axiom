@@ -1178,7 +1178,9 @@ def tier_human_settings(args, results):
     players in a live FFA match (10 minutes). A time limit vote passes and the
     clock moves without a restart; friendly fire is refused outside team
     modes and a time out of range with the usage; a powerups vote reloads the
-    map, and the voted time limit is still there after it. Q2RED only."""
+    map, and the voted time limit is still there after it. The built-in
+    ruleset's column scoreboard (decision 0018) shows Bob's suicide as a
+    death. Q2RED only."""
     rig, why = scenario_rig(args, "t16-settings")
     if not rig:
         results.append(("16 human-settings", True, [f"skipped: {why}"]))
@@ -1188,6 +1190,8 @@ def tier_human_settings(args, results):
 client 0 name=Alice social=sim-alice puppet
 client 1 name=Bob social=sim-bob puppet
 client 2 name=Carol social=sim-carol puppet
+at 26 1 cmd kill
+at 28 0 cmd score
 at 30 0 cmd callvote timelimit 7
 at 31 1 cmd vote yes
 at 36 1 cmd callvote friendlyfire on
@@ -1219,6 +1223,20 @@ at 40 0 cmd vote yes
         detail.append("the time limit vote reloaded the map (or never ran)")
     if at_powerups < 0 or "InitGame" not in log[at_powerups:]:
         detail.append("the powerups vote didn't reload the map")
+    # The column board: Alice's, opened live after Bob's suicide.
+    boards = [r["text"] for r in tap if r.get("type") == "layout" and r["to"] == humans["Alice"]
+              and " string2 FPH " in r["text"]]
+    if not boards:
+        detail.append("Alice was never shown the column scoreboard")
+    else:
+        board = boards[0]
+        rows = {int(m[0]): (int(m[1]), int(m[2])) for m in re.findall(r"ctf -40 \d+ (\d+) (-?\d+) (\d+) ", board)}
+        if set(rows) != set(humans.values()):
+            detail.append(f"board rows for slots {sorted(rows)}, expected {sorted(humans.values())}")
+        elif rows[humans["Bob"]] != (-1, 1):
+            detail.append(f"Bob's row shows frags/deaths {rows[humans['Bob']]}, expected (-1, 1) after his suicide")
+        if len(board) > 1023:
+            detail.append(f"the board is {len(board)} bytes, over the client's 1024")
     if "-> live" not in log[:max(at_time, 0)]:
         detail.append("the match wasn't live when the time limit vote ran")
     locs = [r for r in tap if r.get("type") == "locprint"]

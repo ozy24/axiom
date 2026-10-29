@@ -22,7 +22,8 @@ const RulesetDef core_rulesets[] = {
      "set match_lock 0\n"
      "set timelimit 10\n"
      "set fraglimit 0\n"
-     "set g_map_list_shuffle 1\n"},
+     "set g_map_list_shuffle 1\n"
+     "set g_scoreboard 1\n"},
     {"duel", "duel", "one on one: warmup and ready-up, 10 minutes, sudden death on a tie, winner stays on",
      "set g_gametype duel\n"
      "set ctf 0\n"
@@ -113,6 +114,7 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"g_map_list_shuffle", "0"},
     {"g_no_items", "0"},      // the powerups vote (decision 0015)
     {"g_friendly_fire", "0"}, // the friendly fire vote
+    {"g_scoreboard", "0"},    // the column board (core/scoreboard_register.cpp)
 };
 const size_t core_gameplay_cvar_count = sizeof(core_gameplay_cvars) / sizeof(core_gameplay_cvars[0]);
 

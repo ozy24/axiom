@@ -77,6 +77,14 @@ chooses to play (`join`, or the menu); players stay in from map to map.
 
 Set it in `server.cfg`. Details: docs/design/joining.md.
 
+## Scoreboard
+
+| Cvar | Default | What |
+|---|---|---|
+| `g_scoreboard` | 0 | 1: the column board outside team modes (Frg, Dth, Player, FPH, Time, Ping); the built-in `ffa` ruleset sets 1. 0: stock's board |
+
+See docs/design/scoreboard.md.
+
 ## Team locks and captains
 
 In TDM and CTF the first player on each team is its captain, and a captain
