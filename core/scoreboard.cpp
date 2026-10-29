@@ -6,10 +6,15 @@
 namespace
 {
 // Layout x, from the left of stock's 320-wide area. The `ctf` row draws the
-// frags at its x, the deaths 27 to the right and the name 54 to the right.
-constexpr int kRowX = -40, kFphX = 196, kTimeX = 236, kPingX = 276;
+// frags at its x, the deaths 27 to the right and the name 54 to the right
+// (16 characters of 8 end at 142). The position goes left of it, where the
+// team board draws a captain's `*`.
+constexpr int kRankX = -64, kRowX = -40, kFphX = 166, kTimeX = 206, kPingX = 246;
 constexpr int kStampY = 8, kTitleY = 24, kFirstRowY = 36, kRowHeight = 8;
 constexpr int kSpectatorX[2] = {-40, 160};
+// The spectators' title and one line ("xv -40 yv 132 loc_string2 0 ..."
+// and "ctf -40 140 31 0 999 \"\" "), with room to spare.
+constexpr size_t kWatcherReserve = 80;
 
 std::string Text(const char *s)
 {
@@ -32,13 +37,15 @@ template <typename... T> std::string Tokens(const T &...values)
 	return out;
 }
 
-std::string PlayerRow(const ScoreboardPlayer &p, int y, bool viewer)
+// A player's row; `rank` their position on the board (1 the top).
+std::string PlayerRow(const ScoreboardPlayer &p, int rank, int y, bool viewer)
 {
 	// The client caps the second number at 999; the text columns follow
-	// suit, and ping is the client's own cap too.
+	// suit, and ping is the client's own cap too. The `ctf` row sets the y
+	// the text after it uses.
 	const char *text = viewer ? "string2" : "string";
-	return Tokens("ctf", kRowX, y, p.slot, p.frags, std::min(p.deaths, 999), "\"\"", "xv", kFphX, text,
-	              std::min(Core_Scoreboard_Fph(p.frags, p.played_ms), 9999), "xv", kTimeX, text,
+	return Tokens("ctf", kRowX, y, p.slot, p.frags, std::min(p.deaths, 999), "\"\"", "xv", kRankX, text, rank, "xv",
+	              kFphX, text, std::min(Core_Scoreboard_Fph(p.frags, p.played_ms), 9999), "xv", kTimeX, text,
 	              std::min<int64_t>(p.played_ms / 60000, 999), "xv", kPingX, text, std::min(p.ping, 999));
 }
 } // namespace
@@ -76,6 +83,12 @@ std::string Core_Scoreboard_Layout(const ScoreboardInput &in)
 	for (const ScoreboardPlayer &p : Core_Scoreboard_Order(in.players))
 		(p.spectator ? watching : playing).push_back(p);
 
+	// A spectator viewer keeps room for the spectators' title and their own
+	// line: the players can't crowd them off their own board.
+	const bool watcher =
+	    std::any_of(watching.begin(), watching.end(), [&](const ScoreboardPlayer &p) { return p.slot == in.viewer; });
+	const size_t player_budget = watcher && in.budget > kWatcherReserve ? in.budget - kWatcherReserve : in.budget;
+
 	// The players from the top while they fit. If your own row is left out,
 	// the last of them make room for it.
 	std::vector<std::string> rows;
@@ -83,8 +96,9 @@ std::string Core_Scoreboard_Layout(const ScoreboardInput &in)
 	bool viewer_in = false;
 	for (const ScoreboardPlayer &p : playing)
 	{
-		const std::string row = PlayerRow(p, kFirstRowY + kRowHeight * (int)rows.size(), p.slot == in.viewer);
-		if (used + row.size() > in.budget)
+		const std::string row =
+		    PlayerRow(p, (int)rows.size() + 1, kFirstRowY + kRowHeight * (int)rows.size(), p.slot == in.viewer);
+		if (used + row.size() > player_budget)
 			break;
 		used += row.size();
 		rows.push_back(row);
@@ -96,8 +110,9 @@ std::string Core_Scoreboard_Layout(const ScoreboardInput &in)
 	{
 		while (!rows.empty())
 		{
-			const std::string row = PlayerRow(*mine, kFirstRowY + kRowHeight * (int)rows.size(), true);
-			if (used + row.size() <= in.budget)
+			const std::string row =
+			    PlayerRow(*mine, (int)(mine - playing.begin()) + 1, kFirstRowY + kRowHeight * (int)rows.size(), true);
+			if (used + row.size() <= player_budget)
 			{
 				used += row.size();
 				rows.push_back(row);

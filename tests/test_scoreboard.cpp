@@ -67,7 +67,7 @@ TEST_CASE("scoreboard: a row is frags, deaths and the name, then FPH, whole minu
 	const std::string layout = Core_Scoreboard_Layout(in);
 	CHECK(layout.find("cstring2 \"[2026-10-29 19:40]\"") != std::string::npos);
 	CHECK(layout.find("string2 Frg") != std::string::npos);
-	CHECK(layout.find("ctf -40 36 3 42 15 \"\" xv 196 string 379 xv 236 string 6 xv 276 string 20 ") !=
+	CHECK(layout.find("ctf -40 36 3 42 15 \"\" xv -64 string 1 xv 166 string 379 xv 206 string 6 xv 246 string 20 ") !=
 	      std::string::npos);
 }
 
@@ -78,7 +78,8 @@ TEST_CASE("scoreboard: your own row's columns are green; spectators follow")
 	in.viewer = 0;
 	const std::string layout = Core_Scoreboard_Layout(in);
 	CHECK(Slots(layout) == std::vector<int>{1, 0, 2});
-	CHECK(Count(layout, " string2 ") == 6 + 3); // the titles, and your three numbers
+	CHECK(Count(layout, " string2 ") == 6 + 4); // the titles, and your position and three numbers
+	CHECK(layout.find("ctf -40 44 0 3 0 \"\" xv -64 string2 2 ") != std::string::npos); // you, second
 	CHECK(layout.find("$g_pc_spectators") != std::string::npos);
 }
 
@@ -92,9 +93,11 @@ TEST_CASE("scoreboard: a full server fits the budget, keeping your own row")
 	const std::string layout = Core_Scoreboard_Layout(in);
 	CHECK(layout.size() <= in.budget);
 	const std::vector<int> slots = Slots(layout);
-	REQUIRE(slots.size() >= 10);
+	REQUIRE(slots.size() >= 9); // 8 players (the worst case: 3-digit frags and FPH) and a spectator
 	CHECK(slots[0] == 0);
 	CHECK(std::find(slots.begin(), slots.end(), 20) != slots.end());
+	CHECK(layout.find(" 20 80 999 \"\" xv -64 string2 21 ") !=
+	      std::string::npos); // your own row last, at your real position
 	MESSAGE("rows that fit: " << slots.size() << " in " << layout.size() << " bytes");
 
 	in.viewer = 30; // a spectator: shown first of them

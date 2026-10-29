@@ -5,12 +5,15 @@ columns (decision 0018). The built-in `ffa` ruleset turns it on.
 
 ```
                 [2026-10-29 19:40]
- Frg Dth Player              FPH Time Ping
-  42  15 Xin                 379    6   17
-  39   7 aid                 352    6   15
- Spectators
-  0  18 Pidarassius           0  20 Player
+    Frg Dth Player           FPH Time Ping
+ 1   42  15 Xin              379    6   17
+ 2   39   7 aid              352    6   15
+    Spectators
+     0  18 Pidarassius        0  20 Player
 ```
+
+- **Position**: the place on the board (ties take the next number). Your
+  own row, pulled in on a full server, shows its real position.
 
 - **Frg**: the score. **Dth**: deaths while the match is in play (warmup
   is free play, so neither counts there).
@@ -28,9 +31,10 @@ columns (decision 0018). The built-in `ffa` ruleset turns it on.
 - **1024 bytes.** The client keeps the whole layout in a 1024-byte buffer,
   and each extra column costs about 18 bytes per row (its own `xv` and
   `string`: the KEX font is proportional, so columns can't be lined up
-  with spaces). About 10 player rows fit. On a fuller server the board
+  with spaces). About 8 player rows fit with a spectator or two (8
+  players and a spectator: 943 bytes). On a fuller server the board
   shows the top players and your own row, then the spectators that still
-  fit.
+  fit; a spectator viewer always keeps room for their own line.
 - **Names.** A KEX player's name reaches the server only as a token
   (`##P3`), and the client turns it back into the name only in the
   layout's `ctf` row (tested 2026-10-29). That row draws two numbers, then
