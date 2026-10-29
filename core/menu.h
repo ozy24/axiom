@@ -21,7 +21,6 @@ enum class MenuAction
 	StopChase, // ... and stops
 	Ready,
 	NotReady,
-	Queue, // Duel: print the queue
 	MatchInfo,
 	Back, // to the main page
 	Close,

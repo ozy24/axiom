@@ -40,7 +40,8 @@ A human new to the server arrives spectating with the main page open
   proposal, a blank line, Vote Yes and Vote No, with the cursor on Yes.
   Then, by gametype:
   - team modes: Join Red, Join Blue, Spectate;
-  - Duel: Join Queue or Leave Queue, and Duel Queue;
+  - Duel: Join Queue or Leave Queue (the queue itself is on Duel's
+    scoreboard; `queue` prints it);
   - FFA: Join the Match or Spectate;
   - a spectator: Chase Camera or Stop Chasing;
   - in warmup: Ready or Not Ready;

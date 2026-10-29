@@ -252,11 +252,6 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 		Core_Match_SetReady(ent, state->actions[hnd->cur] == MenuAction::Ready);
 		PMenu_Update(ent); // the row flips
 		break;
-	case MenuAction::Queue:
-		PMenu_Close(ent);
-		if (const GametypeDef *gt = Core_Gametype_Active(); gt && gt->client_command)
-			gt->client_command(ent, "queue");
-		break;
 	case MenuAction::MatchInfo:
 		Open(ent, Page::MatchInfo);
 		break;
