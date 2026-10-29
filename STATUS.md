@@ -232,8 +232,8 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
 
 Chris finished testing this batch on 2026-10-29.
 
-In progress: the FFA column scoreboard (decision 0018, branch
-`scoreboard/ffa-columns`), waiting for Chris's playtest. As agreed:
+Done: the FFA column scoreboard (decision 0018), playtested by Chris on
+2026-10-29 with a position column. As agreed:
 `#  Frg Dth  Player  FPH Time Ping`, where Time is whole minutes in the
 match. A dated header; spectators underneath with no chase target. When a
 full server doesn't fit, it shows the top N plus your own row. The stock
@@ -242,6 +242,7 @@ only the `ctf` layout row decodes a `##P` name token: `string`,
 `loc_string` and its `{}` arguments all show `##P0`, and `%s` isn't
 supported. So the name always comes after two numbers. Right-aligned
 `loc_rstring` numbers line up.
+Next: the Duel scoreboard (Chris likes MMREX's; improve where we can).
 Then Clan Arena as a TDM ruleset (elimination rounds that count the
 living, spawn loadout, `match_lock 1`). Then Phase 4's remainder - Chris has other features to work through first,
 then timeouts/pauses, admin controls, per-gametype scoreboards (an
