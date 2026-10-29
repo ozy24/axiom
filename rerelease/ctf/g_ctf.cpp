@@ -1583,6 +1583,17 @@ void CTFTeam_f(edict_t *ent)
 				   CTFTeamName(ent->client->resp.ctf_team));
 		return;
 	}
+	CTFChangeTeam(ent, desired_team); // [mod]
+} // [mod]
+
+// [mod] CTFTeam_f's switch, split out so the Tab menu runs it on the server
+void CTFChangeTeam(edict_t *ent, ctfteam_t desired_team) // [mod]
+{ // [mod]
+	if (ctfgame.match > MATCH_SETUP || (g_teamplay_force_join->integer && !(ent->svflags & SVF_BOT))) // [mod] CTFTeam_f's refusals, for the menu
+	{ // [mod]
+		gi.LocClient_Print(ent, PRINT_HIGH, "$g_cant_change_teams"); // [mod]
+		return; // [mod]
+	} // [mod]
 	if (!Core_Teams_MayJoin(ent, desired_team)) // [mod] a locked team
 		return; // [mod]
 

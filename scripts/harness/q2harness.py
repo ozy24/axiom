@@ -1239,7 +1239,8 @@ at 40 0 cmd vote yes
 def tier_human_teamlock(args, results):
     """Team locks and captains (decision 0016) through the human path: TDM
     on the built-in ruleset (match_lock 1), five simulated players. The
-    first on each team is captain; both teams lock as the match goes live; a
+    first on each team is captain; a player changes team from the Tab menu
+    (playtest 2026-10-29: it did nothing); both teams lock as the match goes live; a
     newcomer is refused (told alone), a rostered player who drops gets back
     in; the captain unlocks for the newcomer, relocks and kicks them, and
     they're refused again; the captain leaves and the next teammate takes
@@ -1260,6 +1261,9 @@ at 6 0 cmd team red
 at 6 2 cmd team blue
 at 8 1 cmd team red
 at 8 3 cmd team blue
+at 11 3 cmd inven
+at 12 3 cmd invuse
+at 14 3 cmd team blue
 at 27 4 cmd team red
 at 29 1 disconnect
 at 32 1 rejoin
@@ -1308,6 +1312,11 @@ at 58 3 disconnect
     # Alice, Bob, Carol, Dave; Bob back after his drop; Eve after the unlock.
     if len(joins) != 6:
         detail.append(f"{len(joins)} team joins, expected 6")
+    # A playing client who changes team: Dave to RED from the Tab menu (its
+    # first choice for him), then back with `team blue`.
+    dave = [r["args"][1] for r in locs if r["base"] == "$g_changed_team" and r["args"][0] == f"##P{humans['Dave']}"]
+    if dave != ["RED", "BLUE"]:
+        detail.append(f"Dave changed to {dave}, expected RED from the menu, then BLUE")
     detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")

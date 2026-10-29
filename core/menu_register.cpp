@@ -227,13 +227,12 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 			CTFJoinTeam(ent, team); // as stock's join menu; closes the menu
 			break;
 		}
-		// A change of team is stock's `team` command, run by the client: it
-		// kills the player (dropping a carried flag and tech), and refuses
-		// under g_teamplay_force_join or a stock CTF match.
+		// A change of team is stock's `team` command's switch, run here: the
+		// KEX client doesn't run a stuffed `team blue` (playtest 2026-10-29).
+		// It kills the player (dropping a carried flag and tech), and refuses
+		// under g_teamplay_force_join, a stock CTF match or a lock, as `team` does.
 		PMenu_Close(ent);
-		gi.WriteByte(svc_stufftext);
-		gi.WriteString(team == CTF_TEAM1 ? "team red\n" : "team blue\n");
-		gi.unicast(ent, true);
+		CTFChangeTeam(ent, team);
 		break;
 	}
 	case MenuAction::JoinGame:
