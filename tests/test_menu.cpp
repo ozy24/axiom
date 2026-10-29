@@ -256,15 +256,20 @@ TEST_CASE("menu: teams list both sides; the cursor starts on the smaller team")
 	                                               MenuAction::Close});
 }
 
-TEST_CASE("menu: Duel offers the queue, never join or spectate (the queue decides)")
+TEST_CASE("menu: Duel offers joining or leaving the queue, and the queue itself")
 {
 	MenuView v = Ffa();
 	v.duel = true;
+	MenuPage page = Core_Menu_Main(v);
+	CHECK(Actions(page) == std::vector<MenuAction>{MenuAction::JoinGame, MenuAction::Queue, MenuAction::Chase,
+	                                               MenuAction::MatchInfo, MenuAction::Close});
+	CHECK(Row(page, "Join Queue")->action == MenuAction::JoinGame);
+	CHECK(Core_Menu_MainCursor(page, v) == RowOf(page, MenuAction::JoinGame)); // a new arrival's first choice
+	v.queued = true;                                                           // waiting
+	CHECK(Row(Core_Menu_Main(v), "Leave Queue")->action == MenuAction::Spectate);
+	v.playing = true; // duelling
 	CHECK(Actions(Core_Menu_Main(v)) ==
-	      std::vector<MenuAction>{MenuAction::Queue, MenuAction::Chase, MenuAction::MatchInfo, MenuAction::Close});
-	v.playing = true;
-	CHECK(Actions(Core_Menu_Main(v)) ==
-	      std::vector<MenuAction>{MenuAction::Queue, MenuAction::MatchInfo, MenuAction::Close});
+	      std::vector<MenuAction>{MenuAction::Spectate, MenuAction::Queue, MenuAction::MatchInfo, MenuAction::Close});
 }
 
 TEST_CASE("menu: match info names the rules, and returns to the main page")

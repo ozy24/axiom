@@ -66,6 +66,17 @@ your `rulesets/ctf.cfg`.
 
 Each switch starts clean: nothing a previous mode set carries over.
 
+## Joining
+
+A player new to the server arrives spectating, with the menu open, and
+chooses to play (`join`, or the menu); players stay in from map to map.
+
+| | Default | |
+|---|---|---|
+| `g_auto_join` | 0 | 1: everyone goes straight into play (the smaller team) |
+
+Set it in `server.cfg`. Details: docs/design/joining.md.
+
 ## Team locks and captains
 
 In TDM and CTF the first player on each team is its captain, and a captain

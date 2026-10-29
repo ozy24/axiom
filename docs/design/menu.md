@@ -33,11 +33,14 @@ stock `gamerules` modes keep stock's.
 
 ## Pages
 
+A human new to the server arrives spectating with the main page open
+(docs/design/joining.md).
+
 - **Main.** The hostname, gametype and map. Then, while a vote is open, the
   proposal, a blank line, Vote Yes and Vote No, with the cursor on Yes.
   Then, by gametype:
   - team modes: Join Red, Join Blue, Spectate;
-  - Duel: Duel Queue;
+  - Duel: Join Queue or Leave Queue, and Duel Queue;
   - FFA: Join the Match or Spectate;
   - a spectator: Chase Camera or Stop Chasing;
   - in warmup: Ready or Not Ready;

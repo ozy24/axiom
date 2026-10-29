@@ -179,6 +179,7 @@ MenuPage Core_Menu_Main(const MenuView &v)
 	}
 	else if (v.duel)
 	{
+		Add(page, v.queued ? "Leave Queue" : "Join Queue", v.queued ? MenuAction::Spectate : MenuAction::JoinGame);
 		Add(page, "Duel Queue", MenuAction::Queue);
 	}
 	else if (v.playing)

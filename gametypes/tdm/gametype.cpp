@@ -2,5 +2,5 @@
 // id's team code runs unchanged. The match flow scores it by team frags.
 #include "core/gametype.h"
 
-extern const GametypeDef gametype_tdm = {"tdm",   "Team Deathmatch", "teamplay", nullptr,
+extern const GametypeDef gametype_tdm = {"tdm",   "Team Deathmatch", "teamplay", nullptr, nullptr,
                                          nullptr, nullptr,           nullptr,    nullptr};

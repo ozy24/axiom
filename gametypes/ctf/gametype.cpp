@@ -5,5 +5,5 @@
 
 const char *Ctf_MatchOver();
 
-extern const GametypeDef gametype_ctf = {"ctf",   "Capture The Flag", "ctf",   nullptr,
-                                         nullptr, Ctf_MatchOver,      nullptr, nullptr};
+extern const GametypeDef gametype_ctf = {
+    "ctf", "Capture The Flag", "ctf", nullptr, nullptr, Ctf_MatchOver, nullptr, nullptr, nullptr};

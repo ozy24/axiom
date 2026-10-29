@@ -180,6 +180,12 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   at LIVE, a newcomer refused (told alone), a dropped player back in, the
   captain's unlock / relock / `teamkick`, the captaincy passed on when the
   captain leaves, and an emptied team unlocked.
+- **Tier 18 human-join:** the default arrival (`g_auto_join 0`) in FFA,
+  Duel and TDM: a newcomer spectates with the menu open and joins by `join`
+  or the menu; after `gamemap` and `map` (a module reload) the last level's
+  players are back as they were (TDM: on their team) and a watcher still
+  watches; Duel queues only those who asked. Tiers 11, 13, 14 and 16 set
+  `g_auto_join 1`: they test what comes after joining.
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

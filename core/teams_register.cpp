@@ -247,7 +247,7 @@ void Core_Teams_Frame()
 	if (!match_lock)
 		match_lock = gi.cvar("match_lock", "0", CVAR_NOFLAGS);
 	// A new level: level.time starts again from zero, and every client
-	// reconnects and picks a team again.
+	// reconnects (back on their team: core/join.h).
 	if (!begun || level.time < last_time || !Active())
 	{
 		teams.Reset();
@@ -274,11 +274,12 @@ void Core_Teams_Frame()
 	was_warmup = warmup;
 }
 
-bool Core_Teams_MayJoin(edict_t *ent, int team)
+bool Core_Teams_MayJoin(edict_t *ent, int team, bool tell)
 {
 	if (!Active() || teams.MayJoin(Core_PlayerKey(ent), team, (ent->svflags & SVF_BOT) != 0))
 		return true;
-	gi.LocClient_Print(ent, PRINT_HIGH, "{} is locked.\n", TeamName(team));
+	if (tell)
+		gi.LocClient_Print(ent, PRINT_HIGH, "{} is locked.\n", TeamName(team));
 	return false;
 }
 

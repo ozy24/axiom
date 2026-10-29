@@ -212,6 +212,19 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
 - Not done: a lock under `g_teamplay_force_join` only gates `team` and the
   menu (the server's auto-assignment isn't refused); not playtested yet.
 
+## Playtest batch 2026-10-29 (branch `playtest/teams`)
+- Tab menu: a locked team always reads "Join Red [LOCKED]".
+- Fixed: the menu's change of team did nothing (it stuffed `team blue`,
+  which the KEX client doesn't run); now `CTFChangeTeam` on the server.
+  Tier 17 reproduces it.
+- **Arriving spectating (decision 0017, docs/design/joining.md):** a human
+  new to the server spectates with the menu open; `join` / `spectate` in
+  every gametype; `g_auto_join` (default 0). The last level's players come
+  back as they were after `gamemap` and `map` (memory in `g_join_memory`),
+  which also keeps TDM/CTF teams across map changes. Duel's queue is
+  opt-in (Join Queue / Leave Queue). New `GametypeDef::waiting` hook.
+  Harness tier 18; tiers 11, 13, 14, 16 set `g_auto_join 1`.
+
 Next: Clan Arena as a TDM ruleset (elimination rounds that count the
 living, spawn loadout, `match_lock 1`). Then Phase 4's remainder - Chris has other features to work through first,
 then timeouts/pauses, admin controls, per-gametype scoreboards (an

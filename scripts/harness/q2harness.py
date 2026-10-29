@@ -44,6 +44,9 @@ Tiers (plan Phase 1b):
  17. human-teamlock  Team locks and captains in TDM: locked at LIVE, a
                  newcomer refused, a dropped player back in, unlock, kick,
                  the captaincy passed on, an emptied team unlocked (Q2RED).
+ 18. human-join  Arriving spectating with the menu; `join` and the menu;
+                 players kept across `gamemap` and `map`; Duel's queue by
+                 asking; TDM teams kept (Q2RED).
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -802,7 +805,7 @@ at 13 0 cmd queue
 at 30 0 cmd score
 """
     # match_countdown is left at its default: the playtest asked for 10 s.
-    startup = scenario_startup(rig, ["+set", "g_gametype", "duel", "+set", "match_warmup", "1",
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_gametype", "duel", "+set", "match_warmup", "1",
                                      "+set", "timelimit", "0.5", "+map", "q2dm1"])
     # ozbot presses no button at intermission, so the level change that a
     # human's press would trigger is issued here (`gamemap`, as ExitLevel does).
@@ -968,7 +971,7 @@ at 6 1 cmd ready
 at 26 0 cmd kill
 at 40 1 cmd kill
 """
-    startup = scenario_startup(rig, ["+set", "g_gametype", "duel", "+set", "match_warmup", "1",
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_gametype", "duel", "+set", "match_warmup", "1",
                                      "+set", "match_rounds", "1", "+set", "match_round_countdown", "3",
                                      "+set", "match_overtime", "0", "+set", "fraglimit", "0",
                                      "+set", "timelimit", "1", "+map", "q2dm1"])
@@ -1134,7 +1137,7 @@ at 15 2 cmd yes
     rulesets = rig.dir / "baseq2" / "rulesets"
     rulesets.mkdir(parents=True, exist_ok=True)
     (rulesets / "ffa.cfg").write_text("set match_minplayers 99\n")
-    startup = scenario_startup(rig, ["+set", "g_ruleset", "ffa", "+map", "q2dm1"])
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_ruleset", "ffa", "+map", "q2dm1"])
     log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 120)
     tap = read_jsonl(rig.dir / "tap.jsonl")
     detail = []
@@ -1194,7 +1197,7 @@ at 40 0 cmd vote yes
     rulesets = rig.dir / "baseq2" / "rulesets"
     rulesets.mkdir(parents=True, exist_ok=True)
     (rulesets / "ffa.cfg").write_text("set match_ready 0\nset match_countdown 3\n")
-    startup = scenario_startup(rig, ["+set", "g_ruleset", "ffa", "+map", "q2dm1"])
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_ruleset", "ffa", "+map", "q2dm1"])
     log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 120)
     tap = read_jsonl(rig.dir / "tap.jsonl")
     detail = []
@@ -1324,9 +1327,105 @@ at 58 3 disconnect
     results.append((label, not detail, detail))
 
 
+def sv_match_dumps(log):
+    """Each `sv match` in the log: {name: playing}. A dump is a `Match:` line
+    followed by indented lines ("  <score> <name>[ (not playing)]")."""
+    dumps, cur = [], None
+    for raw in log.splitlines():
+        line = re.sub(r"^<\d+>", "", raw)
+        if line.startswith("Match: "):
+            cur = {}
+            dumps.append(cur)
+            continue
+        m = re.match(r"^\s+-?\d+ (.+?)( \(not playing\))?$", line)
+        if cur is not None and m:
+            cur[m.group(1)] = not m.group(2)
+        elif cur is not None and not line.startswith("  "):
+            cur = None
+    return [d for d in dumps if d]
+
+
+def tier_human_join(args, results):
+    """Arriving (g_auto_join 0, the default): a human new to the server
+    arrives spectating with the Tab menu open, and joins with `join` or the
+    menu; after a map change - `gamemap` and `map`, which reloads the module -
+    the last level's players are back as they were and a watcher still
+    watches. Duel: only those who ask are queued. TDM: back on their own
+    team. Q2RED only."""
+    cases = {
+        "ffa": ("""seconds 70
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Dave social=sim-dave puppet
+at 6 0 cmd join
+at 7 1 cmd invuse
+""", [("sleep", 14), ("cmd", "sv match"), ("cmd", "gamemap q2dm2"), ("sleep", 20), ("cmd", "sv match"),
+      ("cmd", "map q2dm3"), ("sleep", 20), ("cmd", "sv match")]),
+        "duel": ("""seconds 50
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Dave social=sim-dave puppet
+at 6 0 cmd join
+at 7 1 cmd invuse
+""", [("sleep", 14), ("cmd", "sv match"), ("cmd", "map q2dm1"), ("sleep", 20), ("cmd", "sv match")]),
+        "tdm": ("""seconds 45
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+at 6 0 cmd team red
+at 6 1 cmd team blue
+""", [("sleep", 12), ("cmd", "map q2dm1"), ("sleep", 20), ("cmd", "sv teams")]),
+    }
+    for gt, (script, during) in cases.items():
+        label = f"18 human-join {gt}"
+        rig, why = scenario_rig(args, f"t18-{gt}")
+        if not rig:
+            results.append((label, True, [f"skipped: {why}"]))
+            continue
+        rulesets = rig.dir / "baseq2" / "rulesets"
+        rulesets.mkdir(parents=True, exist_ok=True)
+        (rulesets / f"{gt}.cfg").write_text("set match_ready 0\nset match_countdown 3\n")
+        startup = scenario_startup(rig, ["+set", "g_ruleset", gt, "+map", "q2dm1"])
+        log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 150)
+        tap = read_jsonl(rig.dir / "tap.jsonl")
+        detail = []
+        humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+        if gt == "tdm":
+            captains = [l.split("Teams: ", 1)[1].strip() for l in log.splitlines() if "Teams: " in l]
+            for want in ("RED captain Alice", "BLUE captain Bob"):
+                if captains.count(want) != 2:
+                    detail.append(f"'{want}' {captains.count(want)} times, expected once a level (saw {captains})")
+            # Back on their team without choosing again.
+            rejoined = [r for r in tap if r.get("type") == "locprint" and r["base"] == "$g_joined_team"]
+            if len(rejoined) != 2:
+                detail.append(f"{len(rejoined)} team joins, expected 2 (the first level's only)")
+        else:
+            dumps = sv_match_dumps(log)
+            want = {"Alice": True, "Bob": True, "Dave": False}
+            expected = 3 if gt == "ffa" else 2
+            if len(dumps) != expected:
+                detail.append(f"{len(dumps)} `sv match` dumps, expected {expected}: {dumps}")
+            for i, d in enumerate(dumps):
+                if d != want:
+                    detail.append(f"level {i + 1}: playing {d}, expected {want}")
+            # The newcomer gets the menu on arriving, on every level.
+            menus = {r.get("map") for r in tap if r.get("type") == "layout" and r.get("to") == humans.get("Dave")
+                     and ("Join the Match" in r["text"] or "Join Queue" in r["text"])}
+            levels = {"ffa": {"q2dm1", "q2dm2", "q2dm3"}, "duel": {"q2dm1"}}[gt]
+            if not levels <= menus:
+                detail.append(f"Dave's menu opened on {sorted(menus)}, expected on {sorted(levels)}")
+            if gt == "duel" and "Bob joins the duel queue" not in log:
+                detail.append("Bob didn't join the queue from the menu")
+        detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
+        if rig.returncode != 0:
+            detail.append(f"server exited with code {rig.returncode}")
+        detail += error_lines(log, rig)[:20]
+        results.append((label, not detail, detail))
+
+
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_rounds, tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
-         tier_human_rounds, tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock)
+         tier_human_rounds, tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
+         tier_human_join)
 
 
 def run_tier(tier, args):
@@ -1428,7 +1527,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps", "human_settings", "human_teamlock"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps", "human_settings", "human_teamlock", "human_join"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

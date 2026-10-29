@@ -4,6 +4,7 @@
 #include "core/match_hooks.h" // [mod]
 #include "core/eyecam_hooks.h" // [mod]
 #include "core/vote_hooks.h" // [mod]
+#include "core/join_hooks.h" // [mod]
 #include "m_player.h"
 #include "bots/bot_includes.h"
 
@@ -2320,6 +2321,7 @@ void ClientBeginDeathmatch(edict_t *ent)
 	ent->svflags |= SVF_PLAYER;
 
 	InitClientResp(ent->client);
+	Core_Join_Begin(ent); // [mod] arriving: spectating with the menu open, or back as on the last level
 
 	// ZOID
 	if (G_TeamplayEnabled() && ent->client->resp.ctf_team < CTF_TEAM1)

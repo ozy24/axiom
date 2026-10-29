@@ -38,9 +38,9 @@ whole argument, so a name with spaces needs no quotes.
   LIVE). After that it's an ordinary lock: the captain can unlock it to
   let a substitute in, then lock it again.
 - **Locks belong to the match.** The match back in warmup unlocks both
-  teams; a new level starts with no locks and no captains (every human
-  reconnects at a map change and picks a team again). Rounds and overtime
-  never change them.
+  teams; a new level starts with no locks and no captains (players come
+  back on their team, docs/design/joining.md, and the first back on each
+  is captain). Rounds and overtime never change them.
 - **An emptied team unlocks itself** when its last human leaves:
   otherwise nobody could join it, and the match could never start again.
 - **Not locked:** spectating, chasing, bots (the server places them), and

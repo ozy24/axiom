@@ -9,9 +9,10 @@ struct MenuView;
 // locks them as the match goes live (match_lock) and unlocks them for warmup.
 void Core_Teams_Frame();
 
-// Whether `ent` may join `team` (1 red, 2 blue) now; if not, says why to
-// `ent` alone. From stock's team joins: CTFTeam_f and CTFJoinTeam.
-bool Core_Teams_MayJoin(edict_t *ent, int team);
+// Whether `ent` may join `team` (1 red, 2 blue) now; if not, and `tell`,
+// says why to `ent` alone. From stock's team joins (CTFChangeTeam,
+// CTFJoinTeam) and core/join_register.cpp's choice of team.
+bool Core_Teams_MayJoin(edict_t *ent, int team, bool tell = true);
 
 // `captain`, `lockteam`, `unlockteam`, `teamkick`, `readyteam`; true if
 // handled. From ClientCommand, before id's chain.
