@@ -112,6 +112,7 @@ isn't a spectator. Every transition prints a `Match:` console line.
 | `match_round_countdown` | `5` | seconds frozen at the spawns before a round (rounds on) |
 | `match_suicide_point` | `0` | 1: a suicide or death to the world is a point to the only opponent, not -1 (HoonyMode; not in team modes or with more than one opponent) |
 | `match_round_pause` | `2` | seconds after the round-ending frag before the respawn (rounds on) |
+| `match_lock` | `0` | 1: both teams lock as the match goes live (team modes; docs/design/teams.md) |
 
 Rulesets set these (decisions 0003 and 0013, `core/rulesets.h`, the admin's
 view in docs/admin.md). The compiled defaults are stock; each gametype's

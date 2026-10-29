@@ -6,6 +6,7 @@
 #include "core/eyecam_hooks.h" // [mod]
 #include "core/vote_hooks.h" // [mod]
 #include "core/maps_hooks.h" // [mod]
+#include "core/teams_hooks.h" // [mod]
 #include "m_player.h"
 
 void SelectNextItem(edict_t *ent, item_flags_t itflags, bool menu = true)
@@ -1618,6 +1619,8 @@ void ClientCommand(edict_t *ent)
 	if (Core_Vote_ClientCommand(ent, cmd)) // [mod] callvote / vote; yes, no, warp while ours
 		return; // [mod]
 	if (Core_Maps_ClientCommand(ent, cmd)) // [mod] maplist
+		return; // [mod]
+	if (Core_Teams_ClientCommand(ent, cmd)) // [mod] captain, lockteam, unlockteam, teamkick, readyteam
 		return; // [mod]
 
 	if (Q_strcasecmp(cmd, "players") == 0)

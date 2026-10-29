@@ -175,6 +175,11 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   a time limit vote moves the clock without a restart, friendly fire and
   an out-of-range time are refused, and a powerups vote reloads the map
   with the voted time limit kept.
+- **Tier 17 human-teamlock:** TDM with five simulated players on the
+  built-in ruleset (`match_lock 1`): first-on captains, both teams locked
+  at LIVE, a newcomer refused (told alone), a dropped player back in, the
+  captain's unlock / relock / `teamkick`, the captaincy passed on when the
+  captain leaves, and an emptied team unlocked.
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

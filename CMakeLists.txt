@@ -115,7 +115,9 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/core/rulesets.cpp"
     "${CMAKE_SOURCE_DIR}/core/rulesets_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/stat_slots.cpp"
-    "${CMAKE_SOURCE_DIR}/core/stat_slots_register.cpp")
+    "${CMAKE_SOURCE_DIR}/core/stat_slots_register.cpp"
+    "${CMAKE_SOURCE_DIR}/core/teams.cpp"
+    "${CMAKE_SOURCE_DIR}/core/teams_register.cpp")
 
 set_target_properties(game_x64 PROPERTIES
     # id's project uses C++17 (game.vcxproj LanguageStandard stdcpp17).
@@ -200,6 +202,7 @@ if(GAME_BUILD_TESTS)
         tests/test_vote.cpp
         tests/test_maps.cpp
         tests/test_miniscore.cpp
+        tests/test_teams.cpp
         core/identity.cpp
         core/match_record.cpp
         core/host_files.cpp
@@ -210,6 +213,7 @@ if(GAME_BUILD_TESTS)
         core/miniscore.cpp
         core/vote.cpp
         core/stat_slots.cpp
+        core/teams.cpp
         tests/test_duel_queue.cpp
         tests/test_eyecam.cpp
         core/gametype.cpp

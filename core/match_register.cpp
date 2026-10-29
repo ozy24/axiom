@@ -13,6 +13,7 @@
 #include "mod_identity.h"
 #include "core/maps_hooks.h"
 #include "core/match_hooks.h"
+#include "core/teams_hooks.h"
 #include "core/vote_hooks.h"
 
 #include <array>
@@ -446,6 +447,7 @@ void Core_Match_Frame()
 			gi.Com_PrintFmt("Match: {}\n", MatchStateName(match.State()));
 	}
 	last_time = level.time;
+	Core_Teams_Frame();
 	Core_Vote_Frame();
 	Core_Maps_Frame();
 	// Settings that change before the match starts take effect: an admin's
@@ -647,23 +649,26 @@ bool Core_Match_IsReady(const edict_t *ent)
 	return ready[(uint32_t)(ent - g_edicts) - 1];
 }
 
-void Core_Match_SetReady(edict_t *ent, bool want_ready)
+void Core_Match_SetReady(edict_t *ent, bool want_ready, bool announce)
 {
 	if (match.State() != MatchState::Warmup && match.State() != MatchState::Countdown)
 	{
-		gi.LocClient_Print(ent, PRINT_HIGH, "There is no match warmup.\n");
+		if (announce)
+			gi.LocClient_Print(ent, PRINT_HIGH, "There is no match warmup.\n");
 		return;
 	}
 	if (!Playing(ent))
 	{
-		gi.LocClient_Print(ent, PRINT_HIGH, "Join the game first.\n");
+		if (announce)
+			gi.LocClient_Print(ent, PRINT_HIGH, "Join the game first.\n");
 		return;
 	}
 	const uint32_t slot = (uint32_t)(ent - g_edicts) - 1;
 	if (ready[slot] != want_ready)
 	{
 		ready[slot] = want_ready;
-		gi.LocBroadcast_Print(PRINT_HIGH, want_ready ? "{} is ready.\n" : "{} is not ready.\n",
-		                      ent->client->pers.netname);
+		if (announce)
+			gi.LocBroadcast_Print(PRINT_HIGH, want_ready ? "{} is ready.\n" : "{} is not ready.\n",
+			                      ent->client->pers.netname);
 	}
 }

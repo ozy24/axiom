@@ -162,8 +162,14 @@ MenuPage Core_Menu_Main(const MenuView &v)
 		// No player counts, here or on Join the Match: the client's
 		// proportional font can't line them up (Chris, 2026-10-27). Your own team stays listed, in the alternate
 		// colour and skipped by the cursor: stock has no grey.
+		// A locked team you can't join is listed, marked locked, and skipped.
 		const auto team = [&](const char *name, int which, MenuAction join)
-		{ Choice(page, std::string("Join ") + name, join, v.team == which); };
+		{
+			if (v.team != which && !v.team_may_join[which])
+				Add(page, std::string("Join ") + name + " (locked)");
+			else
+				Choice(page, std::string("Join ") + name, join, v.team == which);
+		};
 		team("Red", 1, MenuAction::JoinRed);
 		team("Blue", 2, MenuAction::JoinBlue);
 		if (v.team != 0)
@@ -186,6 +192,8 @@ MenuPage Core_Menu_Main(const MenuView &v)
 		Add(page, v.chasing ? "Stop Chasing" : "Chase Camera", v.chasing ? MenuAction::StopChase : MenuAction::Chase);
 	if (v.ready_up && v.playing)
 		Add(page, v.ready ? "Not Ready" : "Ready", v.ready ? MenuAction::NotReady : MenuAction::Ready);
+	if (v.captain)
+		Add(page, "Team (captain)", MenuAction::Team);
 
 	Add(page, "");
 	Add(page, "Match Info", MenuAction::MatchInfo);
@@ -237,6 +245,17 @@ MenuPage Core_Menu_MatchInfo(const MenuView &v)
 	else
 	{
 		Add(page, "No warmup: stock rules");
+	}
+	if (v.teams)
+	{
+		Add(page, "");
+		const auto team = [&](const char *name, int which)
+		{
+			const std::string captain = v.team_captain[which].empty() ? "none" : v.team_captain[which];
+			Add(page, Core_Menu_Clean(std::string(name) + (v.team_locked[which] ? " (locked): " : ": ") + captain));
+		};
+		team("Red", 1);
+		team("Blue", 2);
 	}
 	// stock's localised "Return to Main Menu"
 	Footer(page, {"$g_pc_return", MenuAlign::Left, MenuAction::Back, false, {}});
@@ -356,4 +375,52 @@ MenuPage Core_Menu_VoteSetting(const MenuView &v, std::string_view kind)
 			rows.push_back(ChoiceRow(text, MenuAction::VoteFor, arg == s.current, s.kind + " " + arg));
 	}
 	return ChoicePage(title, rows, more, {"Back", MenuAlign::Left, MenuAction::CallVote, false, {}});
+}
+
+MenuPage Core_Menu_Team(const MenuView &v)
+{
+	MenuPage page;
+	Title(page, v.team == 1 ? "Red Team" : "Blue Team", true);
+	Add(page, "");
+	if (v.team_locked[v.team])
+		Add(page, "Unlock Team", MenuAction::TeamUnlock);
+	else
+		Add(page, "Lock Team", MenuAction::TeamLock);
+	if (v.ready_up)
+		Add(page, "Ready Team", MenuAction::TeamReady);
+	Add(page, "");
+	Add(page, "Teammates:");
+	// Rows left above the footer; a team too big for the page says so.
+	const int room = kMenuRows - 1 - (int)page.size();
+	const bool more = (int)v.teammates.size() > room;
+	for (int i = 0; i < (int)v.teammates.size() && i < (more ? room - 1 : room); ++i)
+		Add(page, Core_Menu_Clean(v.teammates[i].second), MenuAction::TeamMate, MenuAlign::Left, false,
+		    std::to_string(v.teammates[i].first));
+	if (more)
+		Add(page, "More: teamkick / captain");
+	if (v.teammates.empty())
+		Add(page, "(none)");
+	Footer(page, {"$g_pc_return", MenuAlign::Left, MenuAction::Back, false, {}});
+	return page;
+}
+
+MenuPage Core_Menu_TeamMate(const MenuView &v, int client)
+{
+	MenuPage page;
+	std::string name;
+	for (const auto &[c, n] : v.teammates)
+	{
+		if (c == client)
+			name = n;
+	}
+	Title(page, name.empty() ? "Not on your team" : name, true);
+	Add(page, "");
+	if (!name.empty())
+	{
+		const std::string arg = std::to_string(client);
+		Add(page, "Make Captain", MenuAction::TeamCaptain, MenuAlign::Left, false, arg);
+		Add(page, "Kick from Team", MenuAction::TeamKick, MenuAlign::Left, false, arg);
+	}
+	Footer(page, {"Back", MenuAlign::Left, MenuAction::Team, false, {}});
+	return page;
 }

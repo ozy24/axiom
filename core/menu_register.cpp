@@ -10,6 +10,7 @@
 #include "core/match_hooks.h"
 #include "core/menu.h"
 #include "core/menu_hooks.h"
+#include "core/teams_hooks.h"
 #include "core/vote_hooks.h"
 
 #include <cstring>
@@ -30,6 +31,8 @@ enum class Page : int32_t
 	VoteGametypes,
 	VoteVariants,
 	VoteSetting,
+	Team,
+	TeamMate,
 };
 
 // The menu's arg (PMenu_Open TagFrees it on close): which page, and what each
@@ -40,7 +43,8 @@ struct MenuState
 	Page page;
 	MenuAction actions[kMenuRows];
 	char args[kMenuRows][64]; // VoteFor: "map q2dm3"; VoteVariants: the gametype; VoteSetting: the kind
-	char gametype[32];        // Page::VoteVariants: whose gametype; Page::VoteSetting: which setting
+	char gametype[32];        // Page::VoteVariants: whose gametype; Page::VoteSetting: which setting;
+	                          // Page::TeamMate: the teammate's client number
 };
 
 bool Active()
@@ -101,6 +105,7 @@ MenuView View(const edict_t *ent)
 	v.vote_gametypes = vote.gametypes;
 	v.vote_settings = vote.settings;
 	v.gametype_id = vote.gametype;
+	Core_Teams_MenuInfo(ent, v);
 	return v;
 }
 
@@ -144,6 +149,10 @@ MenuPage Build(const edict_t *ent, Page page, const char *gametype)
 		return Core_Menu_VoteVariants(view, gametype);
 	case Page::VoteSetting:
 		return Core_Menu_VoteSetting(view, gametype);
+	case Page::Team:
+		return Core_Menu_Team(view);
+	case Page::TeamMate:
+		return Core_Menu_TeamMate(view, atoi(gametype));
 	}
 	return {};
 }
@@ -308,6 +317,38 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 		const std::string args = state->args[hnd->cur]; // the menu's arg goes on close
 		PMenu_Close(ent);
 		Core_Vote_Call(ent, args);
+		break;
+	}
+	case MenuAction::Team:
+		Open(ent, Page::Team);
+		break;
+	case MenuAction::TeamLock:
+	case MenuAction::TeamUnlock:
+	case MenuAction::TeamReady:
+	{
+		const MenuAction action = state->actions[hnd->cur];
+		Core_Teams_Run(ent,
+		               action == MenuAction::TeamLock     ? "lockteam"
+		               : action == MenuAction::TeamUnlock ? "unlockteam"
+		                                                  : "readyteam",
+		               nullptr);
+		PMenu_Update(ent); // Lock flips to Unlock
+		break;
+	}
+	case MenuAction::TeamMate:
+	{
+		const std::string client = state->args[hnd->cur]; // Open frees this menu's state
+		Open(ent, Page::TeamMate, client.c_str());
+		break;
+	}
+	case MenuAction::TeamKick:
+	case MenuAction::TeamCaptain:
+	{
+		const bool kick = state->actions[hnd->cur] == MenuAction::TeamKick;
+		const uint32_t client = (uint32_t)atoi(state->args[hnd->cur]);
+		PMenu_Close(ent);
+		if (client < game.maxclients)
+			Core_Teams_Run(ent, kick ? "teamkick" : "captain", g_edicts + 1 + client);
 		break;
 	}
 	}

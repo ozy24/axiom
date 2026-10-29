@@ -11,3 +11,8 @@
 struct edict_t;
 
 std::string Core_PlayerName(const edict_t *ent);
+
+// A key for a client that outlives its connection: a human's social ID, which
+// survives a reconnect into another slot ("id:<social id>"), or the slot for
+// a bot or a human without one ("slot:<n>"). Duel's queue and team rosters.
+std::string Core_PlayerKey(const edict_t *ent);

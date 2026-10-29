@@ -50,7 +50,8 @@ bool Core_Match_InPlay(); // being played: live or between rounds; with the flow
 void Core_Match_LimitsChanged();
 bool Core_Match_Playing(const edict_t *ent); // in the match: begun, not a spectator, on a team in team modes
 bool Core_Match_IsReady(const edict_t *ent);
-void Core_Match_SetReady(edict_t *ent, bool ready);
+// `announce` false: no messages at all (a captain's readyteam says it once).
+void Core_Match_SetReady(edict_t *ent, bool ready, bool announce = true);
 
 // `ready` / `notready`; true if handled. From ClientCommand, before id's chain.
 bool Core_Match_ClientCommand(edict_t *ent, const char *cmd);

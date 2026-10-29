@@ -4,6 +4,7 @@
 #include "../m_player.h"
 #include "core/match_hooks.h" // [mod]
 #include "core/menu_hooks.h" // [mod]
+#include "core/teams_hooks.h" // [mod]
 
 #include <assert.h>
 
@@ -1582,6 +1583,8 @@ void CTFTeam_f(edict_t *ent)
 				   CTFTeamName(ent->client->resp.ctf_team));
 		return;
 	}
+	if (!Core_Teams_MayJoin(ent, desired_team)) // [mod] a locked team
+		return; // [mod]
 
 	////
 	ent->svflags = SVF_NONE;
@@ -2737,6 +2740,8 @@ const pmenu_t nochasemenu[] = {
 
 void CTFJoinTeam(edict_t *ent, ctfteam_t desired_team)
 {
+	if (desired_team != CTF_NOTEAM && !Core_Teams_MayJoin(ent, desired_team)) // [mod] a locked team
+		return; // [mod]
 	PMenu_Close(ent);
 
 	ent->svflags &= ~SVF_NOCLIENT;
