@@ -3,7 +3,7 @@
 #include "doctest.h"
 
 #include <algorithm>
-#include <cstdio>
+#include <sstream>
 #include <string>
 
 namespace
@@ -26,8 +26,9 @@ std::vector<int> Slots(const std::string &layout)
 	std::vector<int> out;
 	for (size_t at = layout.find("ctf "); at != std::string::npos; at = layout.find("ctf ", at + 1))
 	{
+		std::istringstream row(layout.substr(at + 4));
 		int x = 0, y = 0, slot = 0;
-		if (sscanf(layout.c_str() + at, "ctf %d %d %d", &x, &y, &slot) == 3)
+		if (row >> x >> y >> slot)
 			out.push_back(slot);
 	}
 	return out;
