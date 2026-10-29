@@ -15,7 +15,7 @@ Nothing else is needed: every gametype works with no files at all.
 set hostname "My Server"
 set deathmatch 1
 set maxclients 16
-set g_ruleset ffa         // the mode to start in: ffa, duel, hoony, tdm, ctf
+set g_ruleset ffa         // the mode to start in: ffa, duel, tdm, ctf
 map q2dm1
 ```
 
@@ -50,7 +50,10 @@ to warmup. For a bot-only server, `set match_allow_no_humans 1`.
 
 ## Adding a variant
 
-A variant is another way to play a gametype. HoonyMode (Duel) is built in.
+A variant is another way to play a gametype. HoonyMode, Duel where every
+frag ends a round, was built in and is off for now; you can still run it
+as your own variant (`rulesets/duel_hoony.cfg` with `set match_rounds 1`,
+`set match_suicide_point 1`, `set fraglimit 5`, `set timelimit 15`).
 To add your own, name the file `<gametype>_<name>.cfg`, write only how it
 differs from the gametype, and list it in `server.cfg`:
 

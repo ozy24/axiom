@@ -137,7 +137,7 @@ view in docs/admin.md). The compiled defaults are stock; each gametype's
 built-in ruleset (`ffa`, `duel`, `tdm`, `ctf`) turns the match flow on, and
 `rulesets/<gametype>.cfg` changes it. `sv ruleset <name>` (or `set g_ruleset`
 in server.cfg) switches: every gameplay cvar back to its default, the
-gametype's settings and cfg, then a variant's (`hoony`). `g_ruleset`
+gametype's settings and cfg, then a variant's (an admin's `duel_hoony`, say). `g_ruleset`
 (serverinfo) names the mode; empty means server.cfg set everything itself.
 The module can't see whether an exec found its file, so a missing one shows
 only the engine's `couldn't exec` warning.

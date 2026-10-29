@@ -88,12 +88,10 @@ const RulesetDef core_rulesets[] = {
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
      "set capturelimit 8\n"},
-    {"hoony", "duel", "HoonyMode: every frag ends a round and resets the arena; first to 5, 15 minutes",
-     "set match_rounds 1\n"
-     "set match_suicide_point 1\n"
-     "set timelimit 15\n"
-     "set fraglimit 5\n",
-     "HoonyMode"},
+    // HoonyMode (Duel with match_rounds 1, match_suicide_point 1, first to 5)
+    // is off for now (Chris, 2026-10-29): an admin can still play it as a
+    // variant, rulesets/duel_hoony.cfg listed in g_rulesets. Clan Arena, a
+    // TDM variant, comes next.
 };
 const size_t core_ruleset_count = sizeof(core_rulesets) / sizeof(core_rulesets[0]);
 

@@ -67,7 +67,7 @@ A human new to the server arrives spectating with the main page open
   `readyteam`.
 - **Maps.** The vote's map list. The current map is marked and skipped.
 - **Gametypes.** A gametype with one ruleset is voted from the list. One with
-  variants opens a submenu, for example Duel → Duel / HoonyMode. The current
+  variants opens a submenu, for example Capture The Flag → Capture The Flag / Instagib. The current
   one is marked.
 
 - **Team** (a captain's). Lock Team or Unlock Team, Ready Team in ready-up,
