@@ -5,6 +5,7 @@
 #   name     display name: banner, g_version
 #   id       short lowercase identifier: serverinfo gamename
 #   version  release version, MAJOR.MINOR.PATCH
+#   repository  (optional) the project's page: the Tab menu's About
 #
 # The build id is the git commit (with -dirty for uncommitted changes), or
 # "nogit" when built from a source archive without git.
@@ -27,6 +28,14 @@ if(NOT MOD_ID MATCHES "^[a-z][a-z0-9_]*$")
 endif()
 if(NOT MOD_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
     message(FATAL_ERROR "mod.json: version must be MAJOR.MINOR.PATCH (got \"${MOD_VERSION}\")")
+endif()
+# Optional: shown in the Tab menu's About page.
+string(JSON MOD_REPOSITORY ERROR_VARIABLE _err GET "${_mod_json}" "repository")
+if(_err)
+    set(MOD_REPOSITORY "")
+endif()
+if(MOD_REPOSITORY MATCHES "[\"\\\\]")
+    message(FATAL_ERROR "mod.json: repository must not contain quotes or backslashes")
 endif()
 if(MOD_NAME MATCHES "[\"\\\\]")
     message(FATAL_ERROR "mod.json: name must not contain quotes or backslashes")

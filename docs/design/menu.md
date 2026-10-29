@@ -40,7 +40,8 @@ A human new to the server arrives spectating with the main page open
   proposal, a blank line, Vote Yes and Vote No, with the cursor on Yes.
   Then, by gametype:
   - team modes: Join Red, Join Blue, Spectate;
-  - Duel: Join Queue or Leave Queue, and Duel Queue;
+  - Duel: Join Queue or Leave Queue (the queue itself is on Duel's
+    scoreboard; `queue` prints it);
   - FFA: Join the Match or Spectate;
   - a spectator: Chase Camera or Stop Chasing;
   - in warmup: Ready or Not Ready;
@@ -50,8 +51,11 @@ A human new to the server arrives spectating with the main page open
   you aren't on its roster, the row is skipped.
 
   After those come Match Info, then Call a Vote when you may call one, and
-  Close at the foot. A choice that is already the case (your team, your vote answer) is
+  at the foot About, a blank line, then Close. A choice that is already the case (your team, your vote answer) is
   drawn in green and skipped by the cursor. Stock has no grey.
+- **About.** The mod's name and version, its build (the commit) and its
+  page (mod.json's `repository`, which also names the project for
+  downstream mods; optional).
 - **Match Info.** The gametype, ruleset and map, the time limit, the frag
   or capture limit, and with the match flow on, overtime, ready-up and
   rounds. In team modes, each team's captain and whether it's locked.

@@ -1,7 +1,11 @@
-# The column scoreboard
+# The mod's scoreboards
 
-Outside team modes, `g_scoreboard 1` replaces stock's FFA board with
-columns (decision 0018). The built-in `ffa` ruleset turns it on.
+Outside team modes, `g_scoreboard 1` replaces stock's board: FFA gets
+columns (decision 0018), Duel its own board (decision 0019, below). The
+built-in `ffa` and `duel` rulesets turn it on; `g_scoreboard 0` brings
+stock's back.
+
+## FFA
 
 ```
                 [2026-10-29 19:40]
@@ -26,6 +30,39 @@ columns (decision 0018). The built-in `ffa` ruleset turns it on.
 - Your own row is green. Players are ordered by frags, then fewer deaths.
 - Spectators follow, two to a line, showing score and ping.
 
+## Duel
+
+```
+                  Duel on The Edge
+                  Match time 10:00            (intermission)
+          WINNER
+   [face] Xin                [face] aid       stock's player blocks
+          10  ping 17               7  ping 15
+          W 3  L 1  streak 3        W 0  L 2  each duellist's record
+
+  W  L  Next up
+1 0  2  OESD                                   the queue, in order
+  Spectators
+  0  0  Tab               1  4  bizich
+```
+
+- The two duellists in stock's blocks (face, name, score, ping, minutes),
+  with a tick by each who is ready during ready-up.
+- Under each block, their record this session: wins, losses and a
+  streak of two or more. Your own is green.
+- **Next up:** the queue in order, numbered, with each player's wins and
+  losses.
+- Spectators two to a line, under the same W and L.
+- At intermission: the match time, and WINNER over the winner's block
+  (a name can't go in a line of text: see Limits).
+- Records last across `gamemap` (the rotation's map change); a `map`
+  (a vote, an admin) reloads the module and starts them again. A forfeit
+  isn't counted.
+
+Compared with MMREX's: the queue is numbered and the duellists show their
+records too; spectators show their record, not "0 0"; no "1st place with
+a score of N" line, which says nothing in a duel.
+
 ## Limits (KEX client)
 
 - **1024 bytes.** The client keeps the whole layout in a 1024-byte buffer,
@@ -42,6 +79,14 @@ columns (decision 0018). The built-in `ffa` ruleset turns it on.
   row can show a name: hence no chase target for spectators.
 
 ## Implementation
+
+Duel: `gametypes/duel/duel_board.{h,cpp}` (layout and records; unit tests
+`tests/test_duel_board.cpp`), fed by `Duel_Scoreboard` in
+`duel_register.cpp` through the gametype's `scoreboard` hook. Its first
+intermission board goes out a frame before the result is in, so Duel's
+`match_ended` resends it (`menutime`). Harness tier 11 checks it.
+
+FFA:
 
 - `core/scoreboard.{h,cpp}`: the layout text, ordering, FPH and the fit to
   the budget (unit tests: `tests/test_scoreboard.cpp`).

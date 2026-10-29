@@ -10,6 +10,8 @@ const char *Duel_MatchOver();
 void Duel_MatchEnded();
 bool Duel_ClientCommand(edict_t *ent, const char *cmd);
 bool Duel_Waiting(const edict_t *ent);
+bool Duel_Scoreboard(const edict_t *viewer, size_t budget, std::string &layout);
 
-extern const GametypeDef gametype_duel = {"duel",         "Duel",          "deathmatch",       Duel_Install, Duel_Frame,
-                                          Duel_MatchOver, Duel_MatchEnded, Duel_ClientCommand, Duel_Waiting};
+extern const GametypeDef gametype_duel = {"duel",       "Duel",         "deathmatch",    Duel_Install,
+                                          Duel_Frame,   Duel_MatchOver, Duel_MatchEnded, Duel_ClientCommand,
+                                          Duel_Waiting, Duel_Scoreboard};

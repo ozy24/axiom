@@ -34,7 +34,12 @@ game plays.
  INTERMISSION (stock intermission and map change)  ◄────────────────────────┘
 ```
 
-- **WARMUP:** players can move, shoot and pick up; nothing is scored. Each
+- **WARMUP:** players can move, shoot and pick up; nothing is scored. With
+  `match_warmup_weapons 1` (the default) everyone spawns with every weapon
+  the map places, with full ammo and the best of them in hand, and drops
+  nothing when they die, so the floor doesn't fill with weapons (Chris,
+  2026-10-29). The log names the loadout once a level (`Warmup: loadout
+  ...`). The match going live respawns everyone with stock's start. Each
   player toggles `ready` (console command). The countdown starts when every
   required player is ready, and there are at least `match_minplayers`. If
   `match_warmup_time` > 0 it also starts when that runs out. It never starts
@@ -49,7 +54,7 @@ game plays.
   timelimit (then timed overtime); sudden death has no clock. `sv match`
   prints the state, every client's score and the team scores.
 - **COUNTDOWN:** `match_countdown` seconds, announced by centre-print each
-  second. If a required player un-readies or leaves, back to WARMUP.
+  second. Players can move but neither fire nor pick anything up. If a required player un-readies or leaves, back to WARMUP.
 - **LIVE:** on entry, the **arena reset** (below) runs and scores are zeroed.
   The end conditions are stock's (`timelimit`, `fraglimit`) plus the
   gametype's (`CheckDMRules` hook), so a gametype that ends on something else
@@ -112,6 +117,7 @@ isn't a spectator. Every transition prints a `Match:` console line.
 | `match_round_countdown` | `5` | seconds frozen at the spawns before a round (rounds on) |
 | `match_suicide_point` | `0` | 1: a suicide or death to the world is a point to the only opponent, not -1 (HoonyMode; not in team modes or with more than one opponent) |
 | `match_round_pause` | `2` | seconds after the round-ending frag before the respawn (rounds on) |
+| `match_warmup_weapons` | `1` | warmup: every weapon the map places, full ammo, no drops on death |
 | `match_lock` | `0` | 1: both teams lock as the match goes live (team modes; docs/design/teams.md) |
 
 Rulesets set these (decisions 0003 and 0013, `core/rulesets.h`, the admin's

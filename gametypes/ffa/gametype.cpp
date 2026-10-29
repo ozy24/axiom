@@ -2,4 +2,4 @@
 #include "core/gametype.h"
 
 extern const GametypeDef gametype_ffa = {"ffa",   "Free For All", "deathmatch", nullptr, nullptr,
-                                         nullptr, nullptr,        nullptr,      nullptr};
+                                         nullptr, nullptr,        nullptr,      nullptr, nullptr};

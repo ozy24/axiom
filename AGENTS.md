@@ -147,15 +147,16 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
 - **Tier 7 rounds:** `match_rounds 1` with six bots: a frag must end a round
   and the next round start (Q2RED only; Q2REX's bots don't fight).
 - **Tier 9 warmup:** six bots fight in a warmup that never starts
-  (`match_minplayers 99`); `sv match` must show every score still 0 (Q2RED
-  only).
+  (`match_minplayers 99`); `sv match` must show every score still 0, and
+  the warmup loadout names q2dm1's weapons (Q2RED only).
 - **Tier 10 duel-rotation:** after a Duel ends the level changes
   (`gamemap`); the loser must wait and the queued bot play (Q2RED only).
 - **Tier 11 human-duel:** three simulated players (Q2RED `q2red_sim_client`,
   played by ozbot as puppets, `docs/design/simulated-clients.md`) join like
   retail clients and run the playtest's match-flow and Duel rows; checks read
-  the server's game tap (what each player was shown). Q2RED only; skipped when
-  the engine has no sim client.
+  the server's game tap (what each player was shown). Duel's scoreboard:
+  the queue numbered in warmup, the winner and their record at
+  intermission. Q2RED only; skipped when the engine has no sim client.
 - **Tier 12 human-teams:** `tdm` and `ctf` with four simulated players who
   pick teams with `team red` / `team blue`: no countdown while one team is
   empty, then a timelimit end and a record with everyone on their team.
@@ -166,7 +167,8 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
 - **Tier 14 human-vote:** three simulated players in an FFA warmup: a
   refused map vote fails, its caller waits out the cooldown, a map off the
   list is answered with the list, then a vote answered with stock's `yes`
-  passes, shows on the HUD's status line and loads the map.
+  passes, shows on the HUD's status line and loads the map. Carol can `use`
+  the warmup loadout's railgun, but not the BFG q2dm1 doesn't place.
 - **Tier 15 maps:** a shuffled three-map `g_map_list` (q2dm3-5), started off the list
   on q2dm1, with bots: four level ends, each followed by a `gamemap` to the
   announced map; the first pass plays every listed map once, the next pass

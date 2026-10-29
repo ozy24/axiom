@@ -789,7 +789,8 @@ def tier_human_duel(args, results):
     Carol), played by ozbot, join like retail clients and run the playtest's
     match-flow and Duel rows: warmup is free play with no clock, `ready`, the
     10-second countdown, `queue`, the timelimit, and the rotation across the
-    map change. Q2RED only."""
+    map change. Duel's own scoreboard (g_scoreboard 1): the queue numbered
+    in warmup, the winner and their record at intermission. Q2RED only."""
     rig, why = scenario_rig(args, "t11-human-duel")
     if not rig:
         results.append(("11 human-duel", True, [f"skipped: {why}"]))
@@ -807,12 +808,12 @@ at 13 0 cmd queue
 at 30 0 cmd score
 """
     # match_countdown is left at its default: the playtest asked for 10 s.
-    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_gametype", "duel", "+set", "match_warmup", "1",
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_scoreboard", "1", "+set", "g_gametype", "duel", "+set", "match_warmup", "1",
                                      "+set", "timelimit", "0.5", "+map", "q2dm1"])
     # ozbot presses no button at intermission, so the level change that a
     # human's press would trigger is issued here (`gamemap`, as ExitLevel does).
     during = [("sleep", 11), ("cmd", "sv match"), ("wait", r"Duel: .* next: ", 80), ("sleep", 3),
-              ("cmd", "gamemap q2dm1")]
+              ("cmd", "gamemap q2dm1"), ("sleep", 12), ("cmd", "sv match")]
     log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 180)
     tap = read_jsonl(rig.dir / "tap.jsonl")
     detail = []
@@ -859,6 +860,17 @@ at 30 0 cmd score
     if not after or not any("time_limit" in r["text"] for r in after):
         detail.append("no clock on the scoreboard once the match was live")
 
+    # Duel's board: in warmup the two duellists' blocks and Carol first in
+    # the queue; at intermission the winner marked, with their first win.
+    if not before or "Duel on " not in before[0]["text"] or before[0]["text"].count(" client ") != 2 \
+            or not re.search(rf"ctf -40 \d+ {carol} 0 0 \"\" xv -64 string 1 ", before[0]["text"]):
+        detail.append(f"Alice's warmup board: {before[0]['text'] if before else None}")
+    # (The first goes out a frame before the result: the last is the one shown.)
+    final = [r["text"] for r in layouts if "m_eou_press_button" in r["text"]]
+    if not final or "string2 WINNER" not in final[-1] or '"W 1  L 0"' not in final[-1] \
+            or "Match time " not in final[-1]:
+        detail.append(f"Alice's intermission board: {final[-1] if final else None}")
+
     # The HUD's state line: warmup, the countdown, the clock.
     drawn, texts = state_line(tap)
     if not drawn:
@@ -881,12 +893,12 @@ at 30 0 cmd score
         detail.append("no Duel result line")
     else:
         loser = m.group(1)
-        ended = next((r["t"] for r in tap if r.get("type") == "layout" and "m_eou_press_button" in r["text"]), 0)
-        later = [r for r in tap if r.get("type") == "stufftext" and r["t"] > ended and "spectator" in r["text"]]
-        spec = {r["to"]: r["text"].strip() for r in later}
-        if spec.get(humans.get(loser)) != "spectator 1" or spec.get(carol) != "spectator 0":
-            detail.append(f"after the map change: {spec} (slots {humans}), expected {loser} spectating "
-                          "and Carol playing")
+        # `sv match` after the map change: who plays (the KEX client gets no
+        # stuffed `spectator`, so the server's report is what shows it).
+        dumps = sv_match_dumps(log)
+        after = dumps[-1] if len(dumps) >= 2 else {}
+        if after.get(loser) is not False or after.get("Carol") is not True:
+            detail.append(f"after the map change: playing {after}, expected {loser} spectating and Carol playing")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]
@@ -1069,6 +1081,11 @@ def tier_warmup(args, results):
         detail.append("no scores in the `sv match` report")
     elif any(scores):
         detail.append(f"scores {scores} in warmup, expected all 0")
+    # The warmup loadout (match_warmup_weapons, on by default): every weapon
+    # q2dm1 places - not the BFG, which it doesn't.
+    loadout = next((l for l in log.splitlines() if "Warmup: loadout " in l), "")
+    if "weapon_railgun" not in loadout or "weapon_bfg" in loadout:
+        detail.append(f"warmup loadout line {loadout!r}, expected q2dm1's weapons with the railgun")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]
@@ -1116,7 +1133,9 @@ def tier_human_vote(args, results):
     rulesets/ffa.cfg that holds the warmup open). A map vote two of them refuse fails; its caller
     can't call again at once; a map off the list is refused with the list;
     then a vote one other player answers with stock's `yes` passes, shows on
-    the HUD's status line, and loads the map. Q2RED only."""
+    the HUD's status line, and loads the map. In the warmup Carol has the
+    map's railgun (the warmup loadout) but not the BFG it doesn't place.
+    Q2RED only."""
     rig, why = scenario_rig(args, "t14-vote")
     if not rig:
         results.append(("14 human-vote", True, [f"skipped: {why}"]))
@@ -1129,6 +1148,8 @@ at 8 0 cmd callvote map q2dm2
 at 9 1 cmd vote no
 at 9 2 cmd vote no
 at 12 0 cmd callvote map q2dm3
+at 10 2 cmd use railgun
+at 11 2 cmd use bfg10k
 at 13 1 cmd callvote map q2dm9
 at 14 1 cmd callvote map q2dm3
 at 15 2 cmd yes
@@ -1160,6 +1181,9 @@ at 15 2 cmd yes
         detail.append("Alice's second call wasn't refused for the cooldown")
     if not any("Maps: q2dm1 q2dm2" in t for t in to("Bob")):
         detail.append("Bob's call for q2dm9 wasn't answered with the map list")
+    out_of = [r["args"] for r in locs if r["to"] == humans["Carol"] and r["base"] == "$g_out_of_item"]
+    if out_of != [["$item_bfg10k"]]:
+        detail.append(f"Carol's `use` refusals {out_of}, expected the BFG's alone (the railgun is the loadout's)")
     texts = [r["text"] for r in tap if r.get("type") == "configstring" and r["text"].startswith("VOTE")]
     for line in ("VOTE: MAP Q2DM2 - YES 1/3 - ", "VOTE: MAP Q2DM3 - YES 1/3 - ", "VOTE PASSED"):
         if not any(t.startswith(line) for t in texts):
@@ -1451,6 +1475,7 @@ client 1 name=Bob social=sim-bob puppet
 client 2 name=Dave social=sim-dave puppet
 at 6 0 cmd join
 at 7 1 cmd invuse
+at 8 2 cmd spectator 1
 """, [("sleep", 14), ("cmd", "sv match"), ("cmd", "gamemap q2dm2"), ("sleep", 20), ("cmd", "sv match"),
       ("cmd", "map q2dm3"), ("sleep", 20), ("cmd", "sv match")]),
         "duel": ("""seconds 50
@@ -1507,6 +1532,18 @@ at 6 1 cmd team blue
                 detail.append(f"Dave's menu opened on {sorted(menus)}, expected on {sorted(levels)}")
             if gt == "duel" and "Bob joins the duel queue" not in log:
                 detail.append("Bob didn't join the queue from the menu")
+            # The KEX client sends a stuffed `spectator 1` straight back as a
+            # command (playtest 2026-10-29: "invalid game command"): the
+            # watcher is sent none, and the echo is answered with nothing.
+            dave = humans.get("Dave")
+            stuffed = [r["text"].strip() for r in tap if r.get("type") == "stufftext" and r.get("to") == dave
+                       and "spectator" in r["text"]]
+            if stuffed:
+                detail.append(f"Dave (watching) was sent {stuffed}")
+            said = [" ".join([r.get("base", r.get("text", ""))] + r.get("args", [])) for r in tap
+                    if r.get("type") in ("locprint", "print") and r.get("to") == dave]
+            if gt == "ffa" and any("invalid game command" in t for t in said):
+                detail.append("Dave's `spectator 1` was answered with 'invalid game command'")
         detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
         if rig.returncode != 0:
             detail.append(f"server exited with code {rig.returncode}")

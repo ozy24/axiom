@@ -20,6 +20,7 @@ const RulesetDef core_rulesets[] = {
      "set match_round_pause 2\n"
      "set match_suicide_point 0\n"
      "set match_lock 0\n"
+     "set match_warmup_weapons 1\n"
      "set timelimit 10\n"
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
@@ -39,9 +40,11 @@ const RulesetDef core_rulesets[] = {
      "set match_round_pause 2\n"
      "set match_suicide_point 0\n"
      "set match_lock 0\n"
+     "set match_warmup_weapons 1\n"
      "set timelimit 10\n"
      "set fraglimit 0\n"
-     "set g_map_list_shuffle 1\n"},
+     "set g_map_list_shuffle 1\n"
+     "set g_scoreboard 1\n"},
     {"tdm", "tdm", "team deathmatch: warmup and ready-up, 20 minutes, sudden death on a tie",
      "set g_gametype tdm\n"
      "set ctf 0\n"
@@ -57,6 +60,7 @@ const RulesetDef core_rulesets[] = {
      "set match_round_pause 2\n"
      "set match_suicide_point 0\n"
      "set match_lock 1\n"
+     "set match_warmup_weapons 1\n"
      "set timelimit 20\n"
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"},
@@ -75,6 +79,7 @@ const RulesetDef core_rulesets[] = {
      "set match_round_pause 2\n"
      "set match_suicide_point 0\n"
      "set match_lock 1\n"
+     "set match_warmup_weapons 1\n"
      "set timelimit 20\n"
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
@@ -107,6 +112,7 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"match_round_pause", "2"},
     {"match_suicide_point", "0"},
     {"match_lock", "0"},
+    {"match_warmup_weapons", "1"},
     {"timelimit", "0"},
     {"fraglimit", "0"},
     {"capturelimit", "0"},

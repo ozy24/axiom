@@ -3,4 +3,4 @@
 #include "core/gametype.h"
 
 extern const GametypeDef gametype_tdm = {"tdm",   "Team Deathmatch", "teamplay", nullptr, nullptr,
-                                         nullptr, nullptr,           nullptr,    nullptr};
+                                         nullptr, nullptr,           nullptr,    nullptr, nullptr};
