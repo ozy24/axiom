@@ -19,7 +19,7 @@ static std::set<std::string> GameplayCvars()
 }
 static const std::set<std::string> kKnownCvars = GameplayCvars();
 
-static const std::vector<std::string> kGametypes = {"ffa", "duel", "tdm", "ctf"};
+static const std::vector<std::string> kGametypes = {"ffa", "duel", "tdm", "ca", "ctf"};
 
 static size_t Find(const std::string &text, const std::string &what)
 {
@@ -83,7 +83,7 @@ TEST_CASE("every built-in sets ctf and teamplay to match its gametype")
 		const std::string gt = core_rulesets[i].gametype;
 		CAPTURE(gt);
 		CHECK(Find(cfg, gt == "ctf" ? "set ctf 1\n" : "set ctf 0\n") != std::string::npos);
-		CHECK(Find(cfg, gt == "tdm" ? "set teamplay 1\n" : "set teamplay 0\n") != std::string::npos);
+		CHECK(Find(cfg, gt == "tdm" || gt == "ca" ? "set teamplay 1\n" : "set teamplay 0\n") != std::string::npos);
 	}
 }
 
@@ -117,7 +117,7 @@ TEST_CASE("team games lock their teams as the match goes live; the others have n
 			continue;
 		const std::string gt = core_rulesets[i].gametype;
 		CAPTURE(gt);
-		const bool teams = gt == "tdm" || gt == "ctf";
+		const bool teams = gt == "tdm" || gt == "ca" || gt == "ctf";
 		CHECK(Find(core_rulesets[i].cfg, teams ? "set match_lock 1\n" : "set match_lock 0\n") != std::string::npos);
 	}
 }
@@ -174,7 +174,7 @@ TEST_CASE("all: by gametype, its own first, then built-in variants, then the adm
 	std::vector<std::string> names;
 	for (const Ruleset &r : Core_Ruleset_All("ctf_instagib duel_x duel_x junk", kGametypes))
 		names.push_back(r.name);
-	CHECK(names == std::vector<std::string>{"ffa", "duel", "duel_x", "tdm", "ctf", "ctf_instagib"});
+	CHECK(names == std::vector<std::string>{"ffa", "duel", "duel_x", "tdm", "ca", "ctf", "ctf_instagib"});
 }
 
 TEST_CASE("a switch resets every gameplay cvar, then the gametype, then the variant")

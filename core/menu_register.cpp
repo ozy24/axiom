@@ -100,6 +100,9 @@ MenuView View(const edict_t *ent)
 	v.capturelimit = capturelimit->integer;
 	v.overtime = CvarInt("match_overtime");
 	v.rounds = Core_Match_ParseRounds(gi.cvar("match_rounds", "0", CVAR_NOFLAGS)->string) != RoundsMode::Off;
+	v.elimination = Core_Match_Elimination();
+	v.round_lives = std::max(1, CvarInt("match_round_lives"));
+	v.round_time_s = std::max(0, CvarInt("match_round_time"));
 	v.match_flow = Core_Match_OwnsRules();
 	v.warmup = v.match_flow && !Core_Match_InPlay();
 

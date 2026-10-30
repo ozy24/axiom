@@ -509,7 +509,10 @@ def tier_dm_smoke(args, results):
 def tier_gametype_boot(args, results):
     """Every registered gametype, and Rogue's stock gamerules modes (still run
     as stock, decision 0010), boot q2dm1 with bots and shut down cleanly."""
-    cases = [(gt, ["+set", "g_gametype", gt], rf"Gametype: .+ \({re.escape(gt)}\)")
+    # Clan Arena is a data-only gametype: its rules are its ruleset's, so it
+    # boots through that (`g_gametype ca` alone would play TDM's rules).
+    cases = [(gt, ["+set", "g_ruleset", gt] if gt == "ca" else ["+set", "g_gametype", gt],
+              rf"Gametype: .+ \({re.escape(gt)}\)")
              for gt in args.gametypes.split(",") if gt]
     cases += [(f"gamerules{n}", ["+set", "gamerules", n], rf"Gametype: stock gamerules {re.escape(n)}\b")
               for n in args.stock_gamerules.split(",") if n]
@@ -539,7 +542,7 @@ def tier_gametype_boot(args, results):
 
 
 # The stock mode each team gametype runs on, and the map it's tested on.
-RETAIL_MODE = {"tdm": "teamplay", "ctf": "ctf"}
+RETAIL_MODE = {"tdm": "teamplay", "ca": "teamplay", "ctf": "ctf"}
 GAMETYPE_MAP = {"ctf": "q2ctf1"}
 
 MATCH_SEQUENCE = ["Match: warmup", "Match: warmup -> countdown", "Match: countdown -> live",
@@ -1816,7 +1819,7 @@ def main():
     ap.add_argument("--settle", type=float, default=6, help="seconds after the map loads before saving")
     ap.add_argument("--dm-seconds", type=float, default=60)
     ap.add_argument("--runs", type=int, default=6, help="calibration runs")
-    ap.add_argument("--gametypes", default="ffa,duel,tdm,ctf",
+    ap.add_argument("--gametypes", default="ffa,duel,tdm,ca,ctf",
                     help="gametype ids tier 4 boots (the registry's, GAME_GAMETYPES)")
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")

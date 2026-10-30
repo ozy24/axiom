@@ -515,3 +515,13 @@ TEST_CASE("vote shuffle: the admin's sv callvote still needs the warmup")
 	      VoteError::WarmupOnly);
 	CHECK(v.Call(Vote::kServer, {VoteKind::Shuffle, "", ""}, TeamWarmup(4), false, {0, 1}, 0) == VoteError::None);
 }
+
+TEST_CASE("vote settings: in elimination rounds the score limit is a Round Limit, 1-20")
+{
+	const VoteSetting s = *Core_Vote_Setting(VoteKind::Scorelimit, false, true);
+	CHECK(s.title == std::string("Round Limit"));
+	CHECK(s.min == 1);
+	CHECK(s.max == 20);
+	CHECK(Core_Vote_SettingLabel(s, 8) == "round limit 8");
+	CHECK_FALSE(Core_Vote_SettingValue(s, "0").has_value()); // a round match always has a limit
+}
