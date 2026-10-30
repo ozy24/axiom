@@ -83,9 +83,12 @@ USE(target_remove_powerups_use)(edict_t *self, edict_t *other, edict_t *activato
 	gclient_t *cl = activator->client;
 	cl->quad_time = cl->double_time = cl->quadfire_time = 0_ms;
 	cl->invincible_time = cl->invisible_time = cl->breather_time = cl->enviro_time = 0_ms;
-	for (item_id_t id = IT_NULL; id != IT_TOTAL; id = static_cast<item_id_t>(id + 1))
-		if (GetItemByIndex(id)->flags & IF_POWERUP)
+	for (item_id_t id = static_cast<item_id_t>(IT_NULL + 1); id != IT_TOTAL; id = static_cast<item_id_t>(id + 1))
+	{
+		const gitem_t *item = GetItemByIndex(id);
+		if (item && (item->flags & IF_POWERUP))
 			cl->pers.inventory[id] = 0;
+	}
 	CTFDeadDropTech(activator); // as if they had died: back into the level
 	CTFDeadDropFlag(activator);
 }

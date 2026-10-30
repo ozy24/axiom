@@ -1638,6 +1638,7 @@ ENTITY_ADDITIONS = """
 { "classname" "target_position" "targetname" "t_apex" "origin" "200 432 900" }
 { "classname" "trigger_push" "origin" "-48 464 660" "target" "t_apex" }
 { "classname" "target_remove_powerups" "targetname" "t_strip" "origin" "0 0 0" }
+{ "classname" "trigger_multiple" "origin" "0 0 0" "mins" "-4096 -4096 -4096" "maxs" "4096 4096 4096" "target" "t_strip" }
 """
 
 
@@ -1647,7 +1648,9 @@ def tier_entities(args, results):
     out what its keys say (FFA: the Duel-only quad and mega, the
     no-powerups adrenaline, the not-Quake-II health; Duel: the combat armour
     in their place), nothing goes unknown, and `sv saveents` writes a
-    starting file for a map without one but never over an existing one."""
+    starting file for a map without one but never over an existing one.
+    A map-sized trigger fires target_remove_powerups at the bots (it once
+    crashed on its first player: playtest 2026-10-30)."""
     world, rest = bsp_entities(args.retail, "q2dm1").split("}", 1)
     text = world + '"author" "harness"\n"no_dm_spawnpads" "1"\n}' + rest + ENTITY_ADDITIONS
     for gametype, left_out in (("ffa", 4), ("duel", 3)):
@@ -1655,9 +1658,11 @@ def tier_entities(args, results):
         game_dir = rig.dir / "baseq2" if args.engine_kind == "q2red" else rig.base / "baseq2"
         (game_dir / "maps").mkdir(parents=True, exist_ok=True)
         (game_dir / "maps" / "q2dm1.ent").write_text(text, encoding="latin1")
-        startup = ["+set", "deathmatch", "1", "+set", "maxclients", "4", "+set", "g_gametype", gametype,
-                   "+map", "q2dm1"]
-        steps = [rig.wait_ready(), ("sleep", 3), ("cmd", "sv saveents"), ("sleep", 1)]
+        startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", gametype]
+                   + rig.bot_args() + ["+map", "q2dm1"])
+        # Q2REX's bots begin but may not announce it in a bot-only match.
+        joined = ("wait", r"entered the game", 30) if rig.expects_frags else ("sleep", 10)
+        steps = [rig.wait_ready(), joined, ("sleep", 5), ("cmd", "sv saveents"), ("sleep", 1)]
         if gametype == "ffa":
             steps += [("cmd", "gamemap q2dm2"), ("wait", rig.ready_re, 60, 2),
                       ("sleep", 3), ("cmd", "sv saveents"), ("wait", r"Entities written to", 20)]

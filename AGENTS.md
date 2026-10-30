@@ -200,7 +200,8 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
 - **Tier 22 entities:** a q2dm1 `.ent` override (the BSP's entities plus
   MuffMode's keys, small ammo, a jump pad and its targets) in FFA and
   Duel: the file replaces the BSP's, each mode leaves out what its keys
-  say, nothing is unknown, the pad is aimed, and `sv saveents` writes
+  say, nothing is unknown, the pad is aimed, a map-sized trigger fires
+  `target_remove_powerups` at the bots, and `sv saveents` writes
   q2dm2's list but never over an existing file (docs/design/entities.md).
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
