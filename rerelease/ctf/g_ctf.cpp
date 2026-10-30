@@ -88,6 +88,12 @@ void G_ResetTeamScores() // [mod]
 	ctfgame.total1 = ctfgame.total2 = 0;
 }
 
+void G_SetTeamFrags(int red, int blue) // [mod] elimination rounds: the team score is rounds won
+{ // [mod]
+	ctfgame.total1 = red; // [mod]
+	ctfgame.total2 = blue; // [mod]
+} // [mod]
+
 cvar_t *competition;
 cvar_t *matchlock;
 cvar_t *electpercentage;

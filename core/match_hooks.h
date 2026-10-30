@@ -54,5 +54,23 @@ bool Core_Match_IsReady(const edict_t *ent); // bots always are
 // `announce` false: no messages at all (a captain's readyteam says it once).
 void Core_Match_SetReady(edict_t *ent, bool ready, bool announce = true);
 
+// Elimination rounds (Clan Arena, docs/design/clan-arena.md). Died: from
+// player_die, a life gone (out of the round on the last). HoldOut: from
+// PutClientInServer after CTFStartClient: true if `ent` spawned into a round
+// it isn't in (a late joiner, a team switcher, the eliminated), and it was
+// made a watcher instead. Watching: out of the round, following teammates.
+// MayChase: whether `ent` may follow `target` (an eliminated player, only a
+// living teammate). WatchNext: from ClientThink's spectator fire, true if it
+// moved a watcher on to the next teammate (never free cam). HoldWatcher: a
+// watcher with nobody to follow is frozen (from ClientThink's pm_type).
+// Disconnect: their place in the round goes.
+void Core_Match_Died(edict_t *self);
+bool Core_Match_HoldOut(edict_t *ent);
+bool Core_Match_Watching(const edict_t *ent);
+bool Core_Match_MayChase(const edict_t *ent, const edict_t *target);
+bool Core_Match_WatchNext(edict_t *ent);
+bool Core_Match_HoldWatcher(const edict_t *ent);
+void Core_Match_Disconnect(edict_t *ent);
+
 // `ready` / `notready`; true if handled. From ClientCommand, before id's chain.
 bool Core_Match_ClientCommand(edict_t *ent, const char *cmd);

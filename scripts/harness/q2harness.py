@@ -1137,6 +1137,44 @@ def tier_rounds(args, results):
     detail += error_lines(log, rig)[:20]
     results.append(("7 rounds", not detail, detail))
 
+    # Elimination rounds (Clan Arena's, docs/design/clan-arena.md): six bots in
+    # TDM, one life a round, first to 2. A team with nobody left loses the
+    # round; the eliminated watch until the next; the team score is rounds won.
+    rig = RIGS[args.engine_kind](args, args.candidate, "t7-elimination")
+    # In an exec'd cfg: too many `+set`s pass the engine's argument limit.
+    (rig.dir / "baseq2").mkdir(parents=True, exist_ok=True)
+    (rig.dir / "baseq2" / "t7elim.cfg").write_text(
+        "set match_flow 1\nset match_allow_no_humans 1\nset match_countdown 3\nset match_rounds elimination\n"
+        "set match_round_freeze 0\nset match_round_countdown 2\nset match_round_time 90\nset fraglimit 2\n"
+        "set timelimit 0\n")
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", "tdm",
+                "+exec", "t7elim.cfg"] + rig.bot_args() + ["+map", "q2dm1"])
+    log = rig.run(startup, [rig.wait_ready(), ("wait", r"Match: round 1: ", 200), ("cmd", "sv match"),
+                            ("wait", r"Match: ended", 400), ("sleep", 1), ("cmd", "sv match"), ("sleep", 1),
+                            ("cmd", "quit")],
+                  timeout=args.boot_timeout + 640)
+    detail = []
+    rounds = re.findall(r"Match: round (\d+): (RED|BLUE|draw)", log)
+    if not rounds:
+        detail.append("no round was decided")
+    if "Match: ended (rounds)" not in log:
+        detail.append("the match didn't end on the round limit (fraglimit 2 = first to 2 rounds)")
+    wins = {t: sum(1 for _, w in rounds if w == t) for t in ("RED", "BLUE")}
+    if max(wins.values(), default=0) != 2:
+        detail.append(f"rounds won {wins}, expected one team on 2")
+    after_first = log.split("Match: round 1: ", 1)[-1]
+    if "(eliminated" not in after_first.split("Match: ended", 1)[0]:
+        detail.append("nobody was shown eliminated after round 1 (`sv match`)")
+    if "(eliminated" in log.split("Match: ended", 1)[-1]:
+        detail.append("players eliminated in the deciding round were still watching at the intermission")
+    final = re.findall(r"teams: red (\d+), blue (\d+)", log)
+    if not final or sorted(int(x) for x in final[-1]) != sorted([wins.get("RED", 0), wins.get("BLUE", 0)]):
+        detail.append(f"team scores {final[-1:] if final else None}, expected the rounds won {wins}")
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append(("7 rounds elimination", not detail, detail))
+
 
 def tier_human_vote(args, results):
     """Voting through the human path (docs/design/voting.md): three simulated
