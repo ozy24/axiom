@@ -158,13 +158,18 @@ maps/q2dm1.ent`); a broken one is skipped with the reason. `set
 g_entity_override_load 0` turns the files off. Details:
 docs/design/entities.md.
 
-## Classic jumps
+## Jumps and teleporters
 
 Original Quake II let players step and jump a little higher below height
 0, and some maps' jumps need it (mm-mcoil, which is all below 0). The
 rerelease lost it; the mod brings it back in deathmatch, as MuffMode does.
 `set g_classic_jumps 0` plays stock's heights instead, from the next map.
 Single player and coop are always stock. Decision 0024.
+
+Teleporters stop a player dead for a moment, as stock. `set
+g_teleporter_freeze 0` (MuffMode's name and behaviour) sends them out of
+the exit, facing its way, at the speed they went in with: Quake III's feel,
+and what Bloody Blastard ran under MuffMode. Deathmatch only.
 
 ## Voting and maps
 

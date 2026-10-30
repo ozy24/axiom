@@ -4,6 +4,7 @@
 
 #include "g_local.h"
 #include "core/entities_hooks.h" // [mod]
+#include "core/movement_hooks.h" // [mod]
 
 /*QUAKED func_group (0 0 0) ?
 Used to group brushes together just for editor convenience.
@@ -2021,9 +2022,11 @@ TOUCH(teleporter_touch) (edict_t *self, edict_t *other, const trace_t &tr, bool 
 	other->s.origin[2] += 10;
 
 	// clear the velocity and hold them in place briefly
+	const vec3_t entry = other->velocity; // [mod]
 	other->velocity = {};
 	other->client->ps.pmove.pm_time = 160; // hold time
 	other->client->ps.pmove.pm_flags |= PMF_TIME_TELEPORT;
+	Core_Movement_Teleported(other, entry, dest->s.angles); // [mod] g_teleporter_freeze 0: out of the exit at speed
 
 	// draw the teleport splash at source and on the player
 	if (!self->spawnflags.has(SPAWNFLAG_TELEPORTER_NO_TELEPORT_EFFECT))

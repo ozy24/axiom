@@ -286,9 +286,11 @@ MuffMode's maps now play as in MuffMode, and `.ent` overrides work
   (`g_classic_jumps`, decision 0024, the one exception to hard rule 2;
   tier 16 checks the configstring, unit tests the numbers; not yet a
   player measuring a jump). BB still runs 589a095.
-- Open from the same playtest: teleporters stop you dead (stock zeroes
-  velocity for 160 ms; MuffMode's `g_teleporter_freeze 0`, BB's setting,
-  keeps your speed out of the exit). Chris asked for reasons only so far.
+- Teleporters stopped you dead (stock zeroes your speed and holds you
+  160 ms): `g_teleporter_freeze` (MuffMode's name; default 1, stock) at 0
+  sends you out of the exit at the speed you went in, for both stock
+  teleporters (`misc_teleporter`, Rogue's `trigger_teleport`). BB's
+  rulesets set 0. Unit-tested only: no tier walks a player through one yet.
 - Stacked on `match/overtime` (overtime + the mover reset), which waits for
   Chris's playtest; PR both together or rebase once that merges.
 

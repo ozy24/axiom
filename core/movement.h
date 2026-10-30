@@ -7,8 +7,17 @@
 // movement_register.cpp.
 #pragma once
 
+#include <array>
+
+using MoveVec = std::array<float, 3>;
+
 // The highest step pmove climbs or snaps down at height `z`.
 float Core_Movement_StepSize(bool classic, float z);
 
 // The upward speed a jump leaves at height `z` with upward speed `vz`.
 float Core_Movement_JumpSpeed(bool classic, float vz, float z);
+
+// Teleporters with g_teleporter_freeze 0 (MuffMode's): the player leaves the
+// exit facing its `angles` (pitch, yaw, roll in degrees) at the speed they
+// went in with (`entry`), instead of stock's stop.
+MoveVec Core_Movement_TeleportVelocity(const MoveVec &entry, const MoveVec &angles);
