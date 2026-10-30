@@ -16,9 +16,8 @@ Software's GPL `quake2-rerelease-dll`. The working name is Axiom; the name lives
 in one place, `mod.json`, and must never be hard-coded (see "Identity" below).
 
 Principles:
-- Core gametypes: FFA, TDM, CTF, Duel, and Clan Arena (a data-only gametype:
-  decision 0021). Variants (HoonyMode, Instagib CTF) are rulesets, not code;
-  CA's rules are match-flow settings too, it only has its own id.
+- Core gametypes: FFA, TDM, CTF, Duel. Variants (HoonyMode, Clan Arena) are
+  rulesets, not code.
 - Streamlined: no over-complicated systems such as voting factories. Every
   feature earns its place.
 - A base for downstream mods (Jump, Rocket Arena, Freeze Tag, Horde) to build on
@@ -135,8 +134,7 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   bot-only match, so there it only checks that deathmatch boots with bots
   connected.
 - **Tier 4 gametype-boot:** every registered gametype (`--gametypes`, default
-  `ffa,duel,tdm,ca,ctf`; keep it in step with `GAME_GAMETYPES`; `ca` boots
-  through its ruleset) and Rogue's stock
+  `ffa,duel,tdm,ctf`; keep it in step with `GAME_GAMETYPES`) and Rogue's stock
   `gamerules` 2 and 3 (`--stock-gamerules`) boot q2dm1 (ctf: q2ctf1) with bots
   for 20 s, check the Q2REX lobby cvars, log their
   `Gametype:` line and shut down cleanly.
@@ -147,10 +145,7 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
 - **Tier 6 duel:** three bots, `g_gametype duel`: one queues, the match runs to
   its timelimit, and a `Duel: … next: …` line shows the rotation.
 - **Tier 7 rounds:** `match_rounds 1` with six bots: a frag must end a round
-  and the next round start; then `match_rounds elimination` in TDM: rounds
-  end by elimination, the eliminated are watching, the team score is rounds
-  won and the match ends on the round limit with everyone back in (Q2RED
-  only; Q2REX's bots don't fight).
+  and the next round start (Q2RED only; Q2REX's bots don't fight).
 - **Tier 9 warmup:** six bots fight in a warmup that never starts
   (`match_minplayers 99`); `sv match` must show every score still 0, and
   the warmup loadout names q2dm1's weapons (Q2RED only).
@@ -204,10 +199,6 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   locked by the server: a passed `callvote shuffle` gives a 3/2 split that
   isn't the old groups, every team skin follows, RED is unlocked; once
   live, a shuffle is refused (Q2RED only).
-- **Tier 21 human-ca:** Clan Arena with five scripted (non-puppet) players,
-  first to 2: a suicide puts Alice out, watching Bob (a teammate); a
-  mid-round joiner waits and plays the next round; no round line on the HUD;
-  the board marks X and says Round Limit (Q2RED only).
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

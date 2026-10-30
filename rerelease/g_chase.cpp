@@ -2,7 +2,6 @@
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
 #include "core/eyecam_hooks.h" // [mod]
-#include "core/match_hooks.h" // [mod]
 
 void UpdateChaseCam(edict_t *ent)
 {
@@ -118,7 +117,7 @@ void ChaseNext(edict_t *ent)
 		e = g_edicts + i;
 		if (!e->inuse)
 			continue;
-		if (!e->client->resp.spectator && Core_Match_MayChase(ent, e)) // [mod] the eliminated follow teammates only
+		if (!e->client->resp.spectator)
 			break;
 	} while (e != ent->client->chase_target);
 
@@ -143,7 +142,7 @@ void ChasePrev(edict_t *ent)
 		e = g_edicts + i;
 		if (!e->inuse)
 			continue;
-		if (!e->client->resp.spectator && Core_Match_MayChase(ent, e)) // [mod] the eliminated follow teammates only
+		if (!e->client->resp.spectator)
 			break;
 	} while (e != ent->client->chase_target);
 
@@ -159,7 +158,7 @@ void GetChaseTarget(edict_t *ent)
 	for (i = 1; i <= game.maxclients; i++)
 	{
 		other = g_edicts + i;
-		if (other->inuse && !other->client->resp.spectator && Core_Match_MayChase(ent, other)) // [mod] the eliminated follow teammates only
+		if (other->inuse && !other->client->resp.spectator)
 		{
 			ent->client->chase_target = other;
 			ent->client->update_chase = true;

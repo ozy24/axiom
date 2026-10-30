@@ -3,7 +3,6 @@
 // g_combat.c
 
 #include "g_local.h"
-#include "core/arena_hooks.h" // [mod]
 
 /*
 ============
@@ -562,8 +561,6 @@ void T_Damage(edict_t *targ, edict_t *inflictor, edict_t *attacker, const vec3_t
 				damage = 0;
 		}
 	}
-	if (Core_Arena_NoSelfDamage(targ, attacker, dflags)) // [mod] g_dm_no_self_damage: knockback still occurs
-		damage = 0; // [mod]
 
 	// ROGUE
 	//  allow the deathmatch game to change values
@@ -720,7 +717,6 @@ void T_Damage(edict_t *targ, edict_t *inflictor, edict_t *attacker, const vec3_t
 	// [Paril-KEX] player hit markers
 	if (targ != attacker && attacker->client && targ->health > 0 && !((targ->svflags & SVF_DEADMONSTER) || (targ->flags & FL_NO_DAMAGE_EFFECTS)) && mod.id != MOD_TARGET_LASER)
 		attacker->client->ps.stats[STAT_HIT_MARKER] += take + psave + asave;
-	Core_Arena_Damage(targ, attacker, take, psave, asave - save); // [mod] the damage score (Clan Arena)
 
 	// do the damage
 	if (take)

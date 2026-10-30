@@ -92,7 +92,7 @@ std::optional<VoteKind> Core_Vote_ParseKind(std::string_view name)
 	return std::nullopt;
 }
 
-std::optional<VoteSetting> Core_Vote_Setting(VoteKind kind, bool ctf, bool rounds)
+std::optional<VoteSetting> Core_Vote_Setting(VoteKind kind, bool ctf)
 {
 	// The table (decision 0015). Ranges are fixed: wide enough for any
 	// sensible match, narrow enough that a vote can't make a silly one.
@@ -101,8 +101,6 @@ std::optional<VoteSetting> Core_Vote_Setting(VoteKind kind, bool ctf, bool round
 	case VoteKind::Timelimit:
 		return VoteSetting{kind, "Time Limit", VoteValue::Minutes, 1, 60, {5, 10, 15, 20, 30}, false, false};
 	case VoteKind::Scorelimit:
-		if (rounds)
-			return VoteSetting{kind, "Round Limit", VoteValue::Count, 1, 20, {3, 5, 8, 10}, false, false};
 		if (ctf)
 			return VoteSetting{kind, "Capture Limit", VoteValue::Count, 0, 20, {0, 3, 5, 8, 10}, false, false};
 		return VoteSetting{kind, "Frag Limit", VoteValue::Count, 0, 100, {0, 10, 20, 30, 50}, false, false};
@@ -290,7 +288,7 @@ std::string Core_Vote_ErrorText(VoteError e, const VoteConfig &config, const Vot
 		case VoteKind::Powerups:
 		case VoteKind::FriendlyFire:
 		{
-			const VoteSetting s = *Core_Vote_Setting(p.kind, choices.now.ctf, choices.now.rounds);
+			const VoteSetting s = *Core_Vote_Setting(p.kind, choices.now.ctf);
 			const std::string usage = std::string("Usage: callvote ") + VoteKindName(p.kind) + " ";
 			if (s.value == VoteValue::OnOff)
 				return usage + "on|off";
@@ -301,7 +299,7 @@ std::string Core_Vote_ErrorText(VoteError e, const VoteConfig &config, const Vot
 		return {};
 	case VoteError::AlreadySet:
 	{
-		const std::optional<VoteSetting> s = Core_Vote_Setting(p.kind, choices.now.ctf, choices.now.rounds);
+		const std::optional<VoteSetting> s = Core_Vote_Setting(p.kind, choices.now.ctf);
 		const std::optional<int> v = s ? Core_Vote_SettingValue(*s, p.arg) : std::nullopt;
 		return v ? "Already set: " + Core_Vote_SettingLabel(*s, *v) + "." : "Already set.";
 	}
@@ -397,7 +395,7 @@ VoteError Vote::Call(int caller, VoteProposal proposal, const VoteChoices &choic
 	case VoteKind::Powerups:
 	case VoteKind::FriendlyFire:
 	{
-		const VoteSetting s = *Core_Vote_Setting(proposal.kind, choices.now.ctf, choices.now.rounds);
+		const VoteSetting s = *Core_Vote_Setting(proposal.kind, choices.now.ctf);
 		if (s.teams_only && !choices.now.teams)
 			return VoteError::TeamsOnly;
 		const std::optional<int> value = Core_Vote_SettingValue(s, proposal.arg);

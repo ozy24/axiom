@@ -10,10 +10,10 @@ engine side: `core/vote_register.cpp`; harness: tiers 14, 16, 19 and 20.
 | Command | Does |
 |---|---|
 | `callvote map <name>` | a map on the map list |
-| `callvote gametype <name>` | a gametype (`ffa`, `duel`, `tdm`, `ca`, `ctf`) or a variant (an admin's own listed in `g_ruleset_variants`; HoonyMode, the built-in Duel variant, is off for now): switches to that ruleset as `sv ruleset` does (decision 0013), then reloads. The current settings don't carry over (HoonyMode's rounds don't follow a vote to TDM). `callvote ruleset` is the same command. |
+| `callvote gametype <name>` | a gametype (`ffa`, `duel`, `tdm`, `ctf`) or a variant (an admin's own listed in `g_ruleset_variants`; HoonyMode, the built-in Duel variant, is off for now): switches to that ruleset as `sv ruleset` does (decision 0013), then reloads. The current settings don't carry over (HoonyMode's rounds don't follow a vote to TDM). `callvote ruleset` is the same command. |
 | `callvote restart` | reloads the current map: a fresh warmup |
 | `callvote timelimit <1-60>` | the time limit in minutes, at once (no restart): still counted from LIVE |
-| `callvote scorelimit <n>` | the frag limit (0-100), the capture limit in CTF (0-20), or in elimination rounds (Clan Arena) the Round Limit, rounds to win (1-20); 0 = none. `fraglimit` and `capturelimit` are the same command |
+| `callvote scorelimit <n>` | the frag limit (0-100), or the capture limit in CTF (0-20); 0 = none. `fraglimit` and `capturelimit` are the same command |
 | `callvote powerups on\|off` | stock's `g_no_items`; reloads the map, as items spawn when it loads |
 | `callvote friendlyfire on\|off` | team modes only; at once |
 | `callvote readyall` | in a ready-up warmup: everyone playing is ready |
@@ -34,7 +34,7 @@ list's first map (FFA on q2dm1 voted to CTF goes to q2ctf1).
 
 Players vote on gametypes; rulesets are the settings behind them, not a
 separate vote. Each built-in ruleset belongs to the gametype it selects:
-each gametype has its own (`ffa`, `duel`, `tdm`, `ca`, `ctf`), and variants
+each gametype has its own (`ffa`, `duel`, `tdm`, `ctf`), and variants
 play on top of one: an admin's `rulesets/<gametype>_<name>.cfg` listed in `g_ruleset_variants` ("ctf_instagib" is
 "Capture The Flag: Instagib"). HoonyMode ("Duel: HoonyMode") was a
 built-in variant and is off for now (2026-10-29); Clan Arena, next, is a

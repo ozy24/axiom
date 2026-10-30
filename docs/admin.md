@@ -15,7 +15,7 @@ Nothing else is needed: every gametype works with no files at all.
 set hostname "My Server"
 set deathmatch 1
 set maxclients 16
-set g_ruleset ffa         // the mode to start in: ffa, duel, tdm, ca, ctf
+set g_ruleset ffa         // the mode to start in: ffa, duel, tdm, ctf
 map q2dm1
 ```
 

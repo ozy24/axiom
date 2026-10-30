@@ -2,7 +2,6 @@
 #include "g_local.h"
 
 #include "core/gametype.h"
-#include "core/match.h"
 #include "core/rulesets.h"
 
 #include <string>
@@ -18,7 +17,7 @@ const GametypeDef *active = nullptr;
 // retail_mode's stock label. Other engines just carry the cvars, unused.
 void PublishLobbyMode(const GametypeDef &def)
 {
-	const bool rounds = Core_Match_ParseRounds(gi.cvar("match_rounds", "0", CVAR_NOFLAGS)->string) != RoundsMode::Off;
+	const bool rounds = gi.cvar("match_rounds", "0", CVAR_NOFLAGS)->integer != 0;
 	const std::string name = rounds ? std::string(def.title) + " (rounds)" : def.title;
 	const std::pair<const char *, const char *> values[] = {
 	    {"q2rex_lobby_mode", def.id},

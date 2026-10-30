@@ -261,24 +261,13 @@ MenuPage Core_Menu_MatchInfo(const MenuView &v)
 	Add(page, "Timelimit: " + Minutes(v.timelimit_min));
 	if (v.ctf)
 		Add(page, "Capturelimit: " + (v.capturelimit > 0 ? std::to_string(v.capturelimit) : std::string("none")));
-	else if (v.elimination)
-		Add(page, "Rounds: first to " + (v.fraglimit > 0 ? std::to_string(v.fraglimit) : std::string("-")));
 	else
 		Add(page, "Fraglimit: " + (v.fraglimit > 0 ? std::to_string(v.fraglimit) : std::string("none")));
 	if (v.match_flow)
 	{
 		Add(page, "Overtime: " + (v.overtime < 0 ? std::string("sudden death") : Minutes(v.overtime)));
 		Add(page, std::string("Ready-up: ") + (v.ready_required ? "on" : "off"));
-		if (v.elimination)
-		{
-			const std::string time = v.round_time_s > 0 ? ", " + std::to_string(v.round_time_s / 60) + ":" +
-			                                                  (v.round_time_s % 60 < 10 ? "0" : "") +
-			                                                  std::to_string(v.round_time_s % 60)
-			                                            : std::string();
-			Add(page,
-			    "Elimination: " + std::to_string(v.round_lives) + (v.round_lives == 1 ? " life" : " lives") + time);
-		}
-		else if (v.rounds)
+		if (v.rounds)
 			Add(page, "Rounds: a frag ends one");
 	}
 	else

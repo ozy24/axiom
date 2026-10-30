@@ -81,12 +81,7 @@ game plays.
   `N` > 0: N more minutes, repeated while tied.
 - **INTERMISSION:** stock's.
 
-**Rounds** come in two kinds (`match_rounds`): `frag` (or `1`, HoonyMode's,
-below) and `elimination` (Clan Arena's: a side with no lives left loses the
-round; docs/design/clan-arena.md has its rules: the roster, lives, the round
-timer, watching teammates, the round countdown without firing).
-
-**Frag rounds** (`match_rounds frag`, HoonyMode): while LIVE or OVERTIME, any change
+**Rounds** (`match_rounds 1`, HoonyMode): while LIVE or OVERTIME, any change
 in a playing client's score ends the round, unless it ends the match
 (fraglimit, sudden death and forfeits are checked first). Then:
 
@@ -99,8 +94,8 @@ in a playing client's score ends the round, unless it ends the match
 3. FIGHT!: released, and the state returns to LIVE or OVERTIME.
 
 Scores are kept and the timelimit keeps running; if it runs out in the pause,
-everyone is respawned before the match decides. Elimination rounds (Clan
-Arena) reuse the same states.
+everyone is respawned before the match decides. Clan Arena-style rounds (end
+on elimination) would reuse the same states.
 
 ## Arena reset
 
@@ -130,13 +125,8 @@ isn't a spectator. Every transition prints a `Match:` console line.
 | `match_warmup_time` | `0` | seconds of warmup before starting anyway (0 = wait for ready) |
 | `match_countdown` | `10` | seconds (10 since the 2026-10-26 playtest) |
 | `match_overtime` | `0` | 0 none, -1 sudden death, N minutes |
-| `match_rounds` | `0` | `frag` (or `1`): every score change ends a round (HoonyMode); `elimination`: a side with no lives left loses it (Clan Arena; teams or Duel only) |
-| `match_round_countdown` | `5` | seconds at the spawns before a round (rounds on) |
-| `match_round_freeze` | `1` | the round countdown: 1 frozen, 0 move but no fire (and with elimination, round 1's countdown is the match's) |
-| `match_round_lives` | `1` | elimination: lives per player per round |
-| `match_round_time` | `0` | elimination: a round's length in seconds, then more lives, then more health wins; 0 = none |
-| `match_arena` | `0` | 1: the arena loadout, no items on the map, no drops (`_health`, `_armor`: 150, 150) |
-| `match_damage_score` | `0` | 1: +1 per 100 damage dealt to enemies, in elimination rounds |
+| `match_rounds` | `0` | 1: every score change ends a round (HoonyMode) |
+| `match_round_countdown` | `5` | seconds frozen at the spawns before a round (rounds on) |
 | `match_suicide_point` | `0` | 1: a suicide or death to the world is a point to the only opponent, not -1 (HoonyMode; not in team modes or with more than one opponent) |
 | `match_round_pause` | `2` | seconds after the round-ending frag before the respawn (rounds on) |
 | `match_warmup_weapons` | `1` | warmup: every weapon the map places, full ammo, no drops on death |

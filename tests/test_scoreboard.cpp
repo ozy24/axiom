@@ -164,10 +164,3 @@ TEST_CASE("scoreboard: the team board's ready marks, beside each ready player's 
 	// No room: no mark (stock's rows stay).
 	CHECK(Core_Scoreboard_TeamReady(layout, {3}, layout.size() + 10).empty());
 }
-
-TEST_CASE("scoreboard: the team board's X marks the eliminated, in the R's place")
-{
-	const std::string layout = "ctf -40 42 3 0 20 \"\" ctf 200 42 5 0 20 \"\" ";
-	CHECK(Core_Scoreboard_TeamMarks(layout, {5}, 'X', 1024) == "xv 182 yv 42 string2 X ");
-	CHECK(Core_Scoreboard_TeamMarks(layout, {3}, 'X', layout.size() + 10).empty()); // no room: no mark
-}
