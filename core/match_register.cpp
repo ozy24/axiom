@@ -41,7 +41,7 @@ gtime_t last_time;
 std::array<bool, MAX_CLIENTS> ready{};
 
 cvar_t *match_flow, *match_ready, *match_minplayers, *match_allow_no_humans, *match_warmup_time, *match_countdown,
-    *match_overtime;
+    *match_overtime, *match_overtime_max;
 
 void RegisterCvars()
 {
@@ -54,6 +54,7 @@ void RegisterCvars()
 	match_warmup_time = gi.cvar("match_warmup_time", "0", CVAR_NOFLAGS);
 	match_countdown = gi.cvar("match_countdown", "10", CVAR_NOFLAGS);
 	match_overtime = gi.cvar("match_overtime", "0", CVAR_NOFLAGS);
+	match_overtime_max = gi.cvar("match_overtime_max", "0", CVAR_NOFLAGS);
 	// Where finished-match records go (relative to the server's working
 	// directory); empty = none.
 	g_matchlog_dir = gi.cvar("g_matchlog_dir", "", CVAR_NOFLAGS);
@@ -70,6 +71,7 @@ MatchConfig ReadConfig()
 	c.warmup_time_ms = (int64_t)(match_warmup_time->value * 1000);
 	c.countdown_ms = (int64_t)(match_countdown->value * 1000);
 	c.overtime = match_overtime->integer;
+	c.overtime_max_ms = (int64_t)(match_overtime_max->value * 60000);
 	c.timelimit_ms = (int64_t)(timelimit->value * 60000);
 	c.fraglimit = fraglimit->integer;
 	// TDM and CTF run on stock's team code (Core_Gametype_PreInit): the lead

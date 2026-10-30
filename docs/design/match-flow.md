@@ -79,7 +79,13 @@ game plays.
   team scores and sends the flags home.
 - **OVERTIME:** when time runs out with the lead tied. `match_overtime 0`: no
   overtime (stock: ends tied). `-1`: sudden death (the next score wins).
-  `N` > 0: N more minutes, repeated while tied.
+  `N` > 0: N more minutes, repeated while tied (the built-in Duel, TDM and
+  CTF: 2; FFA: sudden death; Chris, 2026-10-30). `match_overtime_max` M > 0:
+  still tied M minutes into overtime (sudden death's, or at the end of a
+  period), the match ends a draw, as MMREX's `g_dm_tie_max_time` (30 in
+  every built-in, as MMREX's default; compiled 0). The HUD names it for 10
+  seconds as it begins and as each new period starts, then only the clock
+  shows (Chris, 2026-10-30).
 - **INTERMISSION:** stock's.
 
 ## Arena reset
@@ -110,6 +116,7 @@ isn't a spectator. Every transition prints a `Match:` console line.
 | `match_warmup_time` | `0` | seconds of warmup before starting anyway (0 = wait for ready) |
 | `match_countdown` | `10` | seconds (10 since the 2026-10-26 playtest) |
 | `match_overtime` | `0` | 0 none, -1 sudden death, N minutes |
+| `match_overtime_max` | `0` | M > 0: still tied M minutes into overtime, the match is a draw; 0 never (built-ins: 30) |
 | `match_warmup_weapons` | `1` | warmup: every weapon the map places, full ammo, no drops on death |
 | `match_lock` | `0` | 1: both teams lock as the match goes live (team modes; docs/design/teams.md) |
 

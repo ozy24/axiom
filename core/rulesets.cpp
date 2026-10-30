@@ -16,6 +16,7 @@ const RulesetDef core_rulesets[] = {
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
+     "set match_overtime_max 30\n"
      "set match_lock 0\n"
      "set match_warmup_weapons 1\n"
      "set timelimit 10\n"
@@ -23,7 +24,7 @@ const RulesetDef core_rulesets[] = {
      "set g_map_list_shuffle 1\n"
      "set g_scoreboard 1\n"
      "set g_frag_messages 1\n"},
-    {"duel", "duel", "one on one: warmup and ready-up, 10 minutes, sudden death on a tie, winner stays on",
+    {"duel", "duel", "one on one: warmup and ready-up, 10 minutes, 2-minute overtimes on a tie, winner stays on",
      "set g_gametype duel\n"
      "set ctf 0\n"
      "set teamplay 0\n"
@@ -33,7 +34,8 @@ const RulesetDef core_rulesets[] = {
      "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
-     "set match_overtime -1\n"
+     "set match_overtime 2\n"
+     "set match_overtime_max 30\n"
      "set match_lock 0\n"
      "set match_warmup_weapons 1\n"
      "set timelimit 10\n"
@@ -41,7 +43,7 @@ const RulesetDef core_rulesets[] = {
      "set g_map_list_shuffle 1\n"
      "set g_scoreboard 1\n"
      "set g_frag_messages 1\n"},
-    {"tdm", "tdm", "team deathmatch: warmup and ready-up, 20 minutes, sudden death on a tie",
+    {"tdm", "tdm", "team deathmatch: warmup and ready-up, 20 minutes, 2-minute overtimes on a tie",
      "set g_gametype tdm\n"
      "set ctf 0\n"
      "set teamplay 1\n"
@@ -51,7 +53,8 @@ const RulesetDef core_rulesets[] = {
      "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
-     "set match_overtime -1\n"
+     "set match_overtime 2\n"
+     "set match_overtime_max 30\n"
      "set match_lock 1\n"
      "set match_warmup_weapons 1\n"
      "set timelimit 20\n"
@@ -59,7 +62,7 @@ const RulesetDef core_rulesets[] = {
      "set g_map_list_shuffle 1\n"
      "set g_scoreboard 1\n"
      "set g_frag_messages 1\n"},
-    {"ctf", "ctf", "capture the flag: warmup and ready-up, 20 minutes or 8 captures, sudden death on a tie",
+    {"ctf", "ctf", "capture the flag: warmup and ready-up, 20 minutes or 8 captures, 2-minute overtimes on a tie",
      "set g_gametype ctf\n"
      "set ctf 1\n"
      "set teamplay 0\n"
@@ -69,7 +72,8 @@ const RulesetDef core_rulesets[] = {
      "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
-     "set match_overtime -1\n"
+     "set match_overtime 2\n"
+     "set match_overtime_max 30\n"
      "set match_lock 1\n"
      "set match_warmup_weapons 1\n"
      "set timelimit 20\n"
@@ -98,6 +102,7 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"match_warmup_time", "0"},
     {"match_countdown", "10"},
     {"match_overtime", "0"},
+    {"match_overtime_max", "0"},
     {"match_lock", "0"},
     {"match_warmup_weapons", "1"},
     {"timelimit", "0"},

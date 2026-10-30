@@ -35,6 +35,7 @@ struct MatchConfig
 	int64_t warmup_time_ms = 0;      // match_warmup_time; 0 = wait for ready
 	int64_t countdown_ms = 10000;    // match_countdown
 	int overtime = 0;                // match_overtime: 0 none, -1 sudden death, N minutes
+	int64_t overtime_max_ms = 0;     // match_overtime_max: still tied this long in overtime, a draw; 0 = never
 	int64_t timelimit_ms = 0;        // timelimit, from the start of LIVE; 0 = none
 	int fraglimit = 0;               // 0 = none
 	bool teams = false;              // TDM, CTF: the lead and ties go by MatchInput::team_scores
@@ -46,9 +47,10 @@ struct MatchConfig
 	{
 		return enabled == o.enabled && ready_required == o.ready_required && min_players == o.min_players &&
 		       allow_no_humans == o.allow_no_humans && warmup_time_ms == o.warmup_time_ms &&
-		       countdown_ms == o.countdown_ms && overtime == o.overtime && timelimit_ms == o.timelimit_ms &&
-		       fraglimit == o.fraglimit && teams == o.teams && fraglimit_on_teams == o.fraglimit_on_teams &&
-		       join_grace_ms == o.join_grace_ms && join_wait_ms == o.join_wait_ms;
+		       countdown_ms == o.countdown_ms && overtime == o.overtime && overtime_max_ms == o.overtime_max_ms &&
+		       timelimit_ms == o.timelimit_ms && fraglimit == o.fraglimit && teams == o.teams &&
+		       fraglimit_on_teams == o.fraglimit_on_teams && join_grace_ms == o.join_grace_ms &&
+		       join_wait_ms == o.join_wait_ms;
 	}
 };
 
@@ -174,6 +176,7 @@ class Match
 	bool CanStart(const MatchInput &in) const;
 	void GoLive(int64_t now_ms, std::vector<MatchAction> &out);
 	void End(const char *why, std::vector<MatchAction> &out);
+	void Draw(std::vector<MatchAction> &out);
 	void TimeWarning(int64_t now_ms, std::vector<MatchAction> &out);
 
 	MatchConfig config_;
@@ -182,5 +185,7 @@ class Match
 	int64_t live_since_ms_ = 0;
 	int64_t time_end_ms_ = 0; // LIVE/OVERTIME deadline (0 = none)
 	int last_countdown_s_ = -1;
-	int last_warning_s_ = 0; // LIVE: the seconds left last spoken for (timelimit warnings)
+	int last_warning_s_ = 0;        // LIVE: the seconds left last spoken for (timelimit warnings)
+	int64_t overtime_since_ms_ = 0; // when sudden death or the overtime period under way began
+	int64_t overtime_start_ms_ = 0; // when overtime began (match_overtime_max)
 };

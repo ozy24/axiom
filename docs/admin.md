@@ -43,6 +43,20 @@ A public FFA that starts as soon as two players are in, with no ready-up:
 set match_ready 0
 ```
 
+A tie when time runs out: Duel, TDM and CTF play 2-minute overtimes,
+another each time it's still tied when one ends (the deciding score in CTF
+is a capture); FFA goes to sudden death, the next frag wins. To change a
+gametype's, set `match_overtime` in its cfg: `-1` sudden death, `N` N-minute
+overtimes, `0` none (the match ends tied). `match_overtime_max` (minutes;
+30 in every built-in, `0` never) ends a tie that has lasted that long into
+overtime as a draw, so a tie nobody breaks can't hold the server on one map:
+
+```
+// rulesets/duel.cfg
+set match_overtime -1      // sudden death instead of overtimes
+set match_overtime_max 10  // still tied after 10 minutes: a draw
+```
+
 `match_minplayers` (2) counts bots, so one player and the server's bots
 (`bot_minPlayers`) can start a match; a match always needs a human, so
 bots alone stay in warmup, and a match whose last human leaves goes back

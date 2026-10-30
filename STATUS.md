@@ -335,6 +335,8 @@ default doesn't apply until the server restarts).
 - One intermittent Q2RED segfault in a CTF server with simulated players
   (tier 12, 2026-10-27, once under `--jobs 4`); not reproduced in 16 more
   runs. CI now keeps CRASHLOG.TXT (collect-logs.sh); look there if it recurs.
+  Seen again 2026-10-30: tier 18 human-join tdm under `--jobs 4` locally
+  (crash log lost to a cleanup); three reruns passed.
 - Q2REX's built-in bots never enter a bot-only match (retail admits bots
   only after a human spawns), so tier 3 can't check frags on Q2REX.
 - `jumpbox.lan` returns a bogus AAAA record (`::`); use `ssh -4`.
