@@ -2,12 +2,25 @@
 #include "core/teams.h"
 
 #include <algorithm>
+#include <numeric>
 
 namespace
 {
 bool ValidTeam(int team)
 {
 	return team == 1 || team == 2;
+}
+
+// The same two groups, whichever colour each has.
+bool SameGroups(const std::vector<int> &a, const std::vector<int> &b)
+{
+	bool same = true, swapped = true;
+	for (size_t i = 0; i < a.size(); ++i)
+	{
+		same = same && a[i] == b[i];
+		swapped = swapped && a[i] == 3 - b[i];
+	}
+	return same || swapped;
 }
 } // namespace
 
@@ -251,4 +264,24 @@ const std::vector<std::string> &Teams::Roster(int team) const
 {
 	static const std::vector<std::string> none;
 	return ValidTeam(team) ? sides_[team].roster : none;
+}
+
+std::vector<int> Core_Teams_Shuffle(const std::vector<int> &teams, std::mt19937 &rng)
+{
+	const size_t n = teams.size();
+	std::vector<size_t> order(n);
+	std::iota(order.begin(), order.end(), size_t{0});
+	std::vector<int> out(n);
+	// A repeat of the split now is redrawn; with three players a third of the
+	// draws are one, so a few tries settle it.
+	for (int tries = 0; tries < 64; ++tries)
+	{
+		std::shuffle(order.begin(), order.end(), rng);
+		const size_t red = n / 2 + ((n % 2) ? (size_t)(rng() & 1) : 0); // an odd one out goes either way
+		for (size_t i = 0; i < n; ++i)
+			out[order[i]] = i < red ? 1 : 2;
+		if (n < 3 || !SameGroups(out, teams))
+			break;
+	}
+	return out;
 }

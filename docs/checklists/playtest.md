@@ -49,7 +49,7 @@ Add bots for the other team: `cmd.sh "bot_count 3"`.
 | 15 | `ready` | Countdown, then FIGHT!: team scores zero, everyone respawns (CTF: both flags at base) | |
 | 16 | CTF: take the enemy flag during warmup, then go live | The flag goes home at FIGHT!, you respawn without it | |
 | 17 | CTF: capture | Capture counts on the HUD; at `capturelimit` (8) the match ends | |
-| 18 | `sv ruleset ctf`, `set match_warmup 0`, `set competition 1`, `map q2ctf1`; then `ready` | Stock CTF's own match ready-up answers (not "There is no match warmup") | |
+| 18 | `sv ruleset ctf`, `set match_flow 0`, `set competition 1`, `map q2ctf1`; then `ready` | Stock CTF's own match ready-up answers (not "There is no match warmup") | |
 
 ## Report
 

@@ -16,7 +16,8 @@ bool Core_Match_OwnsRules();
 bool Core_Match_Frozen(const edict_t *ent);
 
 // Whether a client may move but not fire: the match countdown. From
-// ClientThink, which then drops the fire button.
+// ClientThink, which then drops the fire button. Never the dead, so they can
+// press it to respawn.
 bool Core_Match_HoldFire(const edict_t *ent);
 
 // A suicide (or a death to the world) with match_suicide_point 1 and exactly
@@ -49,7 +50,7 @@ bool Core_Match_InPlay(); // being played: live or between rounds; with the flow
 // under way takes the new limits without a restart (Match::ChangeLimits).
 void Core_Match_LimitsChanged();
 bool Core_Match_Playing(const edict_t *ent); // in the match: begun, not a spectator, on a team in team modes
-bool Core_Match_IsReady(const edict_t *ent);
+bool Core_Match_IsReady(const edict_t *ent); // bots always are
 // `announce` false: no messages at all (a captain's readyteam says it once).
 void Core_Match_SetReady(edict_t *ent, bool ready, bool announce = true);
 

@@ -9,9 +9,10 @@ const RulesetDef core_rulesets[] = {
      "set g_gametype ffa\n"
      "set ctf 0\n"
      "set teamplay 0\n"
-     "set match_warmup 1\n"
+     "set match_flow 1\n"
      "set match_ready 1\n"
      "set match_minplayers 2\n"
+     "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
@@ -29,9 +30,10 @@ const RulesetDef core_rulesets[] = {
      "set g_gametype duel\n"
      "set ctf 0\n"
      "set teamplay 0\n"
-     "set match_warmup 1\n"
+     "set match_flow 1\n"
      "set match_ready 1\n"
      "set match_minplayers 2\n"
+     "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
@@ -49,9 +51,10 @@ const RulesetDef core_rulesets[] = {
      "set g_gametype tdm\n"
      "set ctf 0\n"
      "set teamplay 1\n"
-     "set match_warmup 1\n"
+     "set match_flow 1\n"
      "set match_ready 1\n"
      "set match_minplayers 2\n"
+     "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
@@ -68,9 +71,10 @@ const RulesetDef core_rulesets[] = {
      "set g_gametype ctf\n"
      "set ctf 1\n"
      "set teamplay 0\n"
-     "set match_warmup 1\n"
+     "set match_flow 1\n"
      "set match_ready 1\n"
      "set match_minplayers 2\n"
+     "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
@@ -84,12 +88,10 @@ const RulesetDef core_rulesets[] = {
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
      "set capturelimit 8\n"},
-    {"hoony", "duel", "HoonyMode: every frag ends a round and resets the arena; first to 5, 15 minutes",
-     "set match_rounds 1\n"
-     "set match_suicide_point 1\n"
-     "set timelimit 15\n"
-     "set fraglimit 5\n",
-     "HoonyMode"},
+    // HoonyMode (Duel with match_rounds 1, match_suicide_point 1, first to 5)
+    // is off for now (Chris, 2026-10-29): an admin can still play it as a
+    // variant, rulesets/duel_hoony.cfg listed in g_ruleset_variants. Clan Arena, a
+    // TDM variant, comes next.
 };
 const size_t core_ruleset_count = sizeof(core_rulesets) / sizeof(core_rulesets[0]);
 
@@ -101,9 +103,10 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"g_gametype", "ffa"},
     {"ctf", "0"},
     {"teamplay", "0"},
-    {"match_warmup", "0"},
+    {"match_flow", "0"},
     {"match_ready", "1"},
     {"match_minplayers", "2"},
+    {"match_allow_no_humans", "0"},
     {"match_warmup_time", "0"},
     {"match_countdown", "10"},
     {"match_overtime", "0"},
@@ -194,14 +197,14 @@ std::string Label(std::string_view words)
 	return out;
 }
 
-// An admin's variant: listed in g_rulesets, named <gametype>_<variant>.
-std::optional<Ruleset> Custom(std::string_view name, std::string_view g_rulesets,
+// An admin's variant: listed in g_ruleset_variants, named <gametype>_<variant>.
+std::optional<Ruleset> Custom(std::string_view name, std::string_view g_ruleset_variants,
                               const std::vector<std::string> &gametypes)
 {
 	if (!Core_Ruleset_ValidName(name) || Core_Ruleset_Find(name))
 		return std::nullopt;
 	bool listed = false;
-	for (std::string_view w : Words(g_rulesets))
+	for (std::string_view w : Words(g_ruleset_variants))
 		listed |= w == name;
 	if (!listed)
 		return std::nullopt;
@@ -214,27 +217,27 @@ std::optional<Ruleset> Custom(std::string_view name, std::string_view g_rulesets
 }
 } // namespace
 
-std::optional<Ruleset> Core_Ruleset_Resolve(std::string_view name, std::string_view g_rulesets,
+std::optional<Ruleset> Core_Ruleset_Resolve(std::string_view name, std::string_view g_ruleset_variants,
                                             const std::vector<std::string> &gametypes)
 {
 	if (const RulesetDef *def = Core_Ruleset_Find(name))
 		return Ruleset{def->name, def->gametype, def->variant ? def->variant : "", def};
-	return Custom(name, g_rulesets, gametypes);
+	return Custom(name, g_ruleset_variants, gametypes);
 }
 
-std::vector<Ruleset> Core_Ruleset_All(std::string_view g_rulesets, const std::vector<std::string> &gametypes)
+std::vector<Ruleset> Core_Ruleset_All(std::string_view g_ruleset_variants, const std::vector<std::string> &gametypes)
 {
 	std::vector<Ruleset> out;
 	for (const std::string &gt : gametypes)
 	{
 		if (const RulesetDef *own = Own(gt))
-			out.push_back(*Core_Ruleset_Resolve(own->name, g_rulesets, gametypes));
+			out.push_back(*Core_Ruleset_Resolve(own->name, g_ruleset_variants, gametypes));
 		for (size_t i = 0; i < core_ruleset_count; ++i)
 			if (core_rulesets[i].variant && gt == core_rulesets[i].gametype)
-				out.push_back(*Core_Ruleset_Resolve(core_rulesets[i].name, g_rulesets, gametypes));
-		for (std::string_view w : Words(g_rulesets))
+				out.push_back(*Core_Ruleset_Resolve(core_rulesets[i].name, g_ruleset_variants, gametypes));
+		for (std::string_view w : Words(g_ruleset_variants))
 		{
-			const std::optional<Ruleset> custom = Custom(w, g_rulesets, gametypes);
+			const std::optional<Ruleset> custom = Custom(w, g_ruleset_variants, gametypes);
 			const bool dup = std::any_of(out.begin(), out.end(), [&](const Ruleset &r) { return r.name == w; });
 			if (custom && custom->gametype == gt && !dup)
 				out.push_back(*custom);
@@ -296,6 +299,5 @@ std::string Core_Ruleset_Commands(const Ruleset &r)
 		text += "exec rulesets/" + r.name + ".cfg\n";
 	}
 	text += "set g_ruleset " + r.name + "\n";
-	text += "set g_ruleset_applied " + r.name + "\n";
 	return text;
 }

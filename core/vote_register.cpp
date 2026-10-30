@@ -7,6 +7,7 @@
 #include "core/match_hooks.h"
 #include "core/player_name.h"
 #include "core/rulesets.h"
+#include "core/teams_hooks.h"
 #include "core/vote.h"
 #include "core/vote_hooks.h"
 
@@ -31,9 +32,9 @@ void RegisterCvars()
 	if (g_vote)
 		return;
 	g_vote = gi.cvar("g_vote", "1", CVAR_NOFLAGS);
-	g_vote_allow =
-	    gi.cvar("g_vote_allow", "map gametype restart timelimit scorelimit powerups friendlyfire readyall readyteam",
-	            CVAR_NOFLAGS);
+	g_vote_allow = gi.cvar("g_vote_allow",
+	                       "map gametype restart timelimit scorelimit powerups friendlyfire readyall readyteam shuffle",
+	                       CVAR_NOFLAGS);
 	g_vote_midgame = gi.cvar("g_vote_midgame", "1", CVAR_NOFLAGS);
 	g_vote_time = gi.cvar("g_vote_time", "30", CVAR_NOFLAGS);
 	g_vote_cooldown = gi.cvar("g_vote_cooldown", "30", CVAR_NOFLAGS);
@@ -118,6 +119,13 @@ VoteSettingsNow SettingsNow()
 	now.powerups = !g_no_items->integer;
 	now.friendly_fire = g_friendly_fire->integer != 0;
 	now.ready_up = Core_Match_ReadyUp();
+	now.warmup = Core_Match_OwnsRules() && !Core_Match_InPlay();
+	for (uint32_t i = 1; i <= game.maxclients; ++i)
+	{
+		const edict_t *ent = g_edicts + i;
+		if (now.teams && ent->inuse && ent->client && Core_Match_Playing(ent))
+			++now.team_players;
+	}
 	return now;
 }
 
@@ -166,7 +174,7 @@ std::string Commands(const VoteProposal &p)
 		const std::optional<Ruleset> r = Core_Rulesets_Find(p.arg);
 		if (!r || !GametypeById(r->gametype))
 			return {};
-		return Core_Ruleset_Commands(*r) + "sv votemap " + r->gametype + "\n";
+		return Core_Rulesets_Switch(*r) + "sv votemap " + r->gametype + "\n";
 	}
 	case VoteKind::Timelimit:
 	case VoteKind::Scorelimit:
@@ -174,6 +182,7 @@ std::string Commands(const VoteProposal &p)
 	case VoteKind::FriendlyFire:
 	case VoteKind::ReadyAll:
 	case VoteKind::ReadyTeam:
+	case VoteKind::Shuffle:
 		break;
 	}
 	return {};
@@ -227,6 +236,7 @@ void Apply(const VoteProposal &p)
 	case VoteKind::Restart:
 	case VoteKind::ReadyAll:
 	case VoteKind::ReadyTeam:
+	case VoteKind::Shuffle:
 		break;
 	}
 }
@@ -374,6 +384,14 @@ void Core_Vote_Frame()
 		{
 			gi.Com_PrintFmt("Vote: {}\n", what);
 			Ready(p);
+			break;
+		}
+		if (p.kind == VoteKind::Shuffle)
+		{
+			// Passed in warmup, but the countdown may have run out since.
+			gi.Com_PrintFmt("Vote: {}\n", what);
+			if (!Core_Teams_ShuffleNow())
+				gi.LocBroadcast_Print(PRINT_HIGH, "The match has started: no shuffle.\n");
 			break;
 		}
 		const std::string commands = Commands(p);

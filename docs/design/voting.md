@@ -3,14 +3,14 @@
 Players change the map or gametype, restart the match, or change one of a
 few settings, by majority vote. Console commands are the interface; the Tab menu issues the
 same commands. Pure logic: `core/vote.{h,cpp}` (tests: `tests/test_vote.cpp`);
-engine side: `core/vote_register.cpp`; harness: tiers 14 and 16.
+engine side: `core/vote_register.cpp`; harness: tiers 14, 16, 19 and 20.
 
 ## Commands
 
 | Command | Does |
 |---|---|
 | `callvote map <name>` | a map on the map list |
-| `callvote gametype <name>` | a gametype (`ffa`, `duel`, `tdm`, `ctf`) or a variant (`hoony`, or an admin's own listed in `g_rulesets`): switches to that ruleset as `sv ruleset` does (decision 0013), then reloads. The current settings don't carry over (HoonyMode's rounds don't follow a vote to TDM). `callvote ruleset` is the same command. |
+| `callvote gametype <name>` | a gametype (`ffa`, `duel`, `tdm`, `ctf`) or a variant (an admin's own listed in `g_ruleset_variants`; HoonyMode, the built-in Duel variant, is off for now): switches to that ruleset as `sv ruleset` does (decision 0013), then reloads. The current settings don't carry over (HoonyMode's rounds don't follow a vote to TDM). `callvote ruleset` is the same command. |
 | `callvote restart` | reloads the current map: a fresh warmup |
 | `callvote timelimit <1-60>` | the time limit in minutes, at once (no restart): still counted from LIVE |
 | `callvote scorelimit <n>` | the frag limit (0-100), or the capture limit in CTF (0-20); 0 = none. `fraglimit` and `capturelimit` are the same command |
@@ -18,6 +18,7 @@ engine side: `core/vote_register.cpp`; harness: tiers 14 and 16.
 | `callvote friendlyfire on\|off` | team modes only; at once |
 | `callvote readyall` | in a ready-up warmup: everyone playing is ready |
 | `callvote readyteam` | team modes, in a ready-up warmup: the caller's team is ready. Only that team votes on it (a majority of its humans); the HUD shows `VOTE: READY RED`. `sv callvote readyteam red\|blue` from the console |
+| `callvote shuffle` | team modes, in warmup (or the countdown), with three or more players on teams: splits them into two new teams at random, sizes differing by at most one and never the same two groups back (decision 0020). Unlocks both teams; everyone on a team respawns. Refused once the match is live, and with the match flow off |
 | `vote yes` / `vote no` | answer the open vote; an answer can be changed |
 | `yes` / `no` | stock's commands: answer our vote while one is open, else stock's CTF elections as before |
 | `warp <map>` | stock's map election: the same as `callvote map` |
@@ -34,10 +35,10 @@ list's first map (FFA on q2dm1 voted to CTF goes to q2ctf1).
 Players vote on gametypes; rulesets are the settings behind them, not a
 separate vote. Each built-in ruleset belongs to the gametype it selects:
 each gametype has its own (`ffa`, `duel`, `tdm`, `ctf`), and variants
-play on top of one: the built-in `hoony` ("Duel: HoonyMode"), or an admin's
-`rulesets/<gametype>_<name>.cfg` listed in `g_rulesets` ("ctf_instagib" is
-"Capture The Flag: Instagib"). A future Clan Arena is a TDM variant the
-same way. docs/admin.md has the admin's side.
+play on top of one: an admin's `rulesets/<gametype>_<name>.cfg` listed in `g_ruleset_variants` ("ctf_instagib" is
+"Capture The Flag: Instagib"). HoonyMode ("Duel: HoonyMode") was a
+built-in variant and is off for now (2026-10-29); Clan Arena, next, is a
+built-in TDM variant the same way. docs/admin.md has the admin's side.
 
 ## Rules
 
@@ -71,7 +72,7 @@ same way. docs/admin.md has the admin's side.
 | Cvar | Default | |
 |---|---|---|
 | `g_vote` | 1 | voting on |
-| `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire readyall readyteam` | the kinds that can be called |
+| `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire readyall readyteam shuffle` | the kinds that can be called |
 | `g_vote_midgame` | 1 | also during a live match; 0 = warmup only |
 | `g_vote_time` | 30 | seconds to vote (minimum 5) |
 | `g_vote_cooldown` | 30 | seconds after a caller's failed vote |
@@ -96,10 +97,10 @@ dropped, so a list can't inject a console command.
 - The Tab menu: while a vote is open, a voter's main page leads with the
   proposal and **Vote Yes / Vote No** (the cursor starts on Vote Yes; their
   current answer is marked and skipped). When they can call one, **Call a
-  Vote** opens Map / Gametype / Restart Match; the lists mark the current
+  Vote** opens Map / Gametype / Restart Match (and in a team game's warmup with three players, Shuffle Teams); the lists mark the current
   choice. Under Gametype, one with a single ruleset (TDM, CTF) is voted
-  from the list; one with variants (FFA, Duel) opens them ("Duel",
-  "HoonyMode"). A list longer than the page (14 rows) ends in "More:
+  from the list; one with variants opens them ("Capture The Flag",
+  "Instagib"). A list longer than the page (14 rows) ends in "More:
   callvote <kind>".
 
 ## Compared with MMREX

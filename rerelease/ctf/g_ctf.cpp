@@ -4,6 +4,7 @@
 #include "../m_player.h"
 #include "core/match_hooks.h" // [mod]
 #include "core/menu_hooks.h" // [mod]
+#include "core/scoreboard_hooks.h" // [mod]
 #include "core/teams_hooks.h" // [mod]
 
 #include <assert.h>
@@ -1833,6 +1834,8 @@ void CTFScoreboardMessage(edict_t *ent, edict_t *killer)
 	if (total[1] - last[1] > 1) // couldn't fit everyone
 		fmt::format_to(std::back_inserter(string), FMT_STRING("xv 208 yv {} loc_string 1 $g_ctf_and_more {} "),
 					42 + (last[1] + 1) * 8, total[1] - last[1] - 1);
+
+	Core_Scoreboard_TeamReady(string, MAX_CTF_STAT_LENGTH); // [mod] ready marks, in ready-up
 
 	if (level.intermissiontime)
 		fmt::format_to(std::back_inserter(string), FMT_STRING("ifgef {} yb -48 xv 0 loc_cstring2 0 \"$m_eou_press_button\" endif "), (level.intermission_server_frame + (5_sec).frames()));

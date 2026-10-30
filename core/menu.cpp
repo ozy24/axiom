@@ -310,6 +310,9 @@ MenuPage Core_Menu_CallVote(const MenuView &v)
 		Add(page, "Ready Everyone", MenuAction::VoteFor, MenuAlign::Left, false, "readyall");
 	if (v.ready_up && v.team && allowed("readyteam"))
 		Add(page, "Ready My Team", MenuAction::VoteFor, MenuAlign::Left, false, "readyteam");
+	// In a team game's warmup, with enough players for a new split.
+	if (v.teams && v.warmup && v.red + v.blue >= 3 && allowed("shuffle"))
+		Add(page, "Shuffle Teams", MenuAction::VoteFor, MenuAlign::Left, false, "shuffle");
 	Footer(page, {"$g_pc_return", MenuAlign::Left, MenuAction::Back, false, {}});
 	return page;
 }

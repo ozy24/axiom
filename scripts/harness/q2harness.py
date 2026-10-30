@@ -18,7 +18,8 @@ Tiers (plan Phase 1b):
   4. gametype-boot  Every registered gametype, and Rogue's stock gamerules
                  modes, boot q2dm1 with bots, log their "Gametype:" line and
                  shut down cleanly.
-  5. match-flow  match_warmup on: warmup -> countdown -> live -> intermission
+  5. match-flow  match_flow on: warmup -> countdown -> live -> intermission
+                 (bot-only tiers set match_allow_no_humans 1: a match needs a human)
                  on the timelimit, counted from LIVE.
   6. duel        Three bots: two duel, one queues; the match ends, the loser
                  rotates to the back and a match record is written.
@@ -49,6 +50,8 @@ Tiers (plan Phase 1b):
                  asking; TDM teams kept (Q2RED).
  19. human-readyvote  The ready votes in a TDM ready-up: readyteam voted on by
                  the caller's team alone, readyall readying everyone (Q2RED).
+ 20. human-shuffle  The shuffle vote in a TDM warmup: a new even split, team
+                 skins to match, the locks off; refused once live (Q2RED).
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -547,7 +550,7 @@ def tier_match_flow(args, results):
     """Warmup on: bots (always ready) run warmup -> countdown -> live, and the
     timelimit, counted from LIVE, ends it (docs/design/match-flow.md)."""
     rig = RIGS[args.engine_kind](args, args.candidate, "t5-match")
-    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1",
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_flow", "1", "+set", "match_allow_no_humans", "1",
                 "+set", "match_countdown", "3", "+set", "timelimit", "0.25"] + rig.bot_args() + ["+map", "q2dm1"])
     # On both engines the bots count as playing clients (on Q2REX they begin
     # but don't fight), so the whole match runs.
@@ -574,7 +577,7 @@ def tier_duel(args, results):
     bots = (["+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "3", "+set", "bot_skill", "3"]
             if rig.kind == "q2red" else ["+set", "bot_minPlayers", "3"])
     startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", "duel",
-                "+set", "match_warmup", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
+                "+set", "match_flow", "1", "+set", "match_allow_no_humans", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
                 "+set", "g_matchlog_dir", "matches"] + bots + ["+map", "q2dm1"])
     log = rig.run(startup, [rig.wait_ready(), ("wait", r"Duel: .* next: ", 90), ("sleep", 2), ("cmd", "quit")],
                   timeout=args.boot_timeout + 150)
@@ -637,7 +640,7 @@ def tier_duel_rotation(args, results):
         results.append(("10 duel-rotation", True, ["skipped: only two bots begin on this engine"]))
         return
     startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", "duel",
-                "+set", "match_warmup", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
+                "+set", "match_flow", "1", "+set", "match_allow_no_humans", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
                 "+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "3", "+set", "bot_skill", "3",
                 "+map", "q2dm1"])
     log = rig.run(startup, [rig.wait_ready(), ("wait", r"Duel: .* next: ", 90), ("sleep", 2),
@@ -669,10 +672,11 @@ def tier_maps(args, results):
     leads to the announced map (the harness loads it with `gamemap`, as the
     intermission's exit would: bots press no button); the first pass plays
     every listed map once, the next pass doesn't open with the map that just
-    played, and g_map_list stays as written."""
+    played, and g_map_list stays as written. The play order (g_map_order) is
+    internal: the console can't set it."""
     rig = RIGS[args.engine_kind](args, args.candidate, "t15-maps")
     rotation = ["q2dm3", "q2dm4", "q2dm5"]
-    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "0",
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_flow", "0",
                 "+set", "timelimit", "0.25", "+set", "g_map_list", " ".join(rotation),
                 "+set", "g_map_list_shuffle", "1"] + rig.bot_args() + ["+map", "q2dm1"])
     announced = r"Maps: next (\S+)"
@@ -683,6 +687,8 @@ def tier_maps(args, results):
     steps = [rig.wait_ready()]
     for n in range(1, 5):
         steps += [("wait", announced, 90, n), ("sleep", 2)]
+        if n == 1:
+            steps += [("cmd", "set g_map_order junk"), ("cmd", "g_map_order")]
         if n < 4:
             steps += [("cmdf", go_next)]
     steps += [("cmd", "sv maplist"), ("cmd", "g_map_list"), ("sleep", 2), ("cmd", "quit")]
@@ -700,6 +706,8 @@ def tier_maps(args, results):
         detail.append("no `sv maplist` rotation line")
     if not re.search(r'"g_map_list" is "%s' % " ".join(rotation), log):
         detail.append("g_map_list was rewritten")
+    if '"g_map_order" is "junk' in log or not re.search(r'"g_map_order" is "q2dm', log):
+        detail.append("the console set g_map_order (it's internal: CVAR_NOSET)")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]
@@ -770,12 +778,14 @@ def state_line(tap):
     """The HUD's match status and clock, from the game tap: whether the status
     bar draws both (status top middle, clock bottom middle), and every text either showed, in order
     (repeats collapsed).
-    The status is the configstring that first says WARMUP; the clock is the
-    next one (docs/design/hud.md)."""
+    The status is the configstring that first shows a warmup text (WAITING
+    FOR ..., READY UP n/m, WARMUP); the clock is the next one
+    (docs/design/hud.md)."""
     cs = [r for r in tap if r.get("type") == "configstring"]
     bars = [r["text"] for r in cs if "hnum" in r["text"]]
     drawn = any("yt 43 loc_stat_cstring2 " in t and "yb -61 loc_stat_cstring2 " in t for t in bars)
-    status = next((r["index"] for r in cs if r["text"].startswith("WARMUP")), None)
+    status = next((r["index"] for r in cs
+                   if r["text"].startswith(("WARMUP", "READY UP ", "WAITING FOR "))), None)
     texts = []
     for r in cs:
         if status is not None and r["index"] in (status, status + 1) and r["text"] and \
@@ -808,7 +818,7 @@ at 13 0 cmd queue
 at 30 0 cmd score
 """
     # match_countdown is left at its default: the playtest asked for 10 s.
-    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_scoreboard", "1", "+set", "g_gametype", "duel", "+set", "match_warmup", "1",
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_scoreboard", "1", "+set", "g_gametype", "duel", "+set", "match_flow", "1",
                                      "+set", "timelimit", "0.5", "+map", "q2dm1"])
     # ozbot presses no button at intermission, so the level change that a
     # human's press would trigger is issued here (`gamemap`, as ExitLevel does).
@@ -875,9 +885,10 @@ at 30 0 cmd score
     drawn, texts = state_line(tap)
     if not drawn:
         detail.append("the status bar doesn't draw the match status and clock")
-    if "WARMUP" not in texts or "COUNTDOWN" not in texts \
+    # Ready-up shows how many of the two duellists are ready (Chris, 2026-10-29).
+    if not any(re.fullmatch(r"READY UP [0-2]/2", t) for t in texts) or "COUNTDOWN" not in texts \
             or not any(re.fullmatch(r"\d+:\d\d", t) for t in texts):
-        detail.append(f"state line texts {texts[:4]}...{texts[-3:]}, expected WARMUP, "
+        detail.append(f"state line texts {texts[:4]}...{texts[-3:]}, expected READY UP n/2, "
                       "COUNTDOWN, then the clock")
 
     # A warmup suicide doesn't score (`sv match` during warmup).
@@ -930,7 +941,7 @@ at 14 3 cmd team blue
 at 16 2 cmd ready
 at 16 3 cmd ready
 """
-        startup = scenario_startup(rig, ["+set", "g_gametype", gt, "+set", "match_warmup", "1",
+        startup = scenario_startup(rig, ["+set", "g_gametype", gt, "+set", "match_flow", "1",
                                          "+set", "timelimit", "0.5", "+set", "g_matchlog_dir", "matches",
                                          "+map", GAMETYPE_MAP.get(gt, "q2dm1")])
         log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 160)
@@ -985,7 +996,7 @@ at 6 1 cmd ready
 at 26 0 cmd kill
 at 40 1 cmd kill
 """
-    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_gametype", "duel", "+set", "match_warmup", "1",
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_gametype", "duel", "+set", "match_flow", "1",
                                      "+set", "match_rounds", "1", "+set", "match_round_countdown", "3",
                                      "+set", "match_overtime", "0", "+set", "fraglimit", "0",
                                      "+set", "timelimit", "1", "+map", "q2dm1"])
@@ -1027,7 +1038,7 @@ def tier_teams(args, results):
         bots = (["+set", "sv_bot_brain", "ozbot", "+set", "bot_count", "4", "+set", "bot_skill", "3"]
                 if rig.kind == "q2red" else ["+set", "bot_minPlayers", "4"])
         startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", gt,
-                    "+set", "match_warmup", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
+                    "+set", "match_flow", "1", "+set", "match_allow_no_humans", "1", "+set", "match_countdown", "3", "+set", "timelimit", "0.25",
                     "+set", "g_matchlog_dir", "matches"] + bots + ["+map", GAMETYPE_MAP.get(gt, "q2dm1")])
         log = rig.run(startup, [rig.wait_ready(), ("wait", r"Match: ended", 90), ("sleep", 2), ("cmd", "quit")],
                       timeout=args.boot_timeout + 150)
@@ -1066,7 +1077,7 @@ def tier_warmup(args, results):
     if not rig.expects_frags:
         results.append(("9 warmup", True, ["skipped: bots don't fight in a bot-only match on this engine"]))
         return
-    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1",
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_flow", "1",
                 "+set", "match_minplayers", "99", "+set", "timelimit", "10"] + rig.bot_args() + ["+map", "q2dm1"])
     log = rig.run(startup, [rig.wait_ready(), ("sleep", args.dm_seconds), ("cmd", "sv match"),
                             ("sleep", 2), ("cmd", "quit")],
@@ -1101,7 +1112,7 @@ def tier_rounds(args, results):
     if not rig.expects_frags:
         results.append(("7 rounds", True, ["skipped: bots don't fight in a bot-only match on this engine"]))
         return
-    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_warmup", "1",
+    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_flow", "1", "+set", "match_allow_no_humans", "1",
                 "+set", "match_countdown", "3", "+set", "match_rounds", "1", "+set", "match_round_countdown", "2",
                 "+set", "timelimit", "3"] + rig.bot_args() + ["+map", "q2dm1"])
     # A frag ends the round (the pause), everyone respawns frozen (the
@@ -1254,7 +1265,7 @@ at 40 0 cmd vote yes
         detail.append("Alice was never shown the column scoreboard")
     else:
         board = boards[0]
-        rows = {int(m[0]): (int(m[1]), int(m[2])) for m in re.findall(r"ctf -40 \d+ (\d+) (-?\d+) (\d+) ", board)}
+        rows = {int(m[0]): (int(m[1]), int(m[2])) for m in re.findall(r"ctf 16 \d+ (\d+) (-?\d+) (\d+) ", board)}
         if set(rows) != set(humans.values()):
             detail.append(f"board rows for slots {sorted(rows)}, expected {sorted(humans.values())}")
         elif rows[humans["Bob"]] != (-1, 1):
@@ -1387,13 +1398,16 @@ def tier_human_readyvote(args, results):
     simulated players: Alice calls readyteam, which only RED votes on (Carol,
     on BLUE, is refused), and Bob's yes readies RED; then Carol calls
     readyall, BLUE and Alice say yes, everyone is ready and the match goes
-    live. Q2RED only."""
+    live. Between the two, Carol's team board marks RED's two rows ready (a
+    green R) and nobody on BLUE. Dave suicides in the countdown and must be
+    back in before LIVE (playtest 2026-10-29: the countdown's fire hold also
+    held the respawn button). Q2RED only."""
     label = "19 human-readyvote"
     rig, why = scenario_rig(args, "t19-readyvote")
     if not rig:
         results.append((label, True, [f"skipped: {why}"]))
         return
-    script = """seconds 40
+    script = """seconds 62
 client 0 name=Alice social=sim-alice puppet
 client 1 name=Bob social=sim-bob puppet
 client 2 name=Carol social=sim-carol puppet
@@ -1405,16 +1419,24 @@ at 6 3 cmd team blue
 at 12 0 cmd callvote readyteam
 at 14 2 cmd vote yes
 at 15 1 cmd vote yes
+at 20 2 cmd score
 at 22 2 cmd callvote readyall
 at 24 3 cmd vote yes
 at 25 0 cmd vote yes
+at 30 3 cmd kill
+at 36 3 cmd kill
+at 42 3 cmd kill
 """
     rulesets = rig.dir / "baseq2" / "rulesets"
     rulesets.mkdir(parents=True, exist_ok=True)
-    (rulesets / "tdm.cfg").write_text("set match_ready 1\nset match_countdown 3\nset timelimit 5\n")
+    (rulesets / "tdm.cfg").write_text("set match_ready 1\nset match_countdown 20\nset timelimit 5\n")
     startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_vote_cooldown", "0",
                                      "+set", "g_ruleset", "tdm", "+map", "q2dm1"])
-    log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 100)
+    # Dave suicides every 6 s from 30 s (a `kill` within 5 s of a respawn is
+    # ignored), so at least one lands in the 20 s countdown whatever CI's
+    # timing; 3 s after the last, still before LIVE, he must be playing again.
+    during = [("wait", r"Match: warmup -> countdown", 60), ("sleep", 17), ("cmd", "sv match")]
+    log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 110)
     tap = read_jsonl(rig.dir / "tap.jsonl")
     detail = []
     humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
@@ -1432,11 +1454,116 @@ at 25 0 cmd vote yes
     ready = [r["args"][0] for r in locs if r["base"] == "{} is ready.\n" and r["to"] == -1]
     if ready != ["RED"]:
         detail.append(f"ready broadcasts {ready}, expected RED's alone (one line for the team)")
+    # Carol's team board once RED is ready: an R beside each RED row
+    # (x -56), none on BLUE's side (182).
+    boards = [r["text"] for r in tap if r.get("type") == "layout" and r["to"] == humans["Carol"]
+              and "ctf -40" in r["text"] and "string2 R " in r["text"]]
+    marks = re.findall(r"xv (-?\d+) yv -?\d+ string2 R ", boards[0]) if boards else []
+    if marks != ["-56", "-56"]:
+        detail.append(f"ready marks at x {marks} on Carol's board, expected RED's two (-56)")
+    countdown = log.find("Match: warmup -> countdown")
+    dumps_at = [m.start() for m in re.finditer(r"Match: countdown\n", log)]
+    if countdown < 0 or not re.search(r"Dave [^\n]*(suicide|kill)", log[countdown:]):
+        detail.append("Dave didn't die in the countdown")
+    elif not dumps_at:
+        detail.append("no `sv match` during the countdown (it went live too soon?)")
+    elif re.search(r"^\S*\s+-?\d+ Dave \(dead\)$", log[dumps_at[-1]:dumps_at[-1] + 400], re.M):
+        detail.append("Dave was still dead late in the countdown: he couldn't respawn")
     live = log.find("-> live")
     if live < 0:
         detail.append("the match never went live")
     elif log.find("Vote: ready everyone\n") < 0 or log.find("Vote: ready everyone\n") > live:
         detail.append("the match went live before readyall passed")
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append((label, not detail, detail))
+
+
+def tier_human_shuffle(args, results):
+    """The shuffle vote (2026-10-29: a random split, warmup only) in a TDM
+    ready-up warmup, five simulated players, three RED and two BLUE. The
+    server locks RED (`sv lockteam`: who captains it depends on arrival
+    order); Dave's shuffle passes on Alice's and Bob's yes. The new teams are three and two, not the old groups, everyone's
+    team skin follows their new team, and RED is unlocked. Then readyall
+    starts the match and a shuffle called live is refused. Q2RED only."""
+    label = "20 human-shuffle"
+    rig, why = scenario_rig(args, "t20-shuffle")
+    if not rig:
+        results.append((label, True, [f"skipped: {why}"]))
+        return
+    script = """seconds 44
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Carol social=sim-carol puppet
+client 3 name=Dave social=sim-dave puppet
+client 4 name=Eve social=sim-eve puppet
+at 6 0 cmd team red
+at 7 1 cmd team red
+at 7 2 cmd team red
+at 7 3 cmd team blue
+at 7 4 cmd team blue
+at 12 3 cmd callvote shuffle
+at 14 0 cmd vote yes
+at 14 1 cmd vote yes
+at 22 2 cmd callvote readyall
+at 24 0 cmd vote yes
+at 24 1 cmd vote yes
+at 24 3 cmd vote yes
+at 36 4 cmd callvote shuffle
+"""
+    rulesets = rig.dir / "baseq2" / "rulesets"
+    rulesets.mkdir(parents=True, exist_ok=True)
+    (rulesets / "tdm.cfg").write_text("set match_ready 1\nset match_countdown 3\nset timelimit 5\n")
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_vote_cooldown", "0",
+                                     "+set", "g_ruleset", "tdm", "+map", "q2dm1"])
+    during = [("sleep", 10), ("cmd", "sv lockteam red"), ("wait", r"Teams: shuffled", 60), ("sleep", 1), ("cmd", "sv teams")]
+    log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 110)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    names = ["Alice", "Bob", "Carol", "Dave", "Eve"]
+    if not set(names) <= set(humans):
+        results.append((label, False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
+        return
+    m = re.search(r"Teams: shuffled: RED: (.*); BLUE: (.*)", log)
+    if not m:
+        detail.append("no 'Teams: shuffled' line")
+    else:
+        red, blue = (set(g.split(", ")) for g in m.groups())
+        if red | blue != set(names) or red & blue or sorted([len(red), len(blue)]) != [2, 3]:
+            detail.append(f"shuffled to RED {sorted(red)}, BLUE {sorted(blue)}: not a 3/2 split of all five")
+        if {frozenset(red), frozenset(blue)} == {frozenset(names[:3]), frozenset(names[3:])}:
+            detail.append("the shuffle gave the same teams back")
+        # Each player's skin configstring (CTFAssignSkin): their new team's.
+        skin = {}
+        for r in tap:
+            sm = re.fullmatch(r"(.*)\\[^\\]*/ctf_(r|b)\\default", r.get("text", "")) \
+                if r.get("type") == "configstring" else None
+            if sm:
+                who = next((n for n in names if sm.group(1) in (n, f"##P{humans[n]}")), None)
+                if who:
+                    skin[who] = "RED" if sm.group(2) == "r" else "BLUE"
+        want = {n: "RED" if n in red else "BLUE" for n in names}
+        if skin != want:
+            detail.append(f"team skins {skin}, expected {want}")
+    if "Teams: RED locked by the server" not in log.split("Teams: shuffled", 1)[0]:
+        detail.append("RED wasn't locked before the shuffle")
+    elif not re.search(r"RED: unlocked", log.split("Teams: shuffled", 1)[-1]):
+        detail.append("RED was still locked after the shuffle (`sv teams`)")
+    votes = [l.split("Vote: ", 1)[1].strip() for l in log.splitlines() if "Vote: " in l]
+    want_votes = ["Dave called shuffle teams", "shuffle teams passed", "shuffle teams",
+                  "Carol called ready everyone", "ready everyone passed", "ready everyone"]
+    if votes != want_votes:
+        detail.append(f"votes {votes}, expected {want_votes}")
+    if "-> live" not in log:
+        detail.append("the match never went live")
+    locs = [r for r in tap if r.get("type") == "locprint"]
+    if not any(r["to"] == humans["Eve"] and r["args"] == ["Teams can only be shuffled in warmup."] for r in locs):
+        detail.append("Eve's shuffle in the live match wasn't refused")
+    if not any(r["base"] == "Teams shuffled.\n" and r["to"] == -1 for r in locs):
+        detail.append("no 'Teams shuffled.' broadcast")
+    detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]
@@ -1554,7 +1681,7 @@ at 6 1 cmd team blue
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_rounds, tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
          tier_human_rounds, tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
-         tier_human_join, tier_human_readyvote)
+         tier_human_join, tier_human_readyvote, tier_human_shuffle)
 
 
 def run_tier(tier, args):
@@ -1656,7 +1783,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

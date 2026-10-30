@@ -40,10 +40,26 @@ int PlayingCount(const MatchInput &in)
 	return (int)std::count_if(in.players.begin(), in.players.end(), [](const MatchPlayer &p) { return p.playing; });
 }
 
+int HumansPlaying(const MatchInput &in)
+{
+	return (int)std::count_if(in.players.begin(), in.players.end(),
+	                          [](const MatchPlayer &p) { return p.playing && !p.bot; });
+}
+
+// match_minplayers counts everyone playing, bots too (as MuffMode's
+// minplayers), so one human and the engine's bot fill can start a match. A
+// match also needs a human, so bots alone only ever warm up, unless
+// match_allow_no_humans (a bot server, the harness's bot-only tiers): Chris,
+// 2026-10-29.
+bool EnoughPlayers(const MatchConfig &config, const MatchInput &in)
+{
+	return PlayingCount(in) >= std::max(1, config.min_players) && (config.allow_no_humans || HumansPlaying(in) > 0);
+}
+
 // Enough players, and with teams someone playing on each.
 bool Staffed(const MatchConfig &config, const MatchInput &in)
 {
-	if (PlayingCount(in) < std::max(1, config.min_players))
+	if (!EnoughPlayers(config, in))
 		return false;
 	if (!config.teams)
 		return true;
@@ -239,12 +255,19 @@ MatchHudText Match::HudText(const MatchInput &in) const
 	{
 	case MatchState::Warmup:
 		// What the start waits for, as Quake Live says it (Chris, 2026-10-27):
-		// more players, then someone on each team, then WARMUP (ready-up or
-		// the warmup timer).
-		if (PlayingCount(in) < std::max(1, config_.min_players))
+		// more players, then someone on each team, then in ready-up how many of
+		// the players are ready (bots always are: Chris, 2026-10-29); without
+		// ready-up, WARMUP (the countdown is about to start).
+		if (!EnoughPlayers(config_, in))
 			return {"WAITING FOR PLAYERS", length};
 		if (!Staffed(config_, in))
 			return {"WAITING FOR TEAMS", length};
+		if (config_.ready_required)
+		{
+			const int ready = (int)std::count_if(in.players.begin(), in.players.end(),
+			                                     [](const MatchPlayer &p) { return p.playing && p.ready; });
+			return {"READY UP " + std::to_string(ready) + "/" + std::to_string(PlayingCount(in)), length};
+		}
 		return {"WARMUP", length};
 	case MatchState::Countdown:
 		return {"COUNTDOWN", length}; // the seconds: the big digits (CountdownSeconds)
@@ -328,6 +351,21 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 	std::vector<MatchAction> out;
 	if (!config_.enabled)
 		return out; // stock rules own the level
+
+	// Every human has left a match under way: back to warmup, the arena reset
+	// and scores zeroed, so the next to arrive don't find a match the bots
+	// played. One human left keeps it going, below match_minplayers too
+	// (Chris, 2026-10-29). Not with match_allow_no_humans.
+	if (!config_.allow_no_humans && MatchStateInPlay(state_) && !HumansPlaying(in))
+	{
+		state_ = MatchState::Warmup;
+		state_since_ms_ = in.now_ms;
+		time_end_ms_ = 0;
+		last_countdown_s_ = -1;
+		round_scores_.clear();
+		out.push_back({MatchActionKind::ResetArena, "", 0});
+		return out;
+	}
 
 	switch (state_)
 	{

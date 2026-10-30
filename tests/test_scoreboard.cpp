@@ -68,7 +68,7 @@ TEST_CASE("scoreboard: a row is frags, deaths and the name, then FPH, whole minu
 	const std::string layout = Core_Scoreboard_Layout(in);
 	CHECK(layout.find("cstring2 \"[2026-10-29 19:40]\"") != std::string::npos);
 	CHECK(layout.find("string2 Frg") != std::string::npos);
-	CHECK(layout.find("ctf -40 36 3 42 15 \"\" xv -64 string 1 xv 166 string 379 xv 206 string 6 xv 246 string 20 ") !=
+	CHECK(layout.find("ctf 16 36 3 42 15 \"\" xv -8 string 1 xv 222 string 379 xv 262 string 6 xv 302 string 20 ") !=
 	      std::string::npos);
 }
 
@@ -80,7 +80,7 @@ TEST_CASE("scoreboard: your own row's columns are green; spectators follow")
 	const std::string layout = Core_Scoreboard_Layout(in);
 	CHECK(Slots(layout) == std::vector<int>{1, 0, 2});
 	CHECK(Count(layout, " string2 ") == 6 + 4); // the titles, and your position and three numbers
-	CHECK(layout.find("ctf -40 44 0 3 0 \"\" xv -64 string2 2 ") != std::string::npos); // you, second
+	CHECK(layout.find("ctf 16 44 0 3 0 \"\" xv -8 string2 2 ") != std::string::npos); // you, second
 	CHECK(layout.find("$g_pc_spectators") != std::string::npos);
 }
 
@@ -97,7 +97,7 @@ TEST_CASE("scoreboard: a full server fits the budget, keeping your own row")
 	REQUIRE(slots.size() >= 9); // 8 players (the worst case: 3-digit frags and FPH) and a spectator
 	CHECK(slots[0] == 0);
 	CHECK(std::find(slots.begin(), slots.end(), 20) != slots.end());
-	CHECK(layout.find(" 20 80 999 \"\" xv -64 string2 21 ") !=
+	CHECK(layout.find(" 20 80 999 \"\" xv -8 string2 21 ") !=
 	      std::string::npos); // your own row last, at your real position
 	MESSAGE("rows that fit: " << slots.size() << " in " << layout.size() << " bytes");
 
@@ -114,7 +114,53 @@ TEST_CASE("scoreboard: big numbers stay within the client's caps")
 	p.played_ms = 1000;
 	in.players = {p};
 	const std::string layout = Core_Scoreboard_Layout(in);
-	CHECK(layout.find("ctf -40 36 0 5000 999 ") != std::string::npos);
+	CHECK(layout.find("ctf 16 36 0 5000 999 ") != std::string::npos);
 	CHECK(layout.find("string 9999 ") != std::string::npos);
 	CHECK(layout.find("string 999 ") != std::string::npos);
+}
+
+TEST_CASE("scoreboard: in ready-up, a green R right of Ping on each ready player's row")
+{
+	ScoreboardInput in;
+	in.players = {Player(0, 0), Player(1, 0), Player(2, 0, 0, true)};
+	in.players[1].ready = true;
+	in.players[2].ready = true;                                  // a spectator: no row, no mark
+	CHECK(Count(Core_Scoreboard_Layout(in), "string2 R ") == 0); // not in ready-up
+	in.ready_up = true;
+	const std::string layout = Core_Scoreboard_Layout(in);
+	CHECK(Count(layout, "string2 R ") == 1);
+	// Slot 1 is the second row (y 44).
+	CHECK(layout.find("xv 330 yv 44 string2 R ") != std::string::npos);
+	CHECK(Core_Scoreboard_ReadyMark(274, 44) == "xv 274 yv 44 string2 R ");
+}
+
+TEST_CASE("scoreboard: ready marks come after every row and spectator that fits")
+{
+	ScoreboardInput in;
+	in.ready_up = true;
+	for (int i = 0; i < 32; ++i)
+	{
+		in.players.push_back(Player(i, 100 - i, 999, i >= 24));
+		in.players.back().ready = true;
+	}
+	in.viewer = 20;
+	const std::string with = Core_Scoreboard_Layout(in);
+	in.ready_up = false;
+	const std::string without = Core_Scoreboard_Layout(in);
+	CHECK(with.size() <= in.budget);
+	CHECK(Slots(with) == Slots(without)); // the same rows: no player pushed off for a mark
+	CHECK(with.compare(0, without.size(), without) == 0);
+}
+
+TEST_CASE("scoreboard: the team board's ready marks, beside each ready player's row")
+{
+	// Stock's rows: RED at -40, BLUE at 200, from y 42; then the spectators.
+	const std::string layout = "xv -64 yv 42 string2 \"*\" ctf -40 42 3 0 20 \"\" ctf 200 42 5 0 20 \"\" "
+	                           "ctf -40 50 7 0 20 sbfctf2 xv 0 yv 66 loc_string2 0 \"$g_pc_spectators\" "
+	                           "ctf -40 74 9 0 20 \"\" ";
+	CHECK(Core_Scoreboard_TeamReady(layout, {3, 5, 9}, 1024) == "xv -56 yv 42 string2 R xv 182 yv 42 string2 R ");
+	CHECK(Core_Scoreboard_TeamReady(layout, {7}, 1024) == "xv -56 yv 50 string2 R ");
+	CHECK(Core_Scoreboard_TeamReady(layout, {}, 1024).empty());
+	// No room: no mark (stock's rows stay).
+	CHECK(Core_Scoreboard_TeamReady(layout, {3}, layout.size() + 10).empty());
 }

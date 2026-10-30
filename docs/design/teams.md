@@ -19,6 +19,7 @@ engine side: `core/teams_register.cpp`; harness: tier 17.
 | `readyteam` | captain | readies every teammate (in ready-up) |
 | `sv lockteam red\|blue` / `sv unlockteam red\|blue` | server console | either team |
 | `sv teams` | server console | each team's lock, captain and roster |
+| `sv shuffle` | server console | two new random teams, in warmup (`callvote shuffle` for players; docs/design/voting.md, decision 0020) |
 
 `<player>` is a name as shown (any case) or a client number. The name is the
 whole argument, so a name with spaces needs no quotes.

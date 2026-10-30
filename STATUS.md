@@ -1,13 +1,13 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-10-29 (handover)._
+_Updated at the end of every session. Last update: 2026-10-29 (shuffle vote)._
 
 ## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
 ## Phase 2b, part 1 (match flow) done
 - `core/match.*` state machine (24 unit-test cases) and adapter: warmup,
   ready/notready, countdown, live (timelimit from LIVE), overtime (sudden
-  death or N min), intermission. Off by default: `match_warmup 0` is stock,
+  death or N min), intermission. Off by default: `match_flow 0` is stock,
   so tiers 1-3 keep proving stock behaviour.
 - Arena reset at LIVE: projectiles and dropped items removed, map items
   respawned, scores zeroed, players respawned. Doors/plats not reset yet.
@@ -145,7 +145,7 @@ essentials (spectating, timeouts, admin, scoreboards, simple voting).
 - **Rulesets, decision 0013** (`docs/admin.md`): `server.cfg` for the server
   and its starting mode (`set g_ruleset ffa`), `rulesets/<gametype>.cfg` for
   an admin's changes, `rulesets/<gametype>_<name>.cfg` for their own
-  variants (listed in `g_rulesets`). Each switch resets every gameplay cvar
+  variants (listed in `g_ruleset_variants`). Each switch resets every gameplay cvar
   first, so nothing leaks between modes. Built-ins ffa, duel, hoony, tdm, ctf.
 - **HUD** (`docs/design/hud.md`): status top middle in green, clock always
   shown left of centre above the stock HUD, big countdown digits, the
@@ -260,8 +260,8 @@ Done (branch `scoreboard/duel`; Chris finished testing it on 2026-10-29):
 
 ## Handover (2026-10-29, end of a long session)
 
-**Branch `scoreboard/duel`:** Chris finished testing it on 2026-10-29; PR,
-full CI, squash-merge on green.
+**Branch `scoreboard/duel`:** merged as #34 (2026-10-29). The rename drill
+now gives the renamed mod a dummy `repository` too (About shows it).
 
 **The playtest rig** (`~/q2playtest`, `./run.sh`, `./cmd.sh "<console>"`):
 Duel on q2dm1 with the branch's build. Deploy with a temp file and `mv`,
@@ -271,11 +271,21 @@ string shows a stale commit (the build id is read at configure time);
 themselves and start a match alone, so add them (`bot_count N`) after
 the human has entered.
 
-**Next, agreed with Chris: a team shuffle vote** (`callvote shuffle`, TDM
-and CTF). No `balance` vote: Chris says balancing only makes sense with a
-rating system, and we have none. Settled 2026-10-29: a plain random
-split (even sizes), callable in warmup only. Probably also `sv shuffle`
-for admins.
+**Team shuffle (branch `vote/shuffle`, decision 0020):** `callvote
+shuffle` and `sv shuffle` in TDM/CTF warmup (or the countdown) with three
+or more players on teams: a random even split, never the same two groups
+back; unlocks both teams and respawns everyone on a team (as going LIVE
+does, not stock's suicide-per-player team change). In `g_vote_allow`'s
+default; "Shuffle Teams" on the Call a Vote page. No `balance` vote: no
+ratings (Chris). Harness tier 20 (checked against a build that logs the
+split but doesn't move anyone: fails on the team skins). Tiers 12, 17,
+19 and 20 pass locally. On the same branch, ready marks: a green `R` by
+each ready player in ready-up, on the team board right of the captain's
+`*` (x -56 / 182) and on the FFA board right of Ping; bots always ready.
+Not MuffMode's tick picture: a stock client draws it 24x24 and covers the
+row (MuffMode shrinks it in its own client code). Duel keeps its tick.
+Chris checked the shuffle and the team board's R on the rig (2026-10-29);
+the FFA R is untested on a client. PR once he's done.
 
 **After that, Chris's options** (he hadn't chosen): Clan Arena as a TDM
 ruleset (elimination rounds that count the living, a spawn loadout,

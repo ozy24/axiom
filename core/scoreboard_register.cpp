@@ -11,6 +11,7 @@
 
 #include <array>
 #include <ctime>
+#include <set>
 
 namespace
 {
@@ -130,6 +131,20 @@ void Core_Scoreboard_Died(const edict_t *self)
 	CountOf((uint32_t)(self - g_edicts) - 1).deaths++;
 }
 
+void Core_Scoreboard_TeamReady(std::string &layout, size_t max)
+{
+	if (!Core_Match_ReadyUp())
+		return;
+	std::set<int> ready;
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		const edict_t *other = ClientEdict(i);
+		if (Present(other) && Core_Match_Playing(other) && Core_Match_IsReady(other))
+			ready.insert((int)i);
+	}
+	layout += Core_Scoreboard_TeamReady(layout, ready, max);
+}
+
 bool Core_Scoreboard_Columns(const edict_t *ent, std::string &layout)
 {
 	if (!Active())
@@ -144,6 +159,7 @@ bool Core_Scoreboard_Columns(const edict_t *ent, std::string &layout)
 	in.viewer = (int)(ent - g_edicts) - 1;
 	in.stamp = Stamp();
 	in.budget = Budget(layout.size());
+	in.ready_up = Core_Match_ReadyUp();
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		const edict_t *other = ClientEdict(i);
@@ -157,6 +173,7 @@ bool Core_Scoreboard_Columns(const edict_t *ent, std::string &layout)
 		p.ping = other->client->ping;
 		p.played_ms = c.played_ms;
 		p.spectator = !Core_Match_Playing(other);
+		p.ready = Core_Match_IsReady(other);
 		in.players.push_back(p);
 	}
 	layout += Core_Scoreboard_Layout(in);

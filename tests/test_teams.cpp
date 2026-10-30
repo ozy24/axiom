@@ -2,6 +2,10 @@
 
 #include "core/teams.h"
 
+#include <algorithm>
+#include <cstdlib>
+#include <set>
+
 namespace
 {
 using Kind = TeamsEvent::Kind;
@@ -197,4 +201,59 @@ TEST_CASE("a kicked player is off the roster and can't come back while the team 
 	CHECK_FALSE(t.MayJoin("b", 1, false));
 	t.Unlock(1);
 	CHECK(t.MayJoin("b", 1, false));
+}
+
+namespace
+{
+int Count(const std::vector<int> &teams, int team)
+{
+	return (int)std::count(teams.begin(), teams.end(), team);
+}
+} // namespace
+
+TEST_CASE("shuffle: an even split of the same players")
+{
+	for (uint32_t seed = 0; seed < 50; ++seed)
+	{
+		std::mt19937 rng(seed);
+		const std::vector<int> now{1, 1, 1, 1, 2, 2, 2};
+		const std::vector<int> after = Core_Teams_Shuffle(now, rng);
+		REQUIRE(after.size() == now.size());
+		CHECK(Count(after, 1) + Count(after, 2) == 7);
+		CHECK(std::abs(Count(after, 1) - Count(after, 2)) == 1);
+	}
+	std::mt19937 rng(1);
+	const std::vector<int> lopsided = Core_Teams_Shuffle({1, 1, 1, 1, 1, 1}, rng);
+	CHECK(Count(lopsided, 1) == 3);
+	CHECK(Count(lopsided, 2) == 3);
+}
+
+TEST_CASE("shuffle: never the same two groups back, in either colour")
+{
+	for (uint32_t seed = 0; seed < 200; ++seed)
+	{
+		std::mt19937 rng(seed);
+		const std::vector<int> three{1, 1, 2};
+		const std::vector<int> a = Core_Teams_Shuffle(three, rng);
+		CHECK(a != three);
+		CHECK(a != std::vector<int>{2, 2, 1});
+		const std::vector<int> four{1, 2, 1, 2};
+		const std::vector<int> b = Core_Teams_Shuffle(four, rng);
+		CHECK(b != four);
+		CHECK(b != std::vector<int>{2, 1, 2, 1});
+	}
+}
+
+TEST_CASE("shuffle: varies with the draw; two players or none are fine")
+{
+	std::set<std::vector<int>> seen;
+	for (uint32_t seed = 0; seed < 100; ++seed)
+	{
+		std::mt19937 rng(seed);
+		seen.insert(Core_Teams_Shuffle({1, 1, 1, 2, 2, 2}, rng));
+	}
+	CHECK(seen.size() > 10); // 20 splits of six into three and three, less the one now
+	std::mt19937 rng(3);
+	CHECK(Count(Core_Teams_Shuffle({1, 2}, rng), 1) == 1);
+	CHECK(Core_Teams_Shuffle({}, rng).empty());
 }

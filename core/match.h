@@ -37,9 +37,10 @@ int Core_SuicideOpponent(const std::vector<MatchPlayer> &players, int self);
 
 struct MatchConfig
 {
-	bool enabled = false;              // match_warmup: false = stock (live immediately)
+	bool enabled = false;              // match_flow: false = stock (live immediately)
 	bool ready_required = true;        // match_ready
-	int min_players = 2;               // match_minplayers
+	int min_players = 2;               // match_minplayers: playing clients, bots too
+	bool allow_no_humans = false;      // match_allow_no_humans: bots may play a match alone
 	int64_t warmup_time_ms = 0;        // match_warmup_time; 0 = wait for ready
 	int64_t countdown_ms = 10000;      // match_countdown
 	int overtime = 0;                  // match_overtime: 0 none, -1 sudden death, N minutes
@@ -56,9 +57,10 @@ struct MatchConfig
 	bool operator==(const MatchConfig &o) const
 	{
 		return enabled == o.enabled && ready_required == o.ready_required && min_players == o.min_players &&
-		       warmup_time_ms == o.warmup_time_ms && countdown_ms == o.countdown_ms && overtime == o.overtime &&
-		       timelimit_ms == o.timelimit_ms && fraglimit == o.fraglimit && rounds_on_frag == o.rounds_on_frag &&
-		       round_pause_ms == o.round_pause_ms && round_countdown_ms == o.round_countdown_ms && teams == o.teams &&
+		       allow_no_humans == o.allow_no_humans && warmup_time_ms == o.warmup_time_ms &&
+		       countdown_ms == o.countdown_ms && overtime == o.overtime && timelimit_ms == o.timelimit_ms &&
+		       fraglimit == o.fraglimit && rounds_on_frag == o.rounds_on_frag && round_pause_ms == o.round_pause_ms &&
+		       round_countdown_ms == o.round_countdown_ms && teams == o.teams &&
 		       fraglimit_on_teams == o.fraglimit_on_teams && join_grace_ms == o.join_grace_ms &&
 		       join_wait_ms == o.join_wait_ms;
 	}
@@ -72,6 +74,7 @@ struct MatchPlayer
 	int score = 0;
 	int team = 0;         // with MatchConfig::teams: 1 or 2 (0 = on no team)
 	bool joining = false; // a human connected but still loading the map: no countdown starts yet
+	bool bot = false;     // a match needs a human (unless match_allow_no_humans)
 };
 
 struct MatchInput

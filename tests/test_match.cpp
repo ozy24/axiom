@@ -549,7 +549,7 @@ TEST_CASE("the HUD: the match length in warmup and the countdown, then the clock
 	MatchConfig c = Enabled(); // countdown 3 s, timelimit 60 s
 	Match m(c);
 	m.Begin(0);
-	CHECK(m.HudText(At(500, {P(1, true), P(2, false)})) == Hud("WARMUP", "1:00"));
+	CHECK(m.HudText(At(500, {P(1, true), P(2, false)})) == Hud("READY UP 1/2", "1:00"));
 	CHECK(m.HudText(At(500, {P(1, false)})) == Hud("WAITING FOR PLAYERS", "1:00")); // match_minplayers 2
 	CHECK(m.CountdownSeconds(500) == 0);
 	m.Update(At(1000, {P(1, true), P(2, true)}));
@@ -577,7 +577,21 @@ TEST_CASE("the HUD: warmup says what the start waits for, teams included")
 	blue.team = 2;
 	CHECK(m.HudText(At(500, {red})) == Hud("WAITING FOR PLAYERS", "1:00"));
 	CHECK(m.HudText(At(500, {red, red2})) == Hud("WAITING FOR TEAMS", "1:00"));
-	CHECK(m.HudText(At(500, {red, blue})) == Hud("WARMUP", "1:00"));
+	CHECK(m.HudText(At(500, {red, blue})) == Hud("READY UP 0/2", "1:00"));
+}
+
+TEST_CASE("the HUD: ready-up counts the ready players; spectators don't count; no ready-up says WARMUP")
+{
+	MatchConfig c = Enabled();
+	Match m(c);
+	m.Begin(0);
+	MatchPlayer spectator = P(4, true);
+	spectator.playing = false;
+	CHECK(m.HudText(At(500, {P(1, true), P(2, false), P(3, true), spectator})) == Hud("READY UP 2/3", "1:00"));
+	c.ready_required = false; // match_ready 0: the start waits only for players
+	Match pub(c);
+	pub.Begin(0);
+	CHECK(pub.HudText(At(500, {P(1, false), P(2, false)})) == Hud("WARMUP", "1:00"));
 }
 
 TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
@@ -586,7 +600,7 @@ TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
 	c.timelimit_ms = 0;
 	Match up(c);
 	up.Begin(0);
-	CHECK(up.HudText(At(500, {P(1, true), P(2, false)})) == Hud("WARMUP", "0:00")); // it will count up
+	CHECK(up.HudText(At(500, {P(1, true), P(2, false)})) == Hud("READY UP 1/2", "0:00")); // it will count up
 	up = Match(c);
 	const int64_t live = ToLive(up);
 	CHECK(up.HudText(At(live + 75000, {P(1, true), P(2, true)})) == Hud("", "1:15"));
@@ -811,4 +825,73 @@ TEST_CASE("match: before LIVE, new limits wait for it")
 	m.Update(At(4000, {P(1, true), P(2, true)}));
 	REQUIRE(m.State() == MatchState::Live);
 	CHECK(m.ClockEndMs() == 4000 + 15 * 60000);
+}
+
+namespace
+{
+MatchPlayer Bot(int id)
+{
+	MatchPlayer p = P(id, true);
+	p.bot = true;
+	return p;
+}
+} // namespace
+
+TEST_CASE("match_minplayers counts bots too, but a match needs a human")
+{
+	Match m(Enabled()); // match_minplayers 2
+	m.Begin(0);
+	m.Update(At(20000, {Bot(2), Bot(3)}));
+	CHECK(m.State() == MatchState::Warmup); // bots alone only warm up
+	CHECK(m.HudText(At(20000, {Bot(2), Bot(3)})).status == "WAITING FOR PLAYERS");
+	CHECK(m.HudText(At(20000, {P(1, false)})).status == "WAITING FOR PLAYERS"); // a lone human: one short
+	m.Update(At(21000, {P(1, true), Bot(2)}));
+	CHECK(m.State() == MatchState::Countdown); // one human and the bot fill
+}
+
+TEST_CASE("match_allow_no_humans: bots may play a match alone")
+{
+	MatchConfig c = Enabled();
+	c.allow_no_humans = true;
+	Match m(c);
+	m.Begin(0);
+	m.Update(At(20000, {Bot(1), Bot(2)}));
+	CHECK(m.State() == MatchState::Countdown);
+	m.Update(At(23000, {Bot(1), Bot(2)}));
+	REQUIRE(m.State() == MatchState::Live);
+	m.Update(At(24000, {Bot(1), Bot(2)}));
+	CHECK(m.State() == MatchState::Live);
+}
+
+TEST_CASE("every human gone from a match under way: back to warmup, the arena reset")
+{
+	Match m(Enabled());
+	const int64_t live = ToLive(m);
+	// One human left keeps it going, below match_minplayers too.
+	m.Update(At(live + 1000, {P(1, true, 3)}));
+	CHECK(m.State() == MatchState::Live);
+	// None: warmup, scores zeroed by the reset, no clock.
+	const auto out = m.Update(At(live + 2000, {Bot(5)}));
+	CHECK(m.State() == MatchState::Warmup);
+	CHECK(Has(out, MatchActionKind::ResetArena));
+	CHECK_FALSE(Has(out, MatchActionKind::EndMatch));
+	CHECK(m.HudText(At(live + 2000, {Bot(5)})) == Hud("WAITING FOR PLAYERS", "1:00"));
+	// A human back (and the bot): a fresh start, the full timelimit from the new LIVE.
+	m.Update(At(live + 3000, {P(1, true), Bot(5)}));
+	REQUIRE(m.State() == MatchState::Countdown);
+	m.Update(At(live + 6000, {P(1, true), Bot(5)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK(m.HudText(At(live + 6000, {P(1, true), P(2, true)})).clock == "1:00");
+}
+
+TEST_CASE("every human gone between rounds or in overtime: back to warmup too")
+{
+	MatchConfig c = Enabled();
+	c.overtime = -1; // sudden death
+	Match m(c);
+	const int64_t live = ToLive(m);
+	m.Update(At(live + 60000, {P(1, true, 2), P(2, true, 2)})); // tied at the timelimit
+	REQUIRE(m.State() == MatchState::Overtime);
+	m.Update(At(live + 61000, {}));
+	CHECK(m.State() == MatchState::Warmup);
 }

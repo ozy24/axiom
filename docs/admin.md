@@ -15,7 +15,7 @@ Nothing else is needed: every gametype works with no files at all.
 set hostname "My Server"
 set deathmatch 1
 set maxclients 16
-set g_ruleset ffa         // the mode to start in: ffa, duel, hoony, tdm, ctf
+set g_ruleset ffa         // the mode to start in: ffa, duel, tdm, ctf
 map q2dm1
 ```
 
@@ -36,9 +36,24 @@ set fraglimit 100
 
 It applies every time TDM starts, by vote or by `sv ruleset tdm`.
 
+A public FFA that starts as soon as two players are in, with no ready-up:
+
+```
+// rulesets/ffa.cfg
+set match_ready 0
+```
+
+`match_minplayers` (2) counts bots, so one player and the server's bots
+(`bot_minPlayers`) can start a match; a match always needs a human, so
+bots alone stay in warmup, and a match whose last human leaves goes back
+to warmup. For a bot-only server, `set match_allow_no_humans 1`.
+
 ## Adding a variant
 
-A variant is another way to play a gametype. HoonyMode (Duel) is built in.
+A variant is another way to play a gametype. HoonyMode, Duel where every
+frag ends a round, was built in and is off for now; you can still run it
+as your own variant (`rulesets/duel_hoony.cfg` with `set match_rounds 1`,
+`set match_suicide_point 1`, `set fraglimit 5`, `set timelimit 15`).
 To add your own, name the file `<gametype>_<name>.cfg`, write only how it
 differs from the gametype, and list it in `server.cfg`:
 
@@ -49,7 +64,7 @@ set capturelimit 5
 
 ```
 // server.cfg
-set g_rulesets "ctf_instagib"
+set g_ruleset_variants "ctf_instagib"
 ```
 
 Players then find it in the vote menu under Capture The Flag, as
@@ -97,8 +112,10 @@ else.
 | `match_warmup_weapons` | 1 | in warmup, everyone has every weapon the map places, with full ammo; 0 = stock's start |
 | `match_lock` | 1 in `tdm` and `ctf` | lock both teams as the match goes live; 0 = only when a captain locks |
 
-From the console: `sv lockteam red|blue`, `sv unlockteam red|blue`, and
-`sv teams` to see each team's lock, captain and players. For a public
+From the console: `sv lockteam red|blue`, `sv unlockteam red|blue`,
+`sv teams` to see each team's lock, captain and players, and `sv shuffle`
+to split the players into two new random teams (warmup only; players can
+vote one with `callvote shuffle`, decision 0020). For a public
 server, put `set match_lock 0` in `rulesets/tdm.cfg` and `rulesets/ctf.cfg`.
 Details: docs/design/teams.md, docs/decisions/0016.
 
@@ -107,7 +124,7 @@ Details: docs/design/teams.md, docs/decisions/0016.
 | | Default | |
 |---|---|---|
 | `g_vote` | 1 | voting on |
-| `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire readyall readyteam` | what players can call; remove a word to turn that vote off |
+| `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire readyall readyteam shuffle` | what players can call; remove a word to turn that vote off |
 | `g_vote_midgame` | 1 | also during a match; 0 = warmup only |
 | `g_map_list` | (empty) | the map rotation, and the maps a vote may pick |
 | `g_map_list_shuffle` | 1 | play the rotation in a random order; 0 = as written |

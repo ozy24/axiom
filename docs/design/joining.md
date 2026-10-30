@@ -40,7 +40,7 @@ new level; after that the memory is of this level's players, and someone
 reconnecting mid-level arrives like anyone new.
 
 `map` (votes, an admin) reloads the game module, so the memory lives in a
-cvar, `g_join_memory`: `<hash>:<team>` per player, each key an 8-digit
+cvar, `g_join_memory` (internal: write-protected, only the module sets it): `<hash>:<team>` per player, each key an 8-digit
 FNV-1a hash, written only when it changes. It is the game's own state, not
 a setting. Anything malformed in it is skipped.
 

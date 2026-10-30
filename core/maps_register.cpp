@@ -21,7 +21,7 @@ void RegisterCvars()
 {
 	if (g_map_order)
 		return;
-	g_map_order = gi.cvar("g_map_order", "", CVAR_NOFLAGS);
+	g_map_order = gi.cvar("g_map_order", "", CVAR_NOSET); // internal: only the module sets it
 }
 
 bool Shuffle()

@@ -66,7 +66,7 @@ TEST_CASE("each gametype has one built-in of its own, named after it, that selec
 		REQUIRE(def);
 		CHECK_FALSE(def->variant);
 		CHECK(Find(def->cfg, "set g_gametype " + gt + "\n") != std::string::npos);
-		CHECK(Find(def->cfg, "set match_warmup 1\n") != std::string::npos);
+		CHECK(Find(def->cfg, "set match_flow 1\n") != std::string::npos);
 	}
 }
 
@@ -122,14 +122,8 @@ TEST_CASE("team games lock their teams as the match goes live; the others have n
 	}
 }
 
-TEST_CASE("a variant states only its differences, never its gametype")
+TEST_CASE("a built-in variant states only its differences, never its gametype")
 {
-	const RulesetDef *hoony = Core_Ruleset_Find("hoony");
-	REQUIRE(hoony);
-	CHECK(std::string(hoony->gametype) == "duel");
-	CHECK(std::string(hoony->variant) == "HoonyMode");
-	CHECK(Find(hoony->cfg, "set match_rounds 1\n") != std::string::npos);
-	CHECK(Find(hoony->cfg, "set match_suicide_point 1\n") != std::string::npos);
 	for (size_t i = 0; i < core_ruleset_count; ++i)
 	{
 		CAPTURE(core_rulesets[i].name);
@@ -150,13 +144,15 @@ TEST_CASE("names are restricted so exec can't leave rulesets/")
 	CHECK_FALSE(Core_Ruleset_ValidName(std::string(33, 'a')));
 }
 
-TEST_CASE("resolve: built-ins, and an admin's variants listed in g_rulesets")
+TEST_CASE("resolve: built-ins, and an admin's variants listed in g_ruleset_variants")
 {
-	const auto hoony = Core_Ruleset_Resolve("hoony", "", kGametypes);
+	// HoonyMode is off (2026-10-29); an admin can list their own.
+	CHECK_FALSE(Core_Ruleset_Resolve("hoony", "", kGametypes));
+	const auto hoony = Core_Ruleset_Resolve("duel_hoony", "duel_hoony", kGametypes);
 	REQUIRE(hoony);
 	CHECK(hoony->gametype == "duel");
-	CHECK(hoony->variant == "HoonyMode");
-	CHECK(hoony->builtin == Core_Ruleset_Find("hoony"));
+	CHECK(hoony->variant == "Hoony");
+	CHECK(hoony->builtin == nullptr);
 
 	const auto insta = Core_Ruleset_Resolve("ctf_instagib", "ffa_rocket_arena, ctf_instagib", kGametypes);
 	REQUIRE(insta);
@@ -178,12 +174,12 @@ TEST_CASE("all: by gametype, its own first, then built-in variants, then the adm
 	std::vector<std::string> names;
 	for (const Ruleset &r : Core_Ruleset_All("ctf_instagib duel_x duel_x junk", kGametypes))
 		names.push_back(r.name);
-	CHECK(names == std::vector<std::string>{"ffa", "duel", "hoony", "duel_x", "tdm", "ctf", "ctf_instagib"});
+	CHECK(names == std::vector<std::string>{"ffa", "duel", "duel_x", "tdm", "ctf", "ctf_instagib"});
 }
 
 TEST_CASE("a switch resets every gameplay cvar, then the gametype, then the variant")
 {
-	const std::string text = Core_Ruleset_Commands(*Core_Ruleset_Resolve("hoony", "", kGametypes));
+	const std::string text = Core_Ruleset_Commands(*Core_Ruleset_Resolve("duel_x", "duel_x", kGametypes));
 	// 1. every gameplay cvar to its default, before anything else
 	for (size_t i = 0; i < core_gameplay_cvar_count; ++i)
 	{
@@ -194,10 +190,10 @@ TEST_CASE("a switch resets every gameplay cvar, then the gametype, then the vari
 	}
 	// 2. the gametype's own settings, then the admin's cfg for it
 	CHECK(Find(text, "set g_gametype duel\n") < Find(text, "exec rulesets/duel.cfg\n"));
-	// 3. the variant's settings, then the admin's cfg for it
-	CHECK(Find(text, "exec rulesets/duel.cfg\n") < Find(text, "set match_rounds 1\n"));
-	CHECK(Find(text, "set match_rounds 1\n") < Find(text, "exec rulesets/hoony.cfg\n"));
-	const std::string tail = "set g_ruleset hoony\nset g_ruleset_applied hoony\n";
+	// 3. the variant's file
+	CHECK(Find(text, "exec rulesets/duel.cfg\n") < Find(text, "exec rulesets/duel_x.cfg\n"));
+	const std::string tail = "set g_ruleset duel_x\n";
+	CHECK(Find(text, "g_ruleset_applied") == std::string::npos); // write-protected: the adapter sets it
 	CHECK(text.substr(text.size() - tail.size()) == tail);
 }
 
@@ -213,20 +209,18 @@ TEST_CASE("a gametype's own switch has no variant step; an admin's variant execs
 	CHECK(Find(insta, "exec rulesets/ctf.cfg\n") < Find(insta, "exec rulesets/ctf_instagib.cfg\n"));
 }
 
-TEST_CASE("only hoony gives a suicide's point to the opponent")
+TEST_CASE("no built-in gives a suicide's point to the opponent (HoonyMode is off)")
 {
 	for (size_t i = 0; i < core_ruleset_count; ++i)
 	{
 		CAPTURE(core_rulesets[i].name);
-		const bool hoony = std::string(core_rulesets[i].name) == "hoony";
-		const bool sets = Find(core_rulesets[i].cfg, "set match_suicide_point 1\n") != std::string::npos;
-		CHECK(sets == hoony);
+		CHECK(Find(core_rulesets[i].cfg, "set match_suicide_point 1\n") == std::string::npos);
 	}
 }
 
 TEST_CASE("the settings set at load: the reset, then the gametype's and the variant's own, in order")
 {
-	const auto settings = Core_Ruleset_Settings(*Core_Ruleset_Resolve("hoony", "", kGametypes));
+	const auto settings = Core_Ruleset_Settings(*Core_Ruleset_Resolve("duel", "", kGametypes));
 	auto last = [&](const std::string &cvar)
 	{
 		std::string value = "(unset)";
@@ -237,9 +231,9 @@ TEST_CASE("the settings set at load: the reset, then the gametype's and the vari
 	};
 	CHECK(settings.front().first == core_gameplay_cvars[0].name); // the reset comes first
 	CHECK(last("g_gametype") == "duel");
-	CHECK(last("match_warmup") == "1"); // the duel's own
-	CHECK(last("match_rounds") == "1"); // hoony over it
-	CHECK(last("fraglimit") == "5");
+	CHECK(last("match_flow") == "1"); // the duel's own
+	CHECK(last("match_rounds") == "0");
+	CHECK(last("timelimit") == "10");
 	CHECK(last("g_map_list") == ""); // reset, quotes stripped
 
 	// An admin's variant: the gametype's own settings; its file is queued.

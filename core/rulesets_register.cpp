@@ -9,15 +9,16 @@ namespace
 {
 cvar_t *g_ruleset;
 cvar_t *g_ruleset_applied;
-cvar_t *g_rulesets;
+cvar_t *g_ruleset_variants;
 
 void RegisterCvars()
 {
 	if (g_ruleset)
 		return;
 	g_ruleset = gi.cvar("g_ruleset", "", CVAR_SERVERINFO);
-	g_ruleset_applied = gi.cvar("g_ruleset_applied", "", CVAR_NOFLAGS); // what this server last switched to
-	g_rulesets = gi.cvar("g_rulesets", "", CVAR_NOFLAGS);
+	// What this server last switched to: internal, so only the module sets it.
+	g_ruleset_applied = gi.cvar("g_ruleset_applied", "", CVAR_NOSET);
+	g_ruleset_variants = gi.cvar("g_ruleset_variants", "", CVAR_NOFLAGS);
 }
 
 std::vector<std::string> GametypeIds()
@@ -38,7 +39,7 @@ std::string Title(const Ruleset &r)
 void PrintUnknown(const char *name)
 {
 	gi.Com_PrintFmt("Unknown ruleset \"{}\". `sv rulesets` lists them; your own variants are "
-	                "rulesets/<gametype>_<name>.cfg, listed in g_rulesets.\n",
+	                "rulesets/<gametype>_<name>.cfg, listed in g_ruleset_variants.\n",
 	                name);
 }
 } // namespace
@@ -46,13 +47,13 @@ void PrintUnknown(const char *name)
 std::optional<Ruleset> Core_Rulesets_Find(std::string_view name)
 {
 	RegisterCvars();
-	return Core_Ruleset_Resolve(name, g_rulesets->string, GametypeIds());
+	return Core_Ruleset_Resolve(name, g_ruleset_variants->string, GametypeIds());
 }
 
 std::vector<Ruleset> Core_Rulesets_Available()
 {
 	RegisterCvars();
-	return Core_Ruleset_All(g_rulesets->string, GametypeIds());
+	return Core_Ruleset_All(g_ruleset_variants->string, GametypeIds());
 }
 
 std::string Core_Rulesets_Title(const Ruleset &r)
@@ -60,18 +61,25 @@ std::string Core_Rulesets_Title(const Ruleset &r)
 	return Title(r);
 }
 
+std::string Core_Rulesets_Switch(const Ruleset &r)
+{
+	RegisterCvars();
+	gi.cvar_forceset("g_ruleset_applied", r.name.c_str());
+	return Core_Ruleset_Commands(r);
+}
+
 bool Core_Rulesets_ServerCommand(const char *cmd)
 {
 	RegisterCvars();
 	if (!Q_strcasecmp(cmd, "rulesets"))
 	{
-		for (const Ruleset &r : Core_Ruleset_All(g_rulesets->string, GametypeIds()))
+		for (const Ruleset &r : Core_Ruleset_All(g_ruleset_variants->string, GametypeIds()))
 		{
 			const char *what = r.builtin ? r.builtin->description : "your own: rulesets/";
 			gi.Com_PrintFmt("  {:<14} {:<28} {}{}\n", r.name, Title(r), what, r.builtin ? "" : r.name + ".cfg");
 		}
 		gi.Com_Print("Change a gametype's settings in rulesets/<gametype>.cfg (only what differs).\n"
-		             "Add a variant as rulesets/<gametype>_<name>.cfg and list it in g_rulesets.\n"
+		             "Add a variant as rulesets/<gametype>_<name>.cfg and list it in g_ruleset_variants.\n"
 		             "Usage: sv ruleset <name>\n");
 		return true;
 	}
@@ -85,13 +93,13 @@ bool Core_Rulesets_ServerCommand(const char *cmd)
 		return true;
 	}
 	const char *name = gi.argv(2);
-	const std::optional<Ruleset> r = Core_Ruleset_Resolve(name, g_rulesets->string, GametypeIds());
+	const std::optional<Ruleset> r = Core_Ruleset_Resolve(name, g_ruleset_variants->string, GametypeIds());
 	if (!r)
 	{
 		PrintUnknown(name);
 		return true;
 	}
-	gi.AddCommandString(Core_Ruleset_Commands(*r).c_str());
+	gi.AddCommandString(Core_Rulesets_Switch(*r).c_str());
 	gi.Com_PrintFmt("Ruleset {} ({}) applied: its settings now, its gametype at the next map (`map <name>`).\n",
 	                r->name, Title(*r));
 	return true;
@@ -103,7 +111,7 @@ void Core_Rulesets_PreInit()
 	if (!*g_ruleset->string || !strcmp(g_ruleset->string, g_ruleset_applied->string))
 		return;
 	const std::string name = g_ruleset->string;
-	const std::optional<Ruleset> r = Core_Ruleset_Resolve(name, g_rulesets->string, GametypeIds());
+	const std::optional<Ruleset> r = Core_Ruleset_Resolve(name, g_ruleset_variants->string, GametypeIds());
 	gi.cvar_forceset("g_ruleset_applied", name.c_str()); // once, even if it's unknown
 	if (!r)
 	{
@@ -119,6 +127,6 @@ void Core_Rulesets_PreInit()
 		gi.cvar(cvar.c_str(), value.c_str(), CVAR_NOFLAGS);
 		gi.cvar_forceset(cvar.c_str(), value.c_str());
 	}
-	gi.AddCommandString(Core_Ruleset_Commands(*r).c_str());
+	gi.AddCommandString(Core_Rulesets_Switch(*r).c_str());
 	gi.Com_PrintFmt("Ruleset: starting {} ({})\n", r->name, Title(*r));
 }
