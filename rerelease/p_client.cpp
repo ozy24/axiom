@@ -7,6 +7,7 @@
 #include "core/join_hooks.h" // [mod]
 #include "core/scoreboard_hooks.h" // [mod]
 #include "core/warmup_hooks.h" // [mod]
+#include "core/frag_message_hooks.h" // [mod]
 #include "m_player.h"
 #include "bots/bot_includes.h"
 
@@ -573,6 +574,7 @@ DIE(player_die) (edict_t *self, edict_t *inflictor, edict_t *attacker, int damag
 		self->client->ps.pmove.pm_type = PM_DEAD;
 		ClientObituary(self, inflictor, attacker, mod);
 		Core_Scoreboard_Died(self); // [mod] the column board's deaths
+		Core_FragMessage(self, attacker); // [mod] "You fragged X" / "You were fragged by X" (g_frag_messages)
 
 		CTFFragBonuses(self, inflictor, attacker);
 		// ZOID

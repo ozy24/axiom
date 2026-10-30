@@ -90,6 +90,8 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/checks/stock_client_contract.cpp"
     # The mod's own code (AGENTS.md: small focused files, not id's).
     "${CMAKE_SOURCE_DIR}/core/eyecam_register.cpp"
+    "${CMAKE_SOURCE_DIR}/core/frag_message.cpp"
+    "${CMAKE_SOURCE_DIR}/core/frag_message_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/gametype.cpp"
     "${CMAKE_SOURCE_DIR}/core/gametype_register.cpp"
     ${GAME_GAMETYPE_SOURCES}
@@ -210,6 +212,7 @@ if(GAME_BUILD_TESTS)
         tests/test_teams.cpp
         tests/test_join.cpp
         tests/test_scoreboard.cpp
+        tests/test_frag_message.cpp
         core/identity.cpp
         core/match_record.cpp
         core/host_files.cpp
@@ -223,6 +226,7 @@ if(GAME_BUILD_TESTS)
         core/teams.cpp
         core/join.cpp
         core/scoreboard.cpp
+        core/frag_message.cpp
         tests/test_duel_queue.cpp
         tests/test_duel_board.cpp
         tests/test_eyecam.cpp

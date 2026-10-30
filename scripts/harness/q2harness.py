@@ -1126,7 +1126,7 @@ def tier_human_settings(args, results):
     modes and a time out of range with the usage; a powerups vote reloads the
     map, and the voted time limit is still there after it. The built-in
     ruleset's column scoreboard (decision 0018) shows Bob's suicide as a
-    death. Q2RED only."""
+    death, and its frag messages tell both players of each frag. Q2RED only."""
     rig, why = scenario_rig(args, "t16-settings")
     if not rig:
         results.append(("16 human-settings", True, [f"skipped: {why}"]))
@@ -1198,11 +1198,28 @@ at 40 0 cmd vote yes
                           (r"7:00", "7:00 after the reload")):
         if not any(re.fullmatch(pattern, c) for c in clocks):
             detail.append(f"never saw {what} (clock texts {sorted(set(clocks))[:12]})")
+    # Frag messages (g_frag_messages, on in the built-in ruleset): each frag
+    # between the players tells both, the other's name a whole argument, and
+    # the killer's place while live. Puppets don't always frag: none is noted.
+    victims = [r for r in locs if r["base"] == "You were fragged by {}"]
+    killers = [r for r in locs if r["base"].startswith("You fragged {}")]
+    notes = []
+    if not victims and not killers:
+        notes.append("no frag between the players: frag messages unchecked")
+    elif len(victims) != len(killers):
+        detail.append(f"{len(killers)} 'You fragged' for {len(victims)} 'You were fragged by'")
+    # Live: the place line; warmup (after the powerups reload): the name only.
+    odd = [r["base"] for r in killers if not re.fullmatch(
+        r"You fragged \{\}(\n(Tied for )?\d+(st|nd|rd|th) place with -?\d+)?", r["base"])]
+    if odd:
+        detail.append(f"killer messages not in FFA's form: {odd[:3]}")
+    if any(len(r.get("args", [])) != 1 for r in victims + killers):
+        detail.append("a frag message without the other player's name as its one argument")
     detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]
-    results.append(("16 human-settings", not detail, detail))
+    results.append(("16 human-settings", not detail, detail or notes))
 
 
 def tier_human_teamlock(args, results):
