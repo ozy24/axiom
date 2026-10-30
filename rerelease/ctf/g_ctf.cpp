@@ -1808,7 +1808,8 @@ void CTFScoreboardMessage(edict_t *ent, edict_t *killer)
 			if (!k)
 			{
 				k = 1;
-				fmt::format_to(std::back_inserter(string), FMT_STRING("xv 0 yv {} loc_string2 0 \"$g_pc_spectators\" "), j);
+				if (!Core_Scoreboard_TeamSpectatorTitle(string, j)) // [mod] Min and Ping over the numbers (g_scoreboard 1)
+					fmt::format_to(std::back_inserter(string), FMT_STRING("xv 0 yv {} loc_string2 0 \"$g_pc_spectators\" "), j);
 				j += 8;
 			}
 
@@ -1816,7 +1817,7 @@ void CTFScoreboardMessage(edict_t *ent, edict_t *killer)
 						(n & 1) ? 200 : -40, // x
 						j,				   // y
 						i,				   // playernum
-						cl->resp.score,
+						Core_Scoreboard_TeamSpectatorFirst(cl_ent), // [mod] minutes on the server (g_scoreboard 1)
 						cl->ping > 999 ? 999 : cl->ping);
 
 			if (string.size() + entry.size() < MAX_CTF_STAT_LENGTH)

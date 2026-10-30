@@ -54,7 +54,8 @@ const RulesetDef core_rulesets[] = {
      "set match_warmup_weapons 1\n"
      "set timelimit 20\n"
      "set fraglimit 0\n"
-     "set g_map_list_shuffle 1\n"},
+     "set g_map_list_shuffle 1\n"
+     "set g_scoreboard 1\n"},
     {"ctf", "ctf", "capture the flag: warmup and ready-up, 20 minutes or 8 captures, sudden death on a tie",
      "set g_gametype ctf\n"
      "set ctf 1\n"
@@ -71,7 +72,8 @@ const RulesetDef core_rulesets[] = {
      "set timelimit 20\n"
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
-     "set capturelimit 8\n"},
+     "set capturelimit 8\n"
+     "set g_scoreboard 1\n"},
     // The four core gametypes only (decision 0022): no built-in variants. An
     // admin lists their own in g_ruleset_variants.
 };

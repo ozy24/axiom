@@ -94,7 +94,7 @@ Set it in `server.cfg`. Details: docs/design/joining.md.
 
 | Cvar | Default | What |
 |---|---|---|
-| `g_scoreboard` | 0 | 1: the mod's boards outside team modes: FFA's columns (#, Frg, Dth, Player, FPH, Time, Ping) and Duel's (the duellists, records, the queue); the built-in `ffa` and `duel` rulesets set 1. 0: stock's board |
+| `g_scoreboard` | 0 | 1: the mod's boards: FFA's columns (#, Frg, Dth, Player, FPH, Time, Ping), Duel's (the duellists, the queue), and spectators shown with 0 and ping on every board; every built-in ruleset sets 1. 0: stock's boards |
 
 See docs/design/scoreboard.md.
 

@@ -19,6 +19,13 @@ void Core_Scoreboard_Died(const edict_t *self);
 // as the match starts.
 void Core_Scoreboard_Frame();
 
+// The team board's spectators (TDM, CTF) under g_scoreboard 1, from
+// CTFScoreboardMessage. Title: appends the Spectators heading at `y` and
+// returns true, or false and stock writes its own. First: a spectator row's
+// first number, 0 (stock: the score).
+bool Core_Scoreboard_TeamSpectatorTitle(std::string &layout, int y);
+int Core_Scoreboard_TeamSpectatorFirst(const edict_t *ent);
+
 // The team board's ready marks (TDM, CTF), in ready-up: appended to stock's
 // layout once its rows and spectators are in, within `max` bytes. From
 // CTFScoreboardMessage, before it sends the layout.
