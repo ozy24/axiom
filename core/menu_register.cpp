@@ -8,6 +8,7 @@
 
 #include "core/gametype.h"
 #include "core/maps_hooks.h"
+#include "core/match.h"
 #include "core/match_hooks.h"
 #include "core/menu.h"
 #include "core/join_hooks.h"
@@ -98,7 +99,10 @@ MenuView View(const edict_t *ent)
 	v.fraglimit = fraglimit->integer;
 	v.capturelimit = capturelimit->integer;
 	v.overtime = CvarInt("match_overtime");
-	v.rounds = CvarInt("match_rounds") != 0;
+	v.rounds = Core_Match_ParseRounds(gi.cvar("match_rounds", "0", CVAR_NOFLAGS)->string) != RoundsMode::Off;
+	v.elimination = Core_Match_Elimination();
+	v.round_lives = std::max(1, CvarInt("match_round_lives"));
+	v.round_time_s = std::max(0, CvarInt("match_round_time"));
 	v.match_flow = Core_Match_OwnsRules();
 	v.warmup = v.match_flow && !Core_Match_InPlay();
 

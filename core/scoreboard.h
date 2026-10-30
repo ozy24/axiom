@@ -57,9 +57,14 @@ std::string Core_Scoreboard_Layout(const ScoreboardInput &in);
 // row. (Duel's board ticks its blocks with a picture; a stock client draws
 // that 24 pixels high, three rows, and covers the text: playtest 2026-10-29.)
 std::string Core_Scoreboard_ReadyMark(int x, int y);
+// Any one-character mark the same way: `X` for an eliminated player.
+std::string Core_Scoreboard_Mark(int x, int y, char mark);
 
 // The team board's ready marks, for stock's CTFScoreboardMessage: one left of
 // each team row (`ctf -40 ...` RED, `ctf 200 ...` BLUE) in `layout` whose
 // client is in `ready`, beside the captain's `*`, while the layout stays
 // under `max` bytes. Returns the text to append.
 std::string Core_Scoreboard_TeamReady(std::string_view layout, const std::set<int> &ready, size_t max);
+// The same for any mark: R (ready, in ready-up) or X (eliminated, in an
+// elimination round). Ready-up and rounds never overlap, so they share the slot.
+std::string Core_Scoreboard_TeamMarks(std::string_view layout, const std::set<int> &slots, char mark, size_t max);

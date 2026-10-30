@@ -551,3 +551,19 @@ TEST_CASE("menu: About sits a blank line above Close, and shows the mod, its bui
 	v.mod_page.clear();
 	CHECK_FALSE(Row(Core_Menu_About(v), "github.com/someone/mod"));
 }
+
+TEST_CASE("menu: Match Info for Clan Arena's elimination rounds")
+{
+	MenuView v = Teams();
+	v.ctf = false;
+	v.gametype = "Clan Arena";
+	v.elimination = v.rounds = true;
+	v.fraglimit = 8;
+	v.round_lives = 1;
+	v.round_time_s = 120;
+	const MenuPage page = Core_Menu_MatchInfo(v);
+	CHECK(Shows(page, "Rounds: first to 8"));
+	CHECK(Shows(page, "Elimination: 1 life, 2:00"));
+	CHECK_FALSE(Shows(page, "Fraglimit: 8"));
+	CHECK_FALSE(Shows(page, "Rounds: a frag ends one"));
+}

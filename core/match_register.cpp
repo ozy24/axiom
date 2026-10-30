@@ -12,6 +12,7 @@
 #include "g_statusbar.h"
 #include "mod_identity.h"
 #include "core/maps_hooks.h"
+#include "core/arena_hooks.h"
 #include "core/match_hooks.h"
 #include "core/scoreboard_hooks.h"
 #include "core/teams_hooks.h"
@@ -29,6 +30,7 @@
 // id's, not declared in g_local.h. A plain declaration: THINK() would register
 // it for saves a second time.
 void DoRespawn(edict_t *ent);
+void CopyToBodyQue(edict_t *ent); // p_client.cpp: an eliminated player's body stays where they fell
 
 namespace
 {
@@ -41,7 +43,14 @@ gtime_t last_time;
 std::array<bool, MAX_CLIENTS> ready{};
 
 cvar_t *match_flow, *match_ready, *match_minplayers, *match_allow_no_humans, *match_warmup_time, *match_countdown,
-    *match_overtime, *match_rounds, *match_round_countdown, *match_round_pause, *match_suicide_point;
+    *match_overtime, *match_rounds, *match_round_countdown, *match_round_pause, *match_suicide_point,
+    *match_round_freeze, *match_round_lives, *match_round_time;
+
+// Elimination rounds: who's watching (out of the round, following teammates)
+// and when an eliminated player died (they keep their death view a moment).
+std::array<bool, MAX_CLIENTS> watching{};
+std::array<gtime_t, MAX_CLIENTS> out_at{};
+constexpr gtime_t kDeathView = 2_sec;
 
 void RegisterCvars()
 {
@@ -58,6 +67,9 @@ void RegisterCvars()
 	match_round_countdown = gi.cvar("match_round_countdown", "5", CVAR_NOFLAGS);
 	match_round_pause = gi.cvar("match_round_pause", "2", CVAR_NOFLAGS);
 	match_suicide_point = gi.cvar("match_suicide_point", "0", CVAR_NOFLAGS);
+	match_round_freeze = gi.cvar("match_round_freeze", "1", CVAR_NOFLAGS);
+	match_round_lives = gi.cvar("match_round_lives", "1", CVAR_NOFLAGS);
+	match_round_time = gi.cvar("match_round_time", "0", CVAR_NOFLAGS);
 	// Where finished-match records go (relative to the server's working
 	// directory); empty = none.
 	g_matchlog_dir = gi.cvar("g_matchlog_dir", "", CVAR_NOFLAGS);
@@ -74,15 +86,23 @@ MatchConfig ReadConfig()
 	c.warmup_time_ms = (int64_t)(match_warmup_time->value * 1000);
 	c.countdown_ms = (int64_t)(match_countdown->value * 1000);
 	c.overtime = match_overtime->integer;
-	c.rounds_on_frag = match_rounds->integer != 0;
+	c.rounds = Core_Match_ParseRounds(match_rounds->string);
 	c.round_countdown_ms = (int64_t)(match_round_countdown->value * 1000);
 	c.round_pause_ms = (int64_t)(match_round_pause->value * 1000);
+	c.round_freeze = match_round_freeze->integer != 0;
+	c.round_lives = std::max(1, match_round_lives->integer);
+	c.round_time_ms = (int64_t)(std::max(0.f, match_round_time->value) * 1000);
 	c.timelimit_ms = (int64_t)(timelimit->value * 60000);
 	c.fraglimit = fraglimit->integer;
 	// TDM and CTF run on stock's team code (Core_Gametype_PreInit): the lead
 	// is the team score, and in TDM the fraglimit is too (CheckEndTDMLevel).
 	c.teams = G_TeamplayEnabled();
 	c.fraglimit_on_teams = teamplay->integer != 0;
+	// Elimination needs sides: teams, or Duel's two. Plain FFA has no
+	// "side out of lives", so it's off there (logged as the level starts).
+	const GametypeDef *gt = Core_Gametype_Active();
+	if (c.rounds == RoundsMode::Elimination && !c.teams && !(gt && !strcmp(gt->id, "duel")))
+		c.rounds = RoundsMode::Off;
 	c.join_grace_ms = 10000;
 	c.join_wait_ms = 30000;
 	return c;
@@ -97,10 +117,21 @@ edict_t *ClientEdict(uint32_t i)
 // spectator, and in team modes on a team. A client that connected but never
 // began - Q2REX's bots in a bot-only match - is not, so the arena reset never
 // puts it in the world.
+int SlotOf(const edict_t *ent)
+{
+	return (int)(ent - g_edicts) - 1;
+}
+
+// In the game as a player: begun (pers.spawned, set by ClientBegin), not a
+// spectator - or out of an elimination round, watching, but still in the
+// match - and in team modes on a team. A client that connected but never
+// began - Q2REX's bots in a bot-only match - is not, so the arena reset never
+// puts it in the world.
 bool Playing(const edict_t *ent)
 {
 	return ent->inuse && ent->client && ent->client->pers.connected && ent->client->pers.spawned &&
-	       !ent->client->resp.spectator && (!G_TeamplayEnabled() || ent->client->resp.ctf_team != CTF_NOTEAM);
+	       (!ent->client->resp.spectator || watching[SlotOf(ent)]) &&
+	       (!G_TeamplayEnabled() || ent->client->resp.ctf_team != CTF_NOTEAM);
 }
 
 MatchInput Snapshot()
@@ -129,6 +160,12 @@ MatchInput Snapshot()
 		// Bots can't type `ready`; they never hold a match up.
 		p.ready = ready[i] || (ent->svflags & SVF_BOT);
 		p.score = ent->client->resp.score;
+		p.key = Core_PlayerKey(ent);
+		if (!ent->deadflag && !watching[i])
+		{
+			const item_id_t armor = ArmorIndex(const_cast<edict_t *>(ent));
+			p.health = ent->health + (armor ? ent->client->pers.inventory[armor] : 0);
+		}
 		p.team = ent->client->resp.ctf_team == CTF_TEAM1 ? 1 : ent->client->resp.ctf_team == CTF_TEAM2 ? 2 : 0;
 		in.players.push_back(p);
 	}
@@ -162,6 +199,143 @@ bool Transient(const edict_t *ent)
 			return true;
 	}
 	return false;
+}
+
+// Elimination rounds (docs/design/clan-arena.md) -----------------------------
+
+const char *SideName(int team)
+{
+	return team == 1 ? "RED" : "BLUE";
+}
+
+// A living teammate to follow, or null.
+edict_t *TeammateToWatch(const edict_t *ent)
+{
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *other = ClientEdict(i);
+		if (other != ent && other->inuse && Core_Match_MayChase(ent, other))
+			return other;
+	}
+	return nullptr;
+}
+
+// Out of the round: a spectator who stays on their team, as stock's coop
+// player out of lives (G_CoopRespawn's RESPAWN_SPECTATE), following a living
+// teammate. Held dead (deadflag, health 0) so nothing respawns them before
+// the next round, which brings them back through Return.
+void Watch(edict_t *ent, bool body)
+{
+	if (body)
+		CopyToBodyQue(ent);
+	gclient_t *cl = ent->client;
+	cl->resp.spectator = true;
+	ent->solid = SOLID_NOT;
+	ent->takedamage = false;
+	ent->s.modelindex = 0;
+	ent->svflags |= SVF_NOCLIENT;
+	cl->ps.damage_blend[3] = cl->ps.screen_blend[3] = 0;
+	cl->ps.rdflags = RDF_NONE;
+	cl->ps.gunindex = 0;
+	cl->ps.gunskin = 0;
+	ent->movetype = MOVETYPE_NOCLIP;
+	ent->deadflag = true;
+	ent->health = 0;
+	cl->respawn_time = level.time + 3600_sec;
+	watching[SlotOf(ent)] = true; // first: the target must pass the teammates-only rule
+	cl->chase_target = TeammateToWatch(ent);
+	cl->update_chase = cl->chase_target != nullptr;
+	gi.linkentity(ent);
+}
+
+// Back in: through respawn, which clears SVF_NOCLIENT and leaves no second
+// body for a spectator. Never a bare PutClientInServer on a watcher.
+void Return(edict_t *ent)
+{
+	const int slot = SlotOf(ent);
+	watching[slot] = false;
+	out_at[slot] = 0_ms;
+	ent->client->respawn_time = level.time;
+	if (ent->deadflag || ent->client->resp.spectator)
+		respawn(ent);
+	else
+		PutClientInServer(ent);
+}
+
+void AnnounceRound(int won)
+{
+	std::string who;
+	if (won < 0)
+		who = "draw";
+	else if (match.Config().teams)
+		who = SideName(won);
+	else
+		who = Core_PlayerName(ClientEdict((uint32_t)won));
+	gi.Com_PrintFmt("Match: round {}: {}\n", match.Round(), who);
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *ent = ClientEdict(i);
+		if (!ent->inuse || !ent->client)
+			continue;
+		if (won < 0)
+			gi.LocCenter_Print(ent, "Round draw!");
+		else if (match.Config().teams)
+			gi.LocCenter_Print(ent, "{} wins the round!", SideName(won));
+		else
+			gi.LocCenter_Print(ent, "{} wins the round!", ClientEdict((uint32_t)won)->client->pers.netname);
+	}
+}
+
+// After a death: the one player on that team still in the round hears it.
+void LastStanding(const edict_t *dead)
+{
+	const ctfteam_t team = dead->client->resp.ctf_team;
+	edict_t *last = nullptr;
+	int left = 0;
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *ent = ClientEdict(i);
+		if (Playing(ent) && ent->client->resp.ctf_team == team && !match.Eliminated((int)i))
+		{
+			++left;
+			last = ent;
+		}
+	}
+	if (left == 1)
+		gi.LocCenter_Print(last, "You are the last one standing!");
+}
+
+// Every frame: an eliminated player's death view runs out and they watch; a
+// watcher who left their team stops; a watcher with nobody to follow looks
+// again; the team score is the rounds won.
+void EliminationFrame()
+{
+	const bool teams = G_TeamplayEnabled();
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *ent = ClientEdict(i);
+		if (!ent->inuse || !ent->client)
+		{
+			watching[i] = false;
+			out_at[i] = 0_ms;
+			continue;
+		}
+		if (watching[i] && (!teams || ent->client->resp.ctf_team == CTF_NOTEAM))
+			watching[i] = false; // `spectate`, or a team change through stock's code
+		if (teams && !watching[i] && out_at[i] && ent->deadflag && level.time >= out_at[i] + kDeathView &&
+		    match.Eliminated((int)i))
+		{
+			out_at[i] = 0_ms;
+			Watch(ent, true);
+		}
+		if (watching[i] && !ent->client->chase_target)
+		{
+			ent->client->chase_target = TeammateToWatch(ent);
+			ent->client->update_chase = ent->client->chase_target != nullptr;
+		}
+	}
+	if (teams && match.Elimination())
+		G_SetTeamFrags(match.RoundWins(1), match.RoundWins(2));
 }
 
 // Puts the level back to its start: no projectiles or dropped items, every map
@@ -208,6 +382,7 @@ void ResetArena(bool players)
 		return;
 	if (G_TeamplayEnabled())
 		G_ResetTeamScores();
+	Core_Arena_ResetDamage();
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		edict_t *ent = ClientEdict(i);
@@ -215,7 +390,7 @@ void ResetArena(bool players)
 			continue;
 		ent->client->resp.score = 0;
 		if (Playing(ent))
-			PutClientInServer(ent);
+			Return(ent);
 	}
 }
 
@@ -309,8 +484,8 @@ void RoundRespawn()
 		if (!Playing(ent))
 			continue;
 		ent->client->respawn_time = level.time;
-		if (ent->deadflag)
-			respawn(ent);
+		if (ent->deadflag || watching[i])
+			Return(ent);
 		else
 			PutClientInServer(ent);
 	}
@@ -423,8 +598,18 @@ void Act(const std::vector<MatchAction> &actions)
 			break;
 		case MatchActionKind::RoundStart:
 			break; // the release: Core_Match_Frozen is false from here
+		case MatchActionKind::RoundWon:
+			AnnounceRound(a.value);
+			break;
 
 		case MatchActionKind::EndMatch:
+			// The deciding round ends the match at once: its watchers come back
+			// into the world (and the match report) for the intermission.
+			for (uint32_t i = 0; i < game.maxclients; ++i)
+			{
+				if (watching[i])
+					Return(ClientEdict(i));
+			}
 			end_reason = a.text;
 			gi.Com_PrintFmt("Match: ended ({})\n", a.text.c_str());
 			EndDMLevel();
@@ -443,7 +628,12 @@ void Core_Match_Frame()
 		match = Match(ReadConfig());
 		match.Begin(level.time.milliseconds());
 		ready.fill(false);
+		watching.fill(false);
+		out_at.fill(0_ms);
 		begun = true;
+		if (match.OwnsRules() && Core_Match_ParseRounds(match_rounds->string) == RoundsMode::Elimination &&
+		    !match.Elimination())
+			gi.Com_Print("Match: elimination rounds need teams or Duel; playing without rounds\n");
 		ended_this_level = false;
 		end_reason.clear();
 		status_text.clear(); // configstrings start empty on a new level
@@ -494,11 +684,110 @@ void Core_Match_Frame()
 	if (match.State() != before)
 		gi.Com_PrintFmt("Match: {} -> {}\n", MatchStateName(before), MatchStateName(match.State()));
 	Act(actions);
+	EliminationFrame();
 	if (!match.ScoresCount())
 		ZeroScores();
 	if (match.State() == MatchState::RoundOver)
 		HoldDead();
 	PublishHud();
+}
+
+namespace
+{
+// `sv match`'s note on a client: not playing, eliminated (and who they
+// follow), dead, or nothing.
+std::string Watched(const edict_t *ent)
+{
+	if (!Playing(ent))
+		return " (not playing)";
+	if (watching[SlotOf(ent)])
+	{
+		const edict_t *t = ent->client->chase_target;
+		return t ? " (eliminated, following " + Core_PlayerName(t) + ")" : std::string(" (eliminated)");
+	}
+	return ent->deadflag ? " (dead)" : "";
+}
+} // namespace
+
+void Core_Match_Died(edict_t *self)
+{
+	if (!begun || !match.Elimination() || !Playing(self))
+		return;
+	const int slot = SlotOf(self);
+	if (!match.Died(slot))
+		return;
+	// Out of the round: stays dead, then watches (EliminationFrame).
+	self->client->respawn_time = level.time + 3600_sec;
+	out_at[slot] = level.time;
+	if (G_TeamplayEnabled())
+		LastStanding(self);
+}
+
+bool Core_Match_HoldOut(edict_t *ent)
+{
+	if (!begun || !match.Elimination() || !G_TeamplayEnabled() || ent->client->resp.ctf_team == CTF_NOTEAM)
+		return false;
+	const int team = ent->client->resp.ctf_team == CTF_TEAM1 ? 1 : 2;
+	if (match.InRound(SlotOf(ent), Core_PlayerKey(ent), team))
+		return false;
+	Watch(ent, false);
+	gi.LocClient_Print(ent, PRINT_HIGH, "A round is being played: you're in from the next.\n");
+	return true;
+}
+
+bool Core_Match_Watching(const edict_t *ent)
+{
+	return ent->client && watching[SlotOf(ent)];
+}
+
+bool Core_Match_MayChase(const edict_t *ent, const edict_t *target)
+{
+	if (!Core_Match_Watching(ent))
+		return true;
+	return target->client && !watching[SlotOf(target)] && !target->deadflag && Playing(target) &&
+	       target->client->resp.ctf_team == ent->client->resp.ctf_team;
+}
+
+bool Core_Match_WatchNext(edict_t *ent)
+{
+	if (!Core_Match_Watching(ent))
+		return false;
+	if (ent->client->chase_target)
+		ChaseNext(ent);
+	else
+	{
+		ent->client->chase_target = TeammateToWatch(ent);
+		ent->client->update_chase = ent->client->chase_target != nullptr;
+	}
+	return true;
+}
+
+bool Core_Match_HoldWatcher(const edict_t *ent)
+{
+	return Core_Match_Watching(ent) && !ent->client->chase_target;
+}
+
+bool Core_Match_Elimination()
+{
+	return begun && match.Elimination();
+}
+
+bool Core_Match_Eliminated(const edict_t *ent)
+{
+	return begun && match.Elimination() && ent->client && match.Eliminated(SlotOf(ent));
+}
+
+bool Core_Match_RoundInPlay()
+{
+	return begun && match.Elimination() && (match.State() == MatchState::Live || match.State() == MatchState::Overtime);
+}
+
+void Core_Match_Disconnect(edict_t *ent)
+{
+	const int slot = SlotOf(ent);
+	match.Forget(slot);
+	watching[slot] = false;
+	out_at[slot] = 0_ms;
 }
 
 bool Core_Match_OwnsRules()
@@ -521,10 +810,7 @@ bool Core_Match_ServerCommand(const char *cmd)
 		const edict_t *ent = ClientEdict(i);
 		if (!ent->inuse || !ent->client || !ent->client->pers.connected)
 			continue;
-		gi.Com_PrintFmt("  {:4} {}{}\n", ent->client->resp.score, Core_PlayerName(ent).c_str(),
-		                !Playing(ent)   ? " (not playing)"
-		                : ent->deadflag ? " (dead)"
-		                                : "");
+		gi.Com_PrintFmt("  {:4} {}{}\n", ent->client->resp.score, Core_PlayerName(ent).c_str(), Watched(ent).c_str());
 	}
 	return true;
 }

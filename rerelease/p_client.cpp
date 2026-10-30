@@ -1,6 +1,7 @@
 // Copyright (c) ZeniMax Media Inc.
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
+#include "core/arena_hooks.h" // [mod]
 #include "core/match_hooks.h" // [mod]
 #include "core/eyecam_hooks.h" // [mod]
 #include "core/vote_hooks.h" // [mod]
@@ -573,6 +574,7 @@ DIE(player_die) (edict_t *self, edict_t *inflictor, edict_t *attacker, int damag
 		self->client->ps.pmove.pm_type = PM_DEAD;
 		ClientObituary(self, inflictor, attacker, mod);
 		Core_Scoreboard_Died(self); // [mod] the column board's deaths
+		Core_Match_Died(self);      // [mod] elimination rounds: a life gone
 
 		CTFFragBonuses(self, inflictor, attacker);
 		// ZOID
@@ -2238,6 +2240,8 @@ void PutClientInServer(edict_t *ent)
 	if (CTFStartClient(ent))
 		return;
 	// ZOID
+	if (Core_Match_HoldOut(ent)) // [mod] an elimination round it isn't in: watch teammates until the next
+		return; // [mod]
 
 	// spawn a spectator
 	if (client->pers.spectator)
@@ -2302,6 +2306,7 @@ void PutClientInServer(edict_t *ent)
 	}
 
 	Core_Warmup_Loadout(ent); // [mod] warmup: the map's weapons, full ammo, the best in hand
+	Core_Arena_Loadout(ent);  // [mod] arena (Clan Arena): every weapon, full ammo, health and armor
 
 	// force the current weapon up
 	client->newweapon = client->pers.weapon;
@@ -2946,6 +2951,8 @@ void ClientDisconnect(edict_t *ent)
 
 	Core_EyeCam_Disconnect(ent); // [mod]
 	Core_Vote_Disconnect(ent);   // [mod]
+	Core_Match_Disconnect(ent);  // [mod]
+	Core_Arena_Disconnect(ent);  // [mod]
 
 	// ZOID
 	CTFDeadDropFlag(ent);
@@ -3248,6 +3255,8 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 			}
 			else if (ent->client->awaiting_respawn)
 				client->ps.pmove.pm_type = PM_FREEZE;
+			else if (Core_Match_HoldWatcher(ent)) // [mod] out of the round, nobody to follow: no free flight
+				client->ps.pmove.pm_type = PM_FREEZE; // [mod]
 			else if (ent->client->resp.spectator || (G_TeamplayEnabled() && ent->client->resp.ctf_team == CTF_NOTEAM))
 				client->ps.pmove.pm_type = PM_SPECTATOR;
 			else
@@ -3415,6 +3424,7 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 			{
 				// [mod] fire is ignored under a menu (HandleMenuMovement), not a chase toggle
 			}
+			else if (Core_Match_WatchNext(ent)) {} // [mod] out of the round: the next teammate, never free cam
 			else if (client->chase_target)
 			{
 				client->chase_target = nullptr;

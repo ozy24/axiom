@@ -262,7 +262,7 @@ namespace
 MatchConfig Hoony()
 {
 	MatchConfig c = Enabled();
-	c.rounds_on_frag = true;
+	c.rounds = RoundsMode::Frag;
 	c.round_pause_ms = 1000;
 	c.round_countdown_ms = 2000;
 	c.fraglimit = 3;
@@ -894,4 +894,305 @@ TEST_CASE("every human gone between rounds or in overtime: back to warmup too")
 	REQUIRE(m.State() == MatchState::Overtime);
 	m.Update(At(live + 61000, {}));
 	CHECK(m.State() == MatchState::Warmup);
+}
+
+// --- Elimination rounds (Clan Arena; docs/design/clan-arena.md) ---------------
+
+namespace
+{
+MatchPlayer E(int id, int team, int health = 100)
+{
+	MatchPlayer p = T(id, team);
+	p.key = "k" + std::to_string(id);
+	p.health = health;
+	return p;
+}
+
+std::vector<MatchPlayer> TwoVTwo()
+{
+	return {E(1, 1), E(2, 1), E(3, 2), E(4, 2)};
+}
+
+MatchConfig CA()
+{
+	MatchConfig c = TeamConfig();
+	c.rounds = RoundsMode::Elimination;
+	c.round_freeze = false;
+	c.round_pause_ms = 1000;
+	c.round_countdown_ms = 2000;
+	c.timelimit_ms = 0;
+	c.fraglimit = 3;
+	return c;
+}
+
+// Warmup to LIVE with everyone ready; returns when round 1 began.
+int64_t CaLive(Match &m, const std::vector<MatchPlayer> &players)
+{
+	m.Begin(0);
+	m.Update(At(1000, players));
+	m.Update(At(4000, players));
+	REQUIRE(m.State() == MatchState::Live);
+	return 4000;
+}
+
+int Won(const std::vector<MatchAction> &out)
+{
+	for (const MatchAction &a : out)
+		if (a.kind == MatchActionKind::RoundWon)
+			return a.value;
+	return -99;
+}
+
+bool Announced(const std::vector<MatchAction> &out, const std::string &text)
+{
+	return std::any_of(out.begin(), out.end(),
+	                   [&](const MatchAction &a) { return a.kind == MatchActionKind::Announce && a.text == text; });
+}
+} // namespace
+
+TEST_CASE("match_rounds: 0, 1 / frag, elimination, any case; anything else is off")
+{
+	CHECK(Core_Match_ParseRounds("0") == RoundsMode::Off);
+	CHECK(Core_Match_ParseRounds("") == RoundsMode::Off);
+	CHECK(Core_Match_ParseRounds("1") == RoundsMode::Frag);
+	CHECK(Core_Match_ParseRounds("Frag") == RoundsMode::Frag);
+	CHECK(Core_Match_ParseRounds("ELIMINATION") == RoundsMode::Elimination);
+	CHECK(Core_Match_ParseRounds("2") == RoundsMode::Off);
+}
+
+TEST_CASE("elimination: a team with no lives left loses the round; the survivors play on")
+{
+	Match m(CA());
+	const int64_t live = CaLive(m, TwoVTwo());
+	CHECK(m.HudText(At(live, TwoVTwo())).status == "ROUND 1 - RED 2 v 2 BLUE");
+	CHECK(m.Died(1));
+	CHECK(m.Eliminated(1));
+	CHECK_FALSE(m.Eliminated(2));
+	CHECK(m.HudText(At(live + 100, TwoVTwo())).status == "ROUND 1 - RED 1 v 2 BLUE");
+	CHECK(m.Update(At(live + 100, TwoVTwo())).empty()); // RED still has one
+	CHECK(m.Died(2));
+	const auto out = m.Update(At(live + 200, TwoVTwo()));
+	CHECK(Won(out) == 2);
+	CHECK(m.State() == MatchState::RoundOver);
+	CHECK(Has(out, MatchActionKind::RoundHold));
+	CHECK(m.RoundWins(2) == 1);
+	CHECK(m.RoundWins(1) == 0);
+}
+
+TEST_CASE("elimination: both teams out at once is a draw, at once (MMREX stalls)")
+{
+	Match m(CA());
+	const int64_t live = CaLive(m, TwoVTwo());
+	for (int id = 1; id <= 4; ++id)
+		m.Died(id);
+	const auto out = m.Update(At(live + 100, TwoVTwo()));
+	CHECK(Won(out) == -1);
+	CHECK(m.State() == MatchState::RoundOver);
+	CHECK(m.RoundWins(1) + m.RoundWins(2) == 0);
+}
+
+TEST_CASE("elimination: the next round respawns everyone, counts down without firing, then ROUND 2")
+{
+	Match m(CA());
+	const int64_t live = CaLive(m, TwoVTwo());
+	m.Died(1);
+	m.Died(2);
+	m.Update(At(live + 100, TwoVTwo()));
+	const auto pause = m.Update(At(live + 1200, TwoVTwo()));
+	CHECK(Has(pause, MatchActionKind::RoundRespawn));
+	REQUIRE(m.State() == MatchState::RoundCountdown);
+	CHECK(m.HoldFire()); // match_round_freeze 0: move, no fire
+	CHECK_FALSE(m.Frozen());
+	CHECK(m.CountdownSeconds(live + 1200) == 2);
+	const auto start = m.Update(At(live + 3300, TwoVTwo()));
+	CHECK(m.State() == MatchState::Live);
+	CHECK(m.Round() == 2);
+	CHECK(Announced(start, "ROUND 2: FIGHT!"));
+	CHECK_FALSE(m.Eliminated(1)); // a new roster, everyone in
+	CHECK(m.HudText(At(live + 3300, TwoVTwo())).status == "ROUND 2 - RED 2 v 2 BLUE");
+}
+
+TEST_CASE("elimination: the round limit ends the match on the winning round, at once")
+{
+	MatchConfig c = CA();
+	c.fraglimit = 1;
+	Match m(c);
+	const int64_t live = CaLive(m, TwoVTwo());
+	m.Died(3);
+	m.Died(4);
+	const auto out = m.Update(At(live + 100, TwoVTwo()));
+	CHECK(Won(out) == 1);
+	CHECK(m.State() == MatchState::Intermission);
+	CHECK(std::any_of(out.begin(), out.end(),
+	                  [](const MatchAction &a) { return a.kind == MatchActionKind::EndMatch && a.text == "rounds"; }));
+}
+
+TEST_CASE("elimination: the round timer gives it to more lives left, then more health, else a draw")
+{
+	MatchConfig c = CA();
+	c.round_time_ms = 60000;
+	{
+		Match m(c);
+		const int64_t live = CaLive(m, TwoVTwo());
+		CHECK(m.ClockEndMs() == live + 60000);
+		CHECK(m.HudText(At(live + 15000, TwoVTwo())).clock == "0:45");
+		m.Died(1);
+		CHECK(m.Update(At(live + 59000, TwoVTwo())).empty());
+		CHECK(Won(m.Update(At(live + 60000, TwoVTwo()))) == 2); // BLUE: 2 lives v 1
+	}
+	{
+		Match m(c);
+		const int64_t live = CaLive(m, TwoVTwo());
+		const std::vector<MatchPlayer> hurt = {E(1, 1, 300), E(2, 1, 300), E(3, 2, 50), E(4, 2, 300)};
+		CHECK(Won(m.Update(At(live + 60000, hurt))) == 1); // equal lives: RED has more health
+	}
+	{
+		Match m(c);
+		const int64_t live = CaLive(m, TwoVTwo());
+		CHECK(Won(m.Update(At(live + 60000, TwoVTwo()))) == -1); // nothing between them
+	}
+}
+
+TEST_CASE("elimination: more lives per round; a death with lives left isn't elimination")
+{
+	MatchConfig c = CA();
+	c.round_lives = 3;
+	Match m(c);
+	const int64_t live = CaLive(m, TwoVTwo());
+	CHECK(m.HudText(At(live, TwoVTwo())).status == "ROUND 1 - RED 6 v 6 BLUE");
+	CHECK_FALSE(m.Died(1));
+	CHECK_FALSE(m.Died(1));
+	CHECK(m.InRound(1, "k1", 1)); // lives left: back in
+	CHECK(m.Died(1));
+	CHECK_FALSE(m.InRound(1, "k1", 1));
+}
+
+TEST_CASE("elimination: only the round's roster plays it; joiners, switchers and slot reuse wait")
+{
+	Match m(CA());
+	const int64_t live = CaLive(m, TwoVTwo());
+	CHECK(m.InRound(2, "k2", 1));
+	CHECK_FALSE(m.InRound(5, "k5", 2));    // joined mid-round
+	CHECK_FALSE(m.InRound(2, "k2", 2));    // switched team
+	CHECK_FALSE(m.InRound(2, "other", 1)); // a new client in a leaver's slot
+	m.Forget(2);
+	CHECK_FALSE(m.InRound(2, "k2", 1));
+	// Players who left don't count as alive: RED is down to player 1.
+	const std::vector<MatchPlayer> one_red = {E(1, 1), E(3, 2), E(4, 2)};
+	CHECK(m.HudText(At(live + 100, one_red)).status == "ROUND 1 - RED 1 v 2 BLUE");
+	m.Died(1);
+	CHECK(Won(m.Update(At(live + 200, one_red))) == 2);
+	// Between rounds everyone may spawn; the next round's roster has the joiner.
+	CHECK(m.InRound(5, "k5", 2));
+}
+
+TEST_CASE("elimination: a team with nobody on it gets no free rounds: the countdown waits")
+{
+	Match m(CA());
+	const int64_t live = CaLive(m, TwoVTwo());
+	m.Died(3);
+	m.Died(4);
+	m.Update(At(live + 100, TwoVTwo()));
+	const std::vector<MatchPlayer> no_blue = {E(1, 1), E(2, 1)};
+	m.Update(At(live + 1200, no_blue)); // the pause ends
+	REQUIRE(m.State() == MatchState::RoundCountdown);
+	CHECK(m.Update(At(live + 1300, no_blue)).empty());
+	CHECK(m.CountdownSeconds(live + 1300) == 0);
+	CHECK(m.HudText(At(live + 1300, no_blue)).status == "WAITING FOR TEAMS");
+	m.Update(At(live + 9000, no_blue));
+	CHECK(m.State() == MatchState::RoundCountdown); // still waiting, not a free round
+	m.Update(At(live + 9100, TwoVTwo()));           // BLUE is back: a full countdown from here
+	CHECK(m.CountdownSeconds(live + 9100) == 2);
+	m.Update(At(live + 11200, TwoVTwo()));
+	CHECK(m.State() == MatchState::Live);
+	CHECK(m.Round() == 2);
+}
+
+TEST_CASE("elimination with match_round_freeze: round 1 gets a frozen countdown after the match's")
+{
+	MatchConfig c = CA();
+	c.round_freeze = true;
+	Match m(c);
+	m.Begin(0);
+	m.Update(At(1000, TwoVTwo()));
+	const auto go = m.Update(At(4000, TwoVTwo()));
+	CHECK(Has(go, MatchActionKind::ResetArena));
+	CHECK_FALSE(Announced(go, "ROUND 1: FIGHT!"));
+	REQUIRE(m.State() == MatchState::RoundCountdown);
+	CHECK(m.Frozen());
+	CHECK_FALSE(m.HoldFire());
+	CHECK(m.InRound(9, "k9", 1)); // nobody held out before the round starts
+	const auto start = m.Update(At(6100, TwoVTwo()));
+	CHECK(m.State() == MatchState::Live);
+	CHECK(m.Round() == 1);
+	CHECK(Announced(start, "ROUND 1: FIGHT!"));
+}
+
+TEST_CASE("elimination without freeze: the match countdown is round 1's")
+{
+	Match m(CA());
+	m.Begin(0);
+	m.Update(At(1000, TwoVTwo()));
+	const auto go = m.Update(At(4000, TwoVTwo()));
+	CHECK(m.State() == MatchState::Live);
+	CHECK(Announced(go, "ROUND 1: FIGHT!"));
+}
+
+TEST_CASE("elimination: the timelimit waits for the round; a tie goes to sudden death rounds")
+{
+	MatchConfig c = CA();
+	c.timelimit_ms = 60000;
+	c.overtime = -1;
+	Match m(c);
+	const int64_t live = CaLive(m, TwoVTwo());
+	CHECK(m.Update(At(live + 70000, TwoVTwo())).empty()); // past the limit: the round is played out
+	CHECK(m.State() == MatchState::Live);
+	for (int id = 1; id <= 4; ++id)
+		m.Died(id);
+	const auto draw = m.Update(At(live + 71000, TwoVTwo())); // 0-0 at the end of a round
+	CHECK(Has(draw, MatchActionKind::Klaxon));
+	CHECK(m.State() == MatchState::RoundOver);
+	m.Update(At(live + 72100, TwoVTwo()));
+	m.Update(At(live + 74200, TwoVTwo()));
+	REQUIRE(m.State() == MatchState::Overtime);
+	CHECK(m.HudText(At(live + 74200, TwoVTwo())).status == "SUDDEN DEATH - ROUND 2 - RED 2 v 2 BLUE");
+	m.Died(1);
+	m.Died(2);
+	const auto out = m.Update(At(live + 75000, TwoVTwo()));
+	CHECK(m.State() == MatchState::Intermission);
+	CHECK(std::any_of(out.begin(), out.end(), [](const MatchAction &a)
+	                  { return a.kind == MatchActionKind::EndMatch && a.text == "sudden death"; }));
+}
+
+TEST_CASE("elimination without teams (Duel): a player out of lives loses the round")
+{
+	MatchConfig c = CA();
+	c.teams = false;
+	c.round_lives = 3;
+	Match m(c);
+	const std::vector<MatchPlayer> duel = {E(1, 0), E(2, 0)};
+	const int64_t live = CaLive(m, duel);
+	CHECK(m.HudText(At(live, duel)).status == "ROUND 1");
+	m.Died(2);
+	m.Died(2);
+	CHECK(m.Update(At(live + 100, duel)).empty());
+	m.Died(2);
+	CHECK(Won(m.Update(At(live + 200, duel))) == 1);
+	CHECK(m.RoundWins(1) == 1);
+}
+
+TEST_CASE("elimination: every human gone sends it back to warmup and clears the rounds")
+{
+	MatchConfig c = CA();
+	Match m(c);
+	const int64_t live = CaLive(m, TwoVTwo());
+	m.Died(3);
+	m.Died(4);
+	m.Update(At(live + 100, TwoVTwo()));
+	REQUIRE(m.RoundWins(1) == 1);
+	MatchPlayer bot = E(9, 1);
+	bot.bot = true;
+	m.Update(At(live + 200, {bot}));
+	CHECK(m.State() == MatchState::Warmup);
+	CHECK(m.RoundWins(1) == 0);
 }

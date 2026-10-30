@@ -63,6 +63,7 @@ struct VoteSettingsNow
 	bool friendly_fire = false;
 	bool teams = false; // TDM, CTF
 	bool ctf = false;
+	bool rounds = false;   // elimination rounds: the score limit is rounds won
 	bool ready_up = false; // the match waits for its players to ready up
 	bool warmup = false;   // the match flow, before LIVE (warmup or the countdown)
 	int team_players = 0;  // players on a team (bots too)
@@ -90,7 +91,8 @@ struct VoteSetting
 
 // The setting a kind changes (the score limit is CTF's capture limit there,
 // with its own range), or nullopt for map, gametype, restart, the ready votes and shuffle.
-std::optional<VoteSetting> Core_Vote_Setting(VoteKind kind, bool ctf);
+// In elimination rounds the score limit is the rounds to win ("Round Limit").
+std::optional<VoteSetting> Core_Vote_Setting(VoteKind kind, bool ctf, bool rounds = false);
 
 // A vote's argument as the setting's value: a number in range, or on / off
 // (also 1 / 0, yes / no). nullopt if it's neither.

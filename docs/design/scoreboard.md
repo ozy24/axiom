@@ -66,13 +66,16 @@ Compared with MMREX's: the queue is numbered and the duellists show their
 records too; spectators show their record, not "0 0"; no "1st place with
 a score of N" line, which says nothing in a duel.
 
-## TDM and CTF
+## TDM, CA and CTF
 
 Stock's team board, with two marks left of a row: the captain's `*`
 (decision 0016) and, in ready-up, a green `R` for a ready player (x -56 on
-RED, 182 on BLUE: where MuffMode puts its tick). The marks are added once
-stock's rows and spectators are in (`Core_Scoreboard_TeamReady`, one marked
-call), so on a full board a mark is dropped before a player is.
+RED, 182 on BLUE: where MuffMode puts its tick); in an elimination round
+(Clan Arena) an `X` in the same place for an eliminated player. The marks
+are added once stock's rows and spectators are in
+(`Core_Scoreboard_TeamMarks`, one marked call), so on a full board a mark
+is dropped before a player is. In elimination rounds the header's limit
+reads "Round Limit: N".
 
 Not MuffMode's tick picture: a stock client draws `wheel/p_compass_selected`
 at its 24x24 (MuffMode's own client code shrinks it to 12x12), three rows
