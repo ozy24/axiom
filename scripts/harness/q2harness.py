@@ -1407,7 +1407,7 @@ def tier_human_readyvote(args, results):
     if not rig:
         results.append((label, True, [f"skipped: {why}"]))
         return
-    script = """seconds 50
+    script = """seconds 62
 client 0 name=Alice social=sim-alice puppet
 client 1 name=Bob social=sim-bob puppet
 client 2 name=Carol social=sim-carol puppet
@@ -1423,16 +1423,19 @@ at 20 2 cmd score
 at 22 2 cmd callvote readyall
 at 24 3 cmd vote yes
 at 25 0 cmd vote yes
-at 31 3 cmd kill
+at 30 3 cmd kill
+at 36 3 cmd kill
+at 42 3 cmd kill
 """
     rulesets = rig.dir / "baseq2" / "rulesets"
     rulesets.mkdir(parents=True, exist_ok=True)
-    (rulesets / "tdm.cfg").write_text("set match_ready 1\nset match_countdown 10\nset timelimit 5\n")
+    (rulesets / "tdm.cfg").write_text("set match_ready 1\nset match_countdown 20\nset timelimit 5\n")
     startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_vote_cooldown", "0",
                                      "+set", "g_ruleset", "tdm", "+map", "q2dm1"])
-    # Dave dies about 3 s into the countdown; 5 s later, still before LIVE,
-    # he must be playing again.
-    during = [("wait", r"Match: warmup -> countdown", 60), ("sleep", 8), ("cmd", "sv match")]
+    # Dave suicides every 6 s from 30 s (a `kill` within 5 s of a respawn is
+    # ignored), so at least one lands in the 20 s countdown whatever CI's
+    # timing; 3 s after the last, still before LIVE, he must be playing again.
+    during = [("wait", r"Match: warmup -> countdown", 60), ("sleep", 17), ("cmd", "sv match")]
     log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 110)
     tap = read_jsonl(rig.dir / "tap.jsonl")
     detail = []
