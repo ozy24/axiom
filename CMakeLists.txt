@@ -94,6 +94,8 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/core/gametype_register.cpp"
     ${GAME_GAMETYPE_SOURCES}
     "${MOD_GENERATED_DIR}/gametype_registry.cpp"
+    "${CMAKE_SOURCE_DIR}/core/arena.cpp"
+    "${CMAKE_SOURCE_DIR}/core/arena_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/host_files.cpp"
     "${CMAKE_SOURCE_DIR}/core/host_files_gi.cpp"
     "${CMAKE_SOURCE_DIR}/core/host_gi.cpp"
@@ -210,6 +212,8 @@ if(GAME_BUILD_TESTS)
         tests/test_teams.cpp
         tests/test_join.cpp
         tests/test_scoreboard.cpp
+        tests/test_arena.cpp
+        core/arena.cpp
         core/identity.cpp
         core/match_record.cpp
         core/host_files.cpp

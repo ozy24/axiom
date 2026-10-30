@@ -1,6 +1,7 @@
 // Copyright (c) ZeniMax Media Inc.
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
+#include "core/arena_hooks.h" // [mod]
 #include "core/match_hooks.h" // [mod]
 #include "core/eyecam_hooks.h" // [mod]
 #include "core/vote_hooks.h" // [mod]
@@ -2305,6 +2306,7 @@ void PutClientInServer(edict_t *ent)
 	}
 
 	Core_Warmup_Loadout(ent); // [mod] warmup: the map's weapons, full ammo, the best in hand
+	Core_Arena_Loadout(ent);  // [mod] arena (Clan Arena): every weapon, full ammo, health and armor
 
 	// force the current weapon up
 	client->newweapon = client->pers.weapon;
@@ -2950,6 +2952,7 @@ void ClientDisconnect(edict_t *ent)
 	Core_EyeCam_Disconnect(ent); // [mod]
 	Core_Vote_Disconnect(ent);   // [mod]
 	Core_Match_Disconnect(ent);  // [mod]
+	Core_Arena_Disconnect(ent);  // [mod]
 
 	// ZOID
 	CTFDeadDropFlag(ent);

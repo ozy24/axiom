@@ -71,6 +71,8 @@ bool Core_Match_MayChase(const edict_t *ent, const edict_t *target);
 bool Core_Match_WatchNext(edict_t *ent);
 bool Core_Match_HoldWatcher(const edict_t *ent);
 void Core_Match_Disconnect(edict_t *ent);
+// An elimination round is being played (LIVE or overtime): the damage score counts.
+bool Core_Match_RoundInPlay();
 
 // `ready` / `notready`; true if handled. From ClientCommand, before id's chain.
 bool Core_Match_ClientCommand(edict_t *ent, const char *cmd);

@@ -12,6 +12,7 @@
 #include "g_statusbar.h"
 #include "mod_identity.h"
 #include "core/maps_hooks.h"
+#include "core/arena_hooks.h"
 #include "core/match_hooks.h"
 #include "core/scoreboard_hooks.h"
 #include "core/teams_hooks.h"
@@ -381,6 +382,7 @@ void ResetArena(bool players)
 		return;
 	if (G_TeamplayEnabled())
 		G_ResetTeamScores();
+	Core_Arena_ResetDamage();
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		edict_t *ent = ClientEdict(i);
@@ -763,6 +765,11 @@ bool Core_Match_WatchNext(edict_t *ent)
 bool Core_Match_HoldWatcher(const edict_t *ent)
 {
 	return Core_Match_Watching(ent) && !ent->client->chase_target;
+}
+
+bool Core_Match_RoundInPlay()
+{
+	return begun && match.Elimination() && (match.State() == MatchState::Live || match.State() == MatchState::Overtime);
 }
 
 void Core_Match_Disconnect(edict_t *ent)
