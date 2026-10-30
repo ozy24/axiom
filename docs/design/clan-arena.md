@@ -77,9 +77,14 @@ item spawns on the map but keys and CTF flags; nothing drops on death.
 
 ## What players see
 
-- The HUD's status line: `ROUND 3 - RED 3 v 2 BLUE` (lives left; with one
-  life, players alive), `SUDDEN DEATH - ...` in overtime. The clock shows the
-  round's time left when there's a round timer.
+- The HUD's status line has nothing of its own in play (Chris, 2026-10-30: a
+  permanent `ROUND 3 - RED 3 v 2 BLUE` in mid-screen distracted, and
+  red/blue counts need a colour to read): the round number is in "ROUND n:
+  FIGHT!", who's left is the board's X marks, rounds won are stock's numbers
+  by the team icons. SUDDEN DEATH / OVERTIME as in other modes. The clock
+  shows the round's time left when there's a round timer (`match_round_time`).
+  The round limit shows in big digits under the team scores, bottom right
+  (as MuffMode), on the board and in Match Info.
 - Centre: "ROUND n: FIGHT!", "RED wins the round!" / "Round draw!", "You are
   the last one standing!" to a lone survivor.
 - The team board: an `X` by each eliminated player (where ready-up's `R` goes),

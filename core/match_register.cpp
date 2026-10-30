@@ -422,6 +422,14 @@ player_stat_t CountdownStat()
 	return (player_stat_t)(slot ? *slot : 0);
 }
 
+// The match's limit in big digits under the scores, bottom right, as MuffMode
+// (Chris, 2026-10-30): frags, captures, or rounds to win; 0 hides it.
+player_stat_t LimitStat()
+{
+	static const std::optional<int> slot = Core_StatSlots().Allocate("match_limit");
+	return (player_stat_t)(slot ? *slot : 0);
+}
+
 void Publish(int configstring, std::string &published, const std::string &text)
 {
 	if (text == published)
@@ -854,6 +862,16 @@ void Core_Match_Statusbar(statusbar_t &sb)
 	// distance above the crosshair at every resolution (yb -256 was off the
 	// top of a 240-unit-high screen: 1440p, 4K).
 	sb.ifstat(countdown).xv(118).yv(64).num(3, countdown).endifstat();
+	// The limit: a third row under the two score rows bottom right, its digits
+	// under theirs - stock's team block (rows yb -110 / -83, digits xr -78), or
+	// the FFA / Duel miniscore (digits yb -112 / -79, xr -86).
+	if (const player_stat_t limit = LimitStat())
+	{
+		if (G_TeamplayEnabled())
+			sb.ifstat(limit).yb(-56).xr(-78).num(3, limit).endifstat();
+		else if (Core_Gametype_Active())
+			sb.ifstat(limit).yb(-46).xr(-86).num(3, limit).endifstat();
+	}
 }
 
 void Core_Match_SetStats(edict_t *ent)
@@ -865,6 +883,12 @@ void Core_Match_SetStats(edict_t *ent)
 	if (CountdownStat())
 		ent->client->ps.stats[CountdownStat()] =
 		    Core_Match_OwnsRules() ? match.CountdownSeconds(level.time.milliseconds()) : 0;
+	if (LimitStat())
+	{
+		const int limit = ctf->integer ? capturelimit->integer : fraglimit->integer;
+		ent->client->ps.stats[LimitStat()] =
+		    deathmatch->integer && Core_Match_InPlay() && !level.intermissiontime ? std::max(0, limit) : 0;
+	}
 }
 
 bool Core_Match_HoldFire(const edict_t *ent)

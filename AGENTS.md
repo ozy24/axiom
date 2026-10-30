@@ -206,8 +206,8 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   live, a shuffle is refused (Q2RED only).
 - **Tier 21 human-ca:** Clan Arena with five scripted (non-puppet) players,
   first to 2: a suicide puts Alice out, watching Bob (a teammate); a
-  mid-round joiner waits and plays the next round; the HUD counts the
-  living; the board marks X and says Round Limit (Q2RED only).
+  mid-round joiner waits and plays the next round; no round line on the HUD;
+  the board marks X and says Round Limit (Q2RED only).
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

@@ -493,19 +493,9 @@ MatchHudText Match::HudText(const MatchInput &in) const
 	// else up from LIVE; in sudden death it stays at 0:00.
 	const std::string clock = time_end_ms_ ? Clock(time_end_ms_ - in.now_ms) : Clock(in.now_ms - live_since_ms_);
 	const std::string length = Clock(config_.timelimit_ms); // 0:00 with no timelimit: it counts up
-	// Elimination rounds: "ROUND 3 - RED 3 v 2 BLUE" (lives left per team), or
-	// "ROUND 3" without teams (one line for everyone can't say whose is whose);
-	// the clock is the round's when it has a timer.
-	const auto round_line = [&]
-	{
-		std::string line = "ROUND " + std::to_string(round_);
-		if (config_.teams)
-		{
-			const std::map<int, int> lives = SideLives(in);
-			line += " - RED " + std::to_string(lives.at(1)) + " v " + std::to_string(lives.at(2)) + " BLUE";
-		}
-		return line;
-	};
+	// Elimination rounds: no line of their own in play (the round number is in
+	// "ROUND n: FIGHT!", who's left on the board: Chris, 2026-10-30); the clock
+	// is the round's when it has a timer.
 	const auto round_clock = [&]
 	{ return config_.round_time_ms > 0 ? Clock(round_since_ms_ + config_.round_time_ms - in.now_ms) : clock; };
 	switch (state_)
@@ -530,11 +520,11 @@ MatchHudText Match::HudText(const MatchInput &in) const
 		return {"COUNTDOWN", length}; // the seconds: the big digits (CountdownSeconds)
 	case MatchState::Live:
 		if (Elimination())
-			return {round_line(), round_clock()};
+			return {"", round_clock()};
 		return {"", clock};
 	case MatchState::Overtime:
 		if (Elimination())
-			return {(config_.overtime < 0 ? "SUDDEN DEATH - " : "OVERTIME - ") + round_line(), round_clock()};
+			return {config_.overtime < 0 ? "SUDDEN DEATH" : "OVERTIME", round_clock()};
 		if (config_.overtime < 0)
 			return {"SUDDEN DEATH", "0:00"}; // the next score ends it
 		return {"OVERTIME", clock};

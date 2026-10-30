@@ -964,11 +964,12 @@ TEST_CASE("elimination: a team with no lives left loses the round; the survivors
 {
 	Match m(CA());
 	const int64_t live = CaLive(m, TwoVTwo());
-	CHECK(m.HudText(At(live, TwoVTwo())).status == "ROUND 1 - RED 2 v 2 BLUE");
+	CHECK(m.HudText(At(live, TwoVTwo())).status.empty()); // no round line in play (Chris, 2026-10-30)
+	CHECK(m.SideLives(At(live, TwoVTwo())).at(1) == 2);
 	CHECK(m.Died(1));
 	CHECK(m.Eliminated(1));
 	CHECK_FALSE(m.Eliminated(2));
-	CHECK(m.HudText(At(live + 100, TwoVTwo())).status == "ROUND 1 - RED 1 v 2 BLUE");
+	CHECK(m.SideLives(At(live + 100, TwoVTwo())).at(1) == 1);
 	CHECK(m.Update(At(live + 100, TwoVTwo())).empty()); // RED still has one
 	CHECK(m.Died(2));
 	const auto out = m.Update(At(live + 200, TwoVTwo()));
@@ -1009,7 +1010,7 @@ TEST_CASE("elimination: the next round respawns everyone, counts down without fi
 	CHECK(m.Round() == 2);
 	CHECK(Announced(start, "ROUND 2: FIGHT!"));
 	CHECK_FALSE(m.Eliminated(1)); // a new roster, everyone in
-	CHECK(m.HudText(At(live + 3300, TwoVTwo())).status == "ROUND 2 - RED 2 v 2 BLUE");
+	CHECK(m.SideLives(At(live + 3300, TwoVTwo())).at(1) == 2);
 }
 
 TEST_CASE("elimination: the round limit ends the match on the winning round, at once")
@@ -1059,7 +1060,7 @@ TEST_CASE("elimination: more lives per round; a death with lives left isn't elim
 	c.round_lives = 3;
 	Match m(c);
 	const int64_t live = CaLive(m, TwoVTwo());
-	CHECK(m.HudText(At(live, TwoVTwo())).status == "ROUND 1 - RED 6 v 6 BLUE");
+	CHECK(m.SideLives(At(live, TwoVTwo())).at(1) == 6);
 	CHECK_FALSE(m.Died(1));
 	CHECK_FALSE(m.Died(1));
 	CHECK(m.InRound(1, "k1", 1)); // lives left: back in
@@ -1079,7 +1080,7 @@ TEST_CASE("elimination: only the round's roster plays it; joiners, switchers and
 	CHECK_FALSE(m.InRound(2, "k2", 1));
 	// Players who left don't count as alive: RED is down to player 1.
 	const std::vector<MatchPlayer> one_red = {E(1, 1), E(3, 2), E(4, 2)};
-	CHECK(m.HudText(At(live + 100, one_red)).status == "ROUND 1 - RED 1 v 2 BLUE");
+	CHECK(m.SideLives(At(live + 100, one_red)).at(1) == 1);
 	m.Died(1);
 	CHECK(Won(m.Update(At(live + 200, one_red))) == 2);
 	// Between rounds everyone may spawn; the next round's roster has the joiner.
@@ -1155,7 +1156,7 @@ TEST_CASE("elimination: the timelimit waits for the round; a tie goes to sudden 
 	m.Update(At(live + 72100, TwoVTwo()));
 	m.Update(At(live + 74200, TwoVTwo()));
 	REQUIRE(m.State() == MatchState::Overtime);
-	CHECK(m.HudText(At(live + 74200, TwoVTwo())).status == "SUDDEN DEATH - ROUND 2 - RED 2 v 2 BLUE");
+	CHECK(m.HudText(At(live + 74200, TwoVTwo())).status == "SUDDEN DEATH");
 	m.Died(1);
 	m.Died(2);
 	const auto out = m.Update(At(live + 75000, TwoVTwo()));
@@ -1172,7 +1173,7 @@ TEST_CASE("elimination without teams (Duel): a player out of lives loses the rou
 	Match m(c);
 	const std::vector<MatchPlayer> duel = {E(1, 0), E(2, 0)};
 	const int64_t live = CaLive(m, duel);
-	CHECK(m.HudText(At(live, duel)).status == "ROUND 1");
+	CHECK(m.HudText(At(live, duel)).status.empty());
 	m.Died(2);
 	m.Died(2);
 	CHECK(m.Update(At(live + 100, duel)).empty());

@@ -1690,8 +1690,12 @@ at 54 1 cmd kill
         if not re.search(rf"^\S*\s+-?\d+ {name}$", second_dump, re.M):
             detail.append(f"{name} wasn't back in for round 2")
     texts = [r["text"] for r in tap if r.get("type") == "configstring"]
-    if "ROUND 1 - RED 2 v 2 BLUE" not in texts or "ROUND 1 - RED 1 v 2 BLUE" not in texts:
-        detail.append("the HUD's round line never counted the living (ROUND 1 - RED n v n BLUE)")
+    # No round line in play (Chris, 2026-10-30): the number is in "ROUND n:
+    # FIGHT!", who's left on the board's X marks.
+    if not any("hnum" in t and re.search(r"yb -56 xr -78 num 3 \d+", t) for t in texts):
+        detail.append("the status bar has no round limit row under the team scores (yb -56)")
+    if any(re.match(r"ROUND \d", t) for t in texts):  # ROUND OVER is a state, still shown
+        detail.append("the HUD's status line showed a round line in play")
     boards = [r["text"] for r in tap if r.get("type") == "layout" and r["to"] == humans["Carol"]
               and "ctf -40" in r["text"]]
     if not any("string2 X " in b for b in boards):
