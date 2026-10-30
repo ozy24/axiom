@@ -452,6 +452,20 @@ TEST_CASE("menu: a list longer than the page is paged, as MMREX's map vote")
 	CHECK(Row(last, "< Prev Page"));
 	CHECK_FALSE(Row(last, "> Next Page"));
 	CHECK(last.back().text == "Back");
+
+	// Prev and Next at the bottom, right above Back, however many choices
+	// the page has, with a blank row under the last choice (Chris, 2026-10-30).
+	CHECK(first[kMenuRows - 2].text == "> Next Page");
+	CHECK(first[kMenuRows - 3].text.empty());
+	CHECK(middle[kMenuRows - 2].text == "> Next Page");
+	CHECK(middle[kMenuRows - 3].text == "< Prev Page");
+	CHECK(middle[kMenuRows - 4].text.empty());
+	CHECK(last[kMenuRows - 2].text == "< Prev Page");
+	CHECK(last[kMenuRows - 3].text.empty());
+	CHECK(first[2 + kMenuListPage - 1].text == "map12");
+	CHECK(last[2].text == "map25");
+	CHECK(last[3].text == "map26");
+	CHECK(last[4].text.empty());
 	CHECK(Core_Menu_VoteMaps(v, 9)[0].text == "Vote: Map (3/3)"); // clamped
 	CHECK(Core_Menu_VoteMaps(v, -1)[0].text == "Vote: Map (1/3)");
 
