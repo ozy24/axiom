@@ -39,7 +39,6 @@ struct ScoreboardInput
 {
 	std::vector<ScoreboardPlayer> players;
 	int viewer = -1;       // the slot it's for
-	std::string stamp;     // the header: "2026-10-29 19:40"
 	bool ready_up = false; // show the ready marks
 	size_t budget = 980;   // bytes it may use: stock's 1024, less its clock and frag limit
 };
@@ -52,6 +51,16 @@ std::vector<ScoreboardPlayer> Core_Scoreboard_Order(std::vector<ScoreboardPlayer
 
 // The layout text, at most `budget` bytes.
 std::string Core_Scoreboard_Layout(const ScoreboardInput &in);
+
+// The spectators' heading at `y` for a column of `ctf` rows at `x`: stock's
+// ping icon (9x9, as the duel blocks show it) over the ping, "Spectators"
+// over the names. A KEX name shows only in
+// a `ctf` row, which always draws two numbers first (docs/design/scoreboard.md):
+// a spectator's are 0 and their ping, never frags and deaths.
+std::string Core_Scoreboard_SpectatorTitle(int x, int y);
+
+// A spectator's `ctf` row: 0, ping (capped at 999), name.
+std::string Core_Scoreboard_SpectatorRow(int x, int y, int slot, int ping);
 
 // The ready mark on a row at `y`: a green R, one character, so it fits the
 // row. (Duel's board ticks its blocks with a picture; a stock client draws

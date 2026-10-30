@@ -10,7 +10,6 @@
 #include "core/scoreboard_hooks.h"
 
 #include <array>
-#include <ctime>
 #include <set>
 
 namespace
@@ -44,7 +43,8 @@ void RegisterCvars()
 {
 	if (g_scoreboard)
 		return;
-	// 0: stock's board; 1: the column board (outside team modes).
+	// 0: stock's boards; 1: the mod's (FFA's columns, Duel's board, the team
+	// boards' spectators).
 	g_scoreboard = gi.cvar("g_scoreboard", "0", CVAR_NOFLAGS);
 }
 
@@ -73,21 +73,6 @@ Count &CountOf(uint32_t i)
 	if (c.key != key)
 		c = Count{key};
 	return c;
-}
-
-// The header's server time: "2026-10-29 19:40".
-std::string Stamp()
-{
-	const std::time_t now = std::time(nullptr);
-	std::tm local{};
-#ifdef _WIN32
-	localtime_s(&local, &now);
-#else
-	localtime_r(&now, &local);
-#endif
-	char text[32];
-	std::strftime(text, sizeof(text), "%Y-%m-%d %H:%M", &local);
-	return text;
 }
 } // namespace
 
@@ -131,6 +116,32 @@ void Core_Scoreboard_Died(const edict_t *self)
 	CountOf((uint32_t)(self - g_edicts) - 1).deaths++;
 }
 
+namespace
+{
+// The team board's changes: g_scoreboard 1 in TDM or CTF under a registered
+// gametype.
+bool TeamActive()
+{
+	RegisterCvars();
+	return deathmatch->integer && Core_Gametype_Active() && G_TeamplayEnabled() && g_scoreboard->integer;
+}
+} // namespace
+
+bool Core_Scoreboard_TeamSpectatorTitle(std::string &layout, int y)
+{
+	if (!TeamActive())
+		return false;
+	layout += Core_Scoreboard_SpectatorTitle(-40, y);
+	return true;
+}
+
+int Core_Scoreboard_TeamSpectatorFirst(const edict_t *ent)
+{
+	if (!TeamActive())
+		return ent->client->resp.score;
+	return 0;
+}
+
 void Core_Scoreboard_TeamReady(std::string &layout, size_t max)
 {
 	if (!Core_Match_ReadyUp())
@@ -157,7 +168,6 @@ bool Core_Scoreboard_Columns(const edict_t *ent, std::string &layout)
 		return gt->scoreboard(ent, Budget(layout.size()), layout);
 	ScoreboardInput in;
 	in.viewer = (int)(ent - g_edicts) - 1;
-	in.stamp = Stamp();
 	in.budget = Budget(layout.size());
 	in.ready_up = Core_Match_ReadyUp();
 	for (uint32_t i = 0; i < game.maxclients; ++i)

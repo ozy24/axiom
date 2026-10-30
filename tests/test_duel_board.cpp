@@ -29,28 +29,6 @@ DuelBoardInput TwoPlaying()
 }
 } // namespace
 
-TEST_CASE("duel records: wins, losses and the streak a loss ends")
-{
-	DuelRecords r;
-	r.Result("xin", "aid");
-	r.Result("xin", "oesd");
-	CHECK(r.Get("xin").wins == 2);
-	CHECK(r.Get("xin").streak == 2);
-	CHECK(r.Get("aid").losses == 1);
-	r.Result("aid", "xin");
-	CHECK(r.Get("xin").streak == 0);
-	CHECK(r.Get("xin").losses == 1);
-	CHECK(r.Get("aid").streak == 1);
-	CHECK(r.Get("nobody").wins == 0);
-}
-
-TEST_CASE("duel records: the text under a block")
-{
-	CHECK(Duel_RecordText({}).empty());
-	CHECK(Duel_RecordText({1, 0, 1}) == "W 1  L 0");
-	CHECK(Duel_RecordText({3, 1, 3}) == "W 3  L 1  streak 3");
-}
-
 TEST_CASE("duel board: the title and stock's two blocks")
 {
 	const std::string layout = Duel_BoardLayout(TwoPlaying());
@@ -61,32 +39,32 @@ TEST_CASE("duel board: the title and stock's two blocks")
 	CHECK_FALSE(Has(layout, "Next up"));
 }
 
-TEST_CASE("duel board: ready ticks only in ready-up; records under the blocks")
+TEST_CASE("duel board: ready ticks only in ready-up; no records (Chris, 2026-10-30)")
 {
 	DuelBoardInput in = TwoPlaying();
 	in.duellists[0].ready = true;
-	in.duellists[1].record = {3, 1, 3};
 	in.viewer = 1;
 	CHECK_FALSE(Has(Duel_BoardLayout(in), "p_compass_selected"));
 	in.ready_up = true;
 	const std::string layout = Duel_BoardLayout(in);
 	CHECK(Has(layout, "xv -56 yv 16 picn wheel/p_compass_selected "));
 	CHECK_FALSE(Has(layout, "xv 146 yv 16 picn"));
-	CHECK(Has(layout, "xv 170 yv 36 string2 \"W 3  L 1  streak 3\" ")); // your own record is green
+	CHECK_FALSE(Has(layout, "yv 36"));
 }
 
-TEST_CASE("duel board: the queue is numbered, then the spectators two to a line")
+TEST_CASE("duel board: the queue's place and ping, then the spectators' 0 and ping")
 {
 	DuelBoardInput in = TwoPlaying();
-	in.queue = {{4, {0, 2, 0}}, {2, {}}};
-	in.spectators = {{3, {}}, {5, {1, 4, 0}}, {6, {}}};
+	in.queue = {{4, 30}, {2, 1500}};
+	in.spectators = {{3, 20}, {5, 45}, {6, 0}};
 	in.viewer = 2;
 	const std::string layout = Duel_BoardLayout(in);
-	CHECK(Has(layout, "string2 \"Next up\" "));
-	CHECK(Has(layout, "ctf -40 60 4 0 2 \"\" xv -64 string 1 "));
-	CHECK(Has(layout, "ctf -40 68 2 0 0 \"\" xv -64 string2 2 ")); // you, second in line
-	CHECK(Has(layout, "$g_pc_spectators"));
-	CHECK(Has(layout, "ctf -40 92 3 0 0 \"\" ctf 160 92 5 1 4 \"\" ctf -40 100 6 0 0 \"\" "));
+	CHECK(Has(layout, "xv -13 yv 44 picn ping xv 14 string2 Queue "));
+	CHECK(Has(layout, "ctf -40 52 4 1 30 \"\" "));
+	CHECK(Has(layout, "ctf -40 60 2 2 999 \"\" ")); // you, second in line: the row is green itself
+	CHECK_FALSE(Has(layout, " W "));
+	CHECK(Has(layout, "xv -13 yv 76 picn ping xv 14 loc_string2 0 \"$g_pc_spectators\""));
+	CHECK(Has(layout, "ctf -40 84 3 0 20 \"\" ctf 160 84 5 0 45 \"\" ctf -40 92 6 0 0 \"\" "));
 }
 
 TEST_CASE("duel board: the winner and the match time at intermission")
@@ -103,7 +81,7 @@ TEST_CASE("duel board: a crowd stays within the budget")
 {
 	DuelBoardInput in = TwoPlaying();
 	for (int i = 2; i < 32; ++i)
-		(i < 16 ? in.queue : in.spectators).push_back({i, {999, 999, 0}});
+		(i < 16 ? in.queue : in.spectators).push_back({i, 999});
 	in.budget = 700;
 	const std::string layout = Duel_BoardLayout(in);
 	CHECK(layout.size() <= 700);

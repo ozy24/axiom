@@ -22,9 +22,6 @@ DuelQueue queue;
 // Who has asked to play (`join`, the menu's Join Queue; bots, and the last
 // level's players, on arrival: core/join.h). Only they are queued.
 std::unordered_set<std::string> wants;
-// Everyone's wins and losses this session (kept across `gamemap`; a `map`
-// reloads the module and starts them again).
-DuelRecords records;
 // This level: when the match went into play, and (at intermission) who won.
 gtime_t play_since;
 bool was_in_play = false;
@@ -250,7 +247,6 @@ void Duel_MatchEnded()
 	const bool first_lost = a->client->resp.score < b->client->resp.score;
 	queue.Rotate(first_lost ? players[0] : players[1]);
 	winner = first_lost ? players[1] : players[0];
-	records.Result(winner, first_lost ? players[0] : players[1]);
 	// The intermission's board went out before this; at intermission stock
 	// resends it only when menutime is set (as a client leaving does).
 	for (uint32_t i = 0; i < game.maxclients; ++i)
@@ -271,6 +267,12 @@ std::string MapTitle()
 	std::string name = level.level_name[0] ? level.level_name : level.mapname;
 	name.erase(std::remove(name.begin(), name.end(), '"'), name.end());
 	return name;
+}
+
+// A queued player's or spectator's row.
+DuelBoardWatcher Watcher(const edict_t *ent)
+{
+	return {(int)(ent - g_edicts) - 1, ent->client->ping};
 }
 
 // "10:00", from when the match went into play to the intermission.
@@ -307,7 +309,6 @@ bool Duel_Scoreboard(const edict_t *viewer, size_t budget, std::string &layout)
 		d.ping = ent->client->ping;
 		d.minutes = (int)(level.time - ent->client->resp.entertime).minutes();
 		d.ready = Core_Match_IsReady(ent);
-		d.record = records.Get(key);
 		in.duellists.push_back(d);
 	}
 	for (const std::string &key : queue.Order())
@@ -316,13 +317,13 @@ bool Duel_Scoreboard(const edict_t *viewer, size_t budget, std::string &layout)
 		if (listed.count(key) || !ent || !IsPresent(ent))
 			continue;
 		listed.insert(key);
-		in.queue.push_back({(int)(ent - g_edicts) - 1, records.Get(key)});
+		in.queue.push_back(Watcher(ent));
 	}
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		const edict_t *ent = Slot((int)i);
 		if (IsPresent(ent) && !listed.count(Key(ent)))
-			in.spectators.push_back({(int)i, records.Get(Key(ent))});
+			in.spectators.push_back(Watcher(ent));
 	}
 	layout += Duel_BoardLayout(in);
 	return true;

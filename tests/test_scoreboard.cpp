@@ -64,11 +64,10 @@ TEST_CASE("scoreboard: a row is frags, deaths and the name, then FPH, whole minu
 {
 	ScoreboardInput in;
 	in.players = {Player(3, 42, 15)};
-	in.stamp = "2026-10-29 19:40";
 	const std::string layout = Core_Scoreboard_Layout(in);
-	CHECK(layout.find("cstring2 \"[2026-10-29 19:40]\"") != std::string::npos);
+	CHECK(layout.find("cstring2") == std::string::npos); // no date line (Chris, 2026-10-30)
 	CHECK(layout.find("string2 Frg") != std::string::npos);
-	CHECK(layout.find("ctf 16 36 3 42 15 \"\" xv -8 string 1 xv 222 string 379 xv 262 string 6 xv 302 string 20 ") !=
+	CHECK(layout.find("ctf 16 28 3 42 15 \"\" xv -8 string 1 xv 222 string 379 xv 262 string 6 xv 302 string 20 ") !=
 	      std::string::npos);
 }
 
@@ -80,8 +79,20 @@ TEST_CASE("scoreboard: your own row's columns are green; spectators follow")
 	const std::string layout = Core_Scoreboard_Layout(in);
 	CHECK(Slots(layout) == std::vector<int>{1, 0, 2});
 	CHECK(Count(layout, " string2 ") == 6 + 4); // the titles, and your position and three numbers
-	CHECK(layout.find("ctf 16 44 0 3 0 \"\" xv -8 string2 2 ") != std::string::npos); // you, second
+	CHECK(layout.find("ctf 16 36 0 3 0 \"\" xv -8 string2 2 ") != std::string::npos); // you, second
 	CHECK(layout.find("$g_pc_spectators") != std::string::npos);
+}
+
+TEST_CASE("scoreboard: a spectator's numbers are 0 and ping, under the ping icon, never frags")
+{
+	ScoreboardInput in;
+	ScoreboardPlayer watcher = Player(2, 5, 9, true);
+	watcher.ping = 48;
+	in.players = {Player(0, 3), watcher};
+	const std::string layout = Core_Scoreboard_Layout(in);
+	CHECK(layout.find("xv 43 yv 44 picn ping xv 70 loc_string2 0 \"$g_pc_spectators\"") != std::string::npos);
+	CHECK(layout.find("ctf 16 52 2 0 48 \"\"") != std::string::npos); // not their 5 frags
+	CHECK(Core_Scoreboard_SpectatorRow(200, 66, 7, 1500) == "ctf 200 66 7 0 999 \"\" ");
 }
 
 TEST_CASE("scoreboard: a full server fits the budget, keeping your own row")
@@ -89,7 +100,6 @@ TEST_CASE("scoreboard: a full server fits the budget, keeping your own row")
 	ScoreboardInput in;
 	for (int i = 0; i < 32; ++i)
 		in.players.push_back(Player(i, 100 - i, 999, i >= 24));
-	in.stamp = "2026-10-29 19:40";
 	in.viewer = 20; // 21st of 24 players
 	const std::string layout = Core_Scoreboard_Layout(in);
 	CHECK(layout.size() <= in.budget);
@@ -114,7 +124,7 @@ TEST_CASE("scoreboard: big numbers stay within the client's caps")
 	p.played_ms = 1000;
 	in.players = {p};
 	const std::string layout = Core_Scoreboard_Layout(in);
-	CHECK(layout.find("ctf 16 36 0 5000 999 ") != std::string::npos);
+	CHECK(layout.find("ctf 16 28 0 5000 999 ") != std::string::npos);
 	CHECK(layout.find("string 9999 ") != std::string::npos);
 	CHECK(layout.find("string 999 ") != std::string::npos);
 }
@@ -129,8 +139,8 @@ TEST_CASE("scoreboard: in ready-up, a green R right of Ping on each ready player
 	in.ready_up = true;
 	const std::string layout = Core_Scoreboard_Layout(in);
 	CHECK(Count(layout, "string2 R ") == 1);
-	// Slot 1 is the second row (y 44).
-	CHECK(layout.find("xv 330 yv 44 string2 R ") != std::string::npos);
+	// Slot 1 is the second row (y 36).
+	CHECK(layout.find("xv 330 yv 36 string2 R ") != std::string::npos);
 	CHECK(Core_Scoreboard_ReadyMark(274, 44) == "xv 274 yv 44 string2 R ");
 }
 

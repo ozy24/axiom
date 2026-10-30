@@ -15,17 +15,13 @@ constexpr int kRankX = -8, kRowX = 16, kFphX = 222, kTimeX = 262, kPingX = 302, 
 // The team board's rows (stock's CTFScoreboardMessage) and their ready marks:
 // just right of the captain's `*` (-64, 174), where MuffMode puts its tick.
 constexpr int kTeamRowX[2] = {-40, 200}, kTeamReadyX[2] = {-56, 182}, kTeamFirstRowY = 42;
-constexpr int kStampY = 8, kTitleY = 24, kFirstRowY = 36, kRowHeight = 8;
+constexpr int kTitleY = 16, kFirstRowY = 28, kRowHeight = 8; // a row under the limit and clock line (yv -10)
 constexpr int kSpectatorX[2] = {16, 216};
-// The spectators' title and one line ("xv 16 yv 132 loc_string2 0 ..."
+// The spectators' heading and one line ("xv 16 yv 132 string2 Min xv 43 ..."
 // and "ctf 16 140 31 0 999 \"\" "), with room to spare.
-constexpr size_t kWatcherReserve = 80;
+constexpr size_t kWatcherReserve = 120;
 
 std::string Text(const char *s)
-{
-	return s;
-}
-std::string Text(const std::string &s)
 {
 	return s;
 }
@@ -81,8 +77,6 @@ std::vector<ScoreboardPlayer> Core_Scoreboard_Order(std::vector<ScoreboardPlayer
 std::string Core_Scoreboard_Layout(const ScoreboardInput &in)
 {
 	std::string out;
-	if (!in.stamp.empty())
-		out += Tokens("xv 0 yv", kStampY, "cstring2", "\"[" + in.stamp + "]\"");
 	out += Tokens("xv", kRowX, "yv", kTitleY, "string2 Frg xv", kRowX + 27, "string2 Dth xv", kRowX + 54,
 	              "string2 Player xv", kFphX, "string2 FPH xv", kTimeX, "string2 Time xv", kPingX, "string2 Ping");
 
@@ -160,7 +154,7 @@ void Spectators(std::string &out, std::vector<ScoreboardPlayer> watching, int ro
 	std::stable_partition(watching.begin(), watching.end(),
 	                      [&](const ScoreboardPlayer &p) { return p.slot == in.viewer; });
 	int y = kFirstRowY + kRowHeight * (rows + 1);
-	const std::string title = Tokens("xv", kRowX, "yv", y, "loc_string2 0 \"$g_pc_spectators\"");
+	const std::string title = Core_Scoreboard_SpectatorTitle(kSpectatorX[0], y);
 	if (out.size() + title.size() > in.budget)
 		return;
 	out += title;
@@ -168,14 +162,24 @@ void Spectators(std::string &out, std::vector<ScoreboardPlayer> watching, int ro
 	for (size_t i = 0; i < watching.size(); ++i)
 	{
 		const ScoreboardPlayer &p = watching[i];
-		const std::string row = Tokens("ctf", kSpectatorX[i % 2], y + kRowHeight * (int)(i / 2), p.slot, p.frags,
-		                               std::min(p.ping, 999), "\"\"");
+		const std::string row =
+		    Core_Scoreboard_SpectatorRow(kSpectatorX[i % 2], y + kRowHeight * (int)(i / 2), p.slot, p.ping);
 		if (out.size() + row.size() > in.budget)
 			break;
 		out += row;
 	}
 }
 } // namespace
+
+std::string Core_Scoreboard_SpectatorTitle(int x, int y)
+{
+	return Tokens("xv", x + 27, "yv", y, "picn ping xv", x + 54, "loc_string2 0 \"$g_pc_spectators\"");
+}
+
+std::string Core_Scoreboard_SpectatorRow(int x, int y, int slot, int ping)
+{
+	return Tokens("ctf", x, y, slot, 0, std::clamp(ping, 0, 999), "\"\"");
+}
 
 std::string Core_Scoreboard_ReadyMark(int x, int y)
 {

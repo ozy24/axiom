@@ -1,15 +1,13 @@
 // Duel's scoreboard (g_scoreboard 1; docs/design/scoreboard.md), as pure
-// logic: the layout text, and each player's record this session. No engine
-// access; the adapter is duel_register.cpp.
+// logic: the layout text. No engine access; the adapter is duel_register.cpp.
 //
 //                   Duel on The Edge
 //      [Xin's block]          [aid's block]       stock's player blocks
-//      W 3  L 1  streak 3     W 0  L 2            each duellist's record
 //
-//    W  L  Next up
-//  1 0  2  OESD                                   the queue, in order
-//  Spectators
-//    0  0  Tab           1  4  bizich
+//       (ping) Queue                              (ping): stock's ping icon
+//    1  17   OESD                                 the queue, in order: place, ping
+//       (ping) Spectators
+//    0  20   Tab         0  45   bizich           0, ping
 //
 // Names come only from the layout's `client` and `ctf` rows (a KEX name is
 // a token the client decodes there alone), so the winner at intermission is
@@ -17,27 +15,8 @@
 #pragma once
 
 #include <cstddef>
-#include <map>
 #include <string>
 #include <vector>
-
-struct DuelRecord
-{
-	int wins = 0;
-	int losses = 0;
-	int streak = 0; // wins in a row now
-};
-
-// Each client's wins and losses this session, by key (core/player_name.h).
-class DuelRecords
-{
-  public:
-	void Result(const std::string &winner, const std::string &loser);
-	DuelRecord Get(const std::string &key) const;
-
-  private:
-	std::map<std::string, DuelRecord> records_;
-};
 
 struct DuelBoardDuellist
 {
@@ -46,13 +25,12 @@ struct DuelBoardDuellist
 	int ping = 0;
 	int minutes = 0;
 	bool ready = false; // ready-up: ticked
-	DuelRecord record;
 };
 
 struct DuelBoardWatcher
 {
 	int slot = 0;
-	DuelRecord record;
+	int ping = 0;
 };
 
 struct DuelBoardInput
@@ -67,10 +45,6 @@ struct DuelBoardInput
 	int viewer = -1;
 	size_t budget = 980;
 };
-
-// The record under a duellist's block: "W 3  L 1  streak 3" (a streak of
-// two or more), or empty before their first result.
-std::string Duel_RecordText(const DuelRecord &r);
 
 // The layout text, at most `budget` bytes.
 std::string Duel_BoardLayout(const DuelBoardInput &in);

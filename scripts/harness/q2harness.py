@@ -795,8 +795,8 @@ def tier_human_duel(args, results):
     Carol), played by ozbot, join like retail clients and run the playtest's
     match-flow and Duel rows: warmup is free play with no clock, `ready`, the
     10-second countdown, `queue`, the timelimit, and the rotation across the
-    map change. Duel's own scoreboard (g_scoreboard 1): the queue numbered
-    in warmup, the winner and their record at intermission. Q2RED only."""
+    map change. Duel's own scoreboard (g_scoreboard 1): the queue's place
+    and ping in warmup, the winner (and no record) at intermission. Q2RED only."""
     rig, why = scenario_rig(args, "t11-human-duel")
     if not rig:
         results.append(("11 human-duel", True, [f"skipped: {why}"]))
@@ -867,13 +867,14 @@ at 30 0 cmd score
         detail.append("no clock on the scoreboard once the match was live")
 
     # Duel's board: in warmup the two duellists' blocks and Carol first in
-    # the queue; at intermission the winner marked, with their first win.
+    # the queue (place 1, then her ping); at intermission the winner marked,
+    # no win/loss record (Chris, 2026-10-30).
     if not before or "Duel on " not in before[0]["text"] or before[0]["text"].count(" client ") != 2 \
-            or not re.search(rf"ctf -40 \d+ {carol} 0 0 \"\" xv -64 string 1 ", before[0]["text"]):
+            or not re.search(rf"ctf -40 \d+ {carol} 1 \d+ \"\" ", before[0]["text"]):
         detail.append(f"Alice's warmup board: {before[0]['text'] if before else None}")
     # (The first goes out a frame before the result: the last is the one shown.)
     final = [r["text"] for r in layouts if "m_eou_press_button" in r["text"]]
-    if not final or "string2 WINNER" not in final[-1] or '"W 1  L 0"' not in final[-1] \
+    if not final or "string2 WINNER" not in final[-1] or '"W 1' in final[-1] \
             or "Match time " not in final[-1]:
         detail.append(f"Alice's intermission board: {final[-1] if final else None}")
 
@@ -1125,7 +1126,7 @@ def tier_human_settings(args, results):
     modes and a time out of range with the usage; a powerups vote reloads the
     map, and the voted time limit is still there after it. The built-in
     ruleset's column scoreboard (decision 0018) shows Bob's suicide as a
-    death. Q2RED only."""
+    death, and its frag messages tell both players of each frag. Q2RED only."""
     rig, why = scenario_rig(args, "t16-settings")
     if not rig:
         results.append(("16 human-settings", True, [f"skipped: {why}"]))
@@ -1197,11 +1198,28 @@ at 40 0 cmd vote yes
                           (r"7:00", "7:00 after the reload")):
         if not any(re.fullmatch(pattern, c) for c in clocks):
             detail.append(f"never saw {what} (clock texts {sorted(set(clocks))[:12]})")
+    # Frag messages (g_frag_messages, on in the built-in ruleset): each frag
+    # between the players tells both, the other's name a whole argument, and
+    # the killer's place while live. Puppets don't always frag: none is noted.
+    victims = [r for r in locs if r["base"] == "You were fragged by {}"]
+    killers = [r for r in locs if r["base"].startswith("You fragged {}")]
+    notes = []
+    if not victims and not killers:
+        notes.append("no frag between the players: frag messages unchecked")
+    elif len(victims) != len(killers):
+        detail.append(f"{len(killers)} 'You fragged' for {len(victims)} 'You were fragged by'")
+    # Live: the place line; warmup (after the powerups reload): the name only.
+    odd = [r["base"] for r in killers if not re.fullmatch(
+        r"You fragged \{\}(\n(Tied for )?\d+(st|nd|rd|th) place with -?\d+)?", r["base"])]
+    if odd:
+        detail.append(f"killer messages not in FFA's form: {odd[:3]}")
+    if any(len(r.get("args", [])) != 1 for r in victims + killers):
+        detail.append("a frag message without the other player's name as its one argument")
     detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]
-    results.append(("16 human-settings", not detail, detail))
+    results.append(("16 human-settings", not detail, detail or notes))
 
 
 def tier_human_teamlock(args, results):
