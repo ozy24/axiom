@@ -1,19 +1,24 @@
 # The mod's scoreboards
 
-Outside team modes, `g_scoreboard 1` replaces stock's board: FFA gets
-columns (decision 0018), Duel its own board (decision 0019, below). The
-built-in `ffa` and `duel` rulesets turn it on; `g_scoreboard 0` brings
+`g_scoreboard 1` gives the mod's boards: FFA gets columns (decision 0018),
+Duel its own board (decision 0019, below), and the team boards labelled
+spectators. Every built-in ruleset turns it on; `g_scoreboard 0` brings
 stock's back.
+
+**Spectators**, on every board: a KEX name shows only in a `ctf` row, which
+always draws two numbers before it (see Limits), so a spectator's row can't
+be the name alone. Its numbers are 0 and ping, under a heading of stock's
+ping icon (`picn ping`, the 9x9 the duel blocks show) and `Spectators`, so
+they never read as frags and deaths (Chris, 2026-10-30).
 
 ## FFA
 
 ```
-                [2026-10-29 19:40]
     Frg Dth Player           FPH Time Ping
  1   42  15 Xin              379    6   17
  2   39   7 aid              352    6   15
-    Spectators
-     0  18 Pidarassius        0  20 Player
+       (ping) Spectators
+     0  18  Pidarassius       0   20  Player
 ```
 
 - **Position**: the place on the board (ties take the next number). Your
@@ -25,10 +30,14 @@ stock's back.
   match. Both count from when the match goes live and pause while the
   player spectates.
 - **Ping**, capped at 999 as the client does.
-- The header is the server's local date and time. Stock's frag limit, its
-  clock and the intermission's "press a button" line stay as they were.
+- No date line, and the board starts just under stock's frag limit and
+  clock line (Chris, 2026-10-30). Stock's frag limit, its clock and the
+  intermission's "press a button" line stay as they were.
+- About 8 or 9 rows fit, players and spectators together: the 1024-byte
+  layout, not the screen, is the limit (8 with three-digit frags, FPH and
+  ping).
 - Your own row is green. Players are ordered by frags, then fewer deaths.
-- Spectators follow, two to a line, showing score and ping.
+- Spectators follow, two to a line: 0 and ping.
 - In ready-up, a green `R` right of Ping on each ready player's row. Bots
   are always ready. Rows and spectators are fitted first; a mark only goes
   in while the 1024 bytes allow.
@@ -41,34 +50,28 @@ stock's back.
           WINNER
    [face] Xin                [face] aid       stock's player blocks
           10  ping 17               7  ping 15
-          W 3  L 1  streak 3        W 0  L 2  each duellist's record
 
-  W  L  Next up
-1 0  2  OESD                                   the queue, in order
-  Spectators
-  0  0  Tab               1  4  bizich
+     (ping) Queue
+  1  17   OESD                                 the queue, in order
+     (ping) Spectators
+  0  20   Tab             0  45   bizich
 ```
 
 - The two duellists in stock's blocks (face, name, score, ping, minutes),
   with a tick by each who is ready during ready-up.
-- Under each block, their record this session: wins, losses and a
-  streak of two or more. Your own is green.
-- **Next up:** the queue in order, numbered, with each player's wins and
-  losses.
-- Spectators two to a line, under the same W and L.
+- **Queue:** in order, each row its place and ping (yours green).
+- Spectators two to a line: 0 and ping.
+- No win/loss records (Chris, 2026-10-30): nobody reads them, and they
+  started again on every `map`.
 - At intermission: the match time, and WINNER over the winner's block
   (a name can't go in a line of text: see Limits).
-- Records last across `gamemap` (the rotation's map change); a `map`
-  (a vote, an admin) reloads the module and starts them again. A forfeit
-  isn't counted.
-
-Compared with MMREX's: the queue is numbered and the duellists show their
-records too; spectators show their record, not "0 0"; no "1st place with
-a score of N" line, which says nothing in a duel.
+Compared with MMREX's: the queue is numbered; no "1st place with a score
+of N" line, which says nothing in a duel.
 
 ## TDM and CTF
 
-Stock's team board, with two marks left of a row: the captain's `*`
+Stock's team board, spectators labelled as above (two marked hooks in
+CTFScoreboardMessage, under `g_scoreboard 1`), with two marks left of a row: the captain's `*`
 (decision 0016) and, in ready-up, a green `R` for a ready player (x -56 on
 RED, 182 on BLUE: where MuffMode puts its tick). The marks are added once
 stock's rows and spectators are in (`Core_Scoreboard_TeamReady`, one marked
@@ -96,7 +99,7 @@ tick: its player blocks have room for it.
 
 ## Implementation
 
-Duel: `gametypes/duel/duel_board.{h,cpp}` (layout and records; unit tests
+Duel: `gametypes/duel/duel_board.{h,cpp}` (the layout; unit tests
 `tests/test_duel_board.cpp`), fed by `Duel_Scoreboard` in
 `duel_register.cpp` through the gametype's `scoreboard` hook. Its first
 intermission board goes out a frame before the result is in, so Duel's

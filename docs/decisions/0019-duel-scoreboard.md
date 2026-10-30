@@ -22,3 +22,7 @@ the queue. Chris likes MMREX's duel board; we follow it, with changes
 
 **Reopen if:** records should survive a `map` reload (a cvar, as
 `g_join_memory`), or forfeits should count.
+
+**Amended 2026-10-30 (Chris):** no records. Nobody reads them, and they
+started again on every `map`. The queue (now "Queue") shows place and ping;
+spectators show 0 and ping on every board (docs/design/scoreboard.md).
