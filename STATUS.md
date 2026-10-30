@@ -356,6 +356,13 @@ default doesn't apply until the server restarts).
   worth adding to `tools/`.
 
 ## Known issues
+- **Startup ruleset file not run (found 2026-10-30, not fixed):** with
+  `set g_ruleset ffa` in server.cfg, the module logs `Ruleset: starting
+  ffa` but the queued `exec rulesets/ffa.cfg` never runs on Q2RED (no
+  "execing" line; `g_map_list` stayed empty on the rig). `sv ruleset ffa`
+  at runtime runs it. Likely the engine drops what `AddCommandString`
+  queues during the first map load; needs a tier (server.cfg start plus a
+  rulesets/<gt>.cfg) and a fix.
 - One intermittent Q2RED segfault in a CTF server with simulated players
   (tier 12, 2026-10-27, once under `--jobs 4`); not reproduced in 16 more
   runs. CI now keeps CRASHLOG.TXT (collect-logs.sh); look there if it recurs.
