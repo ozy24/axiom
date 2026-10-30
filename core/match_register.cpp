@@ -74,7 +74,7 @@ MatchConfig ReadConfig()
 	c.warmup_time_ms = (int64_t)(match_warmup_time->value * 1000);
 	c.countdown_ms = (int64_t)(match_countdown->value * 1000);
 	c.overtime = match_overtime->integer;
-	c.rounds_on_frag = match_rounds->integer != 0;
+	c.rounds = Core_Match_ParseRounds(match_rounds->string);
 	c.round_countdown_ms = (int64_t)(match_round_countdown->value * 1000);
 	c.round_pause_ms = (int64_t)(match_round_pause->value * 1000);
 	c.timelimit_ms = (int64_t)(timelimit->value * 60000);
