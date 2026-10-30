@@ -862,15 +862,17 @@ void Core_Match_Statusbar(statusbar_t &sb)
 	// distance above the crosshair at every resolution (yb -256 was off the
 	// top of a 240-unit-high screen: 1440p, 4K).
 	sb.ifstat(countdown).xv(118).yv(64).num(3, countdown).endifstat();
-	// The limit: a third row under the two score rows bottom right, its digits
-	// under theirs - stock's team block (rows yb -110 / -83, digits xr -78), or
-	// the FFA / Duel miniscore (digits yb -112 / -79, xr -86).
+	// The limit: a third row under the two score rows bottom right, under the
+	// pictures (Chris, 2026-10-30: under the digits it read as a third score).
+	// num 3 right-aligns in a 50-unit field, so one 16-wide digit centres on
+	// the team pictures (xr -26, 24 wide) at xr -56 and on the FFA / Duel
+	// faces (xr -34, 32 wide) at xr -60.
 	if (const player_stat_t limit = LimitStat())
 	{
 		if (G_TeamplayEnabled())
-			sb.ifstat(limit).yb(-56).xr(-78).num(3, limit).endifstat();
+			sb.ifstat(limit).yb(-56).xr(-56).num(3, limit).endifstat();
 		else if (Core_Gametype_Active())
-			sb.ifstat(limit).yb(-46).xr(-86).num(3, limit).endifstat();
+			sb.ifstat(limit).yb(-46).xr(-60).num(3, limit).endifstat();
 	}
 }
 

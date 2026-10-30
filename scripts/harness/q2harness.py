@@ -1692,7 +1692,7 @@ at 54 1 cmd kill
     texts = [r["text"] for r in tap if r.get("type") == "configstring"]
     # No round line in play (Chris, 2026-10-30): the number is in "ROUND n:
     # FIGHT!", who's left on the board's X marks.
-    if not any("hnum" in t and re.search(r"yb -56 xr -78 num 3 \d+", t) for t in texts):
+    if not any("hnum" in t and re.search(r"yb -56 xr -56 num 3 \d+", t) for t in texts):
         detail.append("the status bar has no round limit row under the team scores (yb -56)")
     if any(re.match(r"ROUND \d", t) for t in texts):  # ROUND OVER is a state, still shown
         detail.append("the HUD's status line showed a round line in play")
