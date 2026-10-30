@@ -1,7 +1,6 @@
 // Copyright (c) ZeniMax Media Inc.
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
-#include "core/arena_hooks.h" // [mod]
 #include "core/match_hooks.h" // [mod]
 #include "core/eyecam_hooks.h" // [mod]
 #include "bots/bot_includes.h"
@@ -1317,11 +1316,6 @@ void SpawnItem(edict_t *ent, gitem_t *item)
 	// some items will be prevented in deathmatch
 	if (deathmatch->integer)
 	{
-		if (Core_Arena_NoItem(item)) // [mod] arena (Clan Arena): the loadout is all there is
-		{ // [mod]
-			G_FreeEdict(ent); // [mod]
-			return; // [mod]
-		} // [mod]
 		// [Kex] In instagib, spawn no pickups!
 		if (g_instagib->value)
 		{

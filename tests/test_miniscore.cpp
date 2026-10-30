@@ -77,8 +77,6 @@ TEST_CASE("match: in play from live to the end of the rounds, not around them")
 {
 	CHECK(MatchStateInPlay(MatchState::Live));
 	CHECK(MatchStateInPlay(MatchState::Overtime));
-	CHECK(MatchStateInPlay(MatchState::RoundOver));
-	CHECK(MatchStateInPlay(MatchState::RoundCountdown));
 	CHECK_FALSE(MatchStateInPlay(MatchState::Warmup));
 	CHECK_FALSE(MatchStateInPlay(MatchState::Countdown));
 	CHECK_FALSE(MatchStateInPlay(MatchState::Intermission));

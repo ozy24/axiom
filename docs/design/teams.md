@@ -41,7 +41,7 @@ whole argument, so a name with spaces needs no quotes.
 - **Locks belong to the match.** The match back in warmup unlocks both
   teams; a new level starts with no locks and no captains (players come
   back on their team, docs/design/joining.md, and the first back on each
-  is captain). Rounds and overtime never change them.
+  is captain). Overtime never changes them.
 - **An emptied team unlocks itself** when its last human leaves:
   otherwise nobody could join it, and the match could never start again.
 - **Not locked:** spectating, chasing, bots (the server places them), and
@@ -66,14 +66,6 @@ whole argument, so a name with spaces needs no quotes.
   teammates; each opens Make Captain and Kick from Team.
 - The scoreboard: a `*` left of each captain's name (as MMREX draws it).
 - The server log: `Teams: RED locked`, `Teams: RED captain Alice`, and so on.
-
-## Clan Arena
-
-Clan Arena is a TDM ruleset (next). Locks fit it unchanged: they last for
-the whole match, not a round. Joining is the lock's question; when you
-spawn is the round's. A kick, a disconnect or a switch that leaves a team
-with nobody alive must end the round, so CA's round end should count the
-players alive, not frags.
 
 ## Implementation split
 

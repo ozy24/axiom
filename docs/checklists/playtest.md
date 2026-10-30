@@ -3,7 +3,7 @@
 The game tests prove the logic; this is for what only a person can judge:
 how it feels, whether messages are readable, and that a real retail client
 sees everything properly. Run it at each gameplay milestone (now: match flow,
-Duel, HoonyMode, TDM, CTF). About 20 minutes; better with a second human, fine with a bot.
+Duel, TDM, CTF). About 20 minutes; better with a second human, fine with a bot.
 
 ## Set up (once)
 
@@ -13,7 +13,7 @@ scripts/playtest/setup-local-rig.sh          # makes ~/q2playtest
 ```
 
 In retail Quake II (normal launch), open the console and `connect 127.0.0.1:5073`.
-Change modes from a terminal: `~/q2playtest/cmd.sh "sv ruleset hoony"` then
+Change modes from a terminal: `~/q2playtest/cmd.sh "sv ruleset tdm"` then
 `~/q2playtest/cmd.sh "map q2dm1"`. `~/q2playtest/stop.sh` when done.
 
 ## Match flow and Duel (`sv ruleset duel`)
@@ -29,15 +29,6 @@ Change modes from a terminal: `~/q2playtest/cmd.sh "sv ruleset hoony"` then
 | 7 | Type `queue` | The order, with who's duelling and who's waiting | |
 | 8 | As the queued spectator: can you watch the duel? (chase cam) | | |
 | 9 | Play to the timelimit (or `cmd.sh "timelimit 1"` before `map`) | Intermission; console shows `Duel: … next: …`, loser to the back | |
-
-## HoonyMode (`sv ruleset hoony`, then `map q2dm1`)
-
-| # | Try | Expect | Note |
-|---|---|---|---|
-| 10 | Get a frag (or be fragged) | The winner can still move; the loser stays dead about 2 s with the kill message | |
-| 11 | Next round starts | Both respawn together, frozen (can look, can't move or fire), "Next round in 5…1", FIGHT!; items reset, scores kept, the bot visible | |
-| 12 | Play to the fraglimit (5; `fraglimit 3` for a short test) | The deciding frag ends the match (no extra round) | |
-| 13 | Overall | Are the 2 s pause and 5 s frozen countdown right? Does it feel like HoonyMode? | |
 
 ## TDM and CTF (`sv ruleset tdm` / `sv ruleset ctf`, then `map q2dm1` / `map q2ctf1`)
 

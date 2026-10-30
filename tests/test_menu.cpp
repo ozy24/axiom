@@ -56,7 +56,7 @@ MenuView Longest()
 	v.hostname = v.gametype = v.map = v.map_file = v.next_map = v.ruleset = std::string(60, 'W');
 	v.red = v.blue = 99;
 	v.team = 0;
-	v.ready_up = v.ready_required = v.rounds = v.warmup = true;
+	v.ready_up = v.ready_required = v.warmup = true;
 	v.overtime = -1;
 	v.capturelimit = v.fraglimit = 999;
 	v.timelimit_min = 999;
@@ -550,20 +550,4 @@ TEST_CASE("menu: About sits a blank line above Close, and shows the mod, its bui
 	CHECK(about.back().action == MenuAction::Back);
 	v.mod_page.clear();
 	CHECK_FALSE(Row(Core_Menu_About(v), "github.com/someone/mod"));
-}
-
-TEST_CASE("menu: Match Info for Clan Arena's elimination rounds")
-{
-	MenuView v = Teams();
-	v.ctf = false;
-	v.gametype = "Clan Arena";
-	v.elimination = v.rounds = true;
-	v.fraglimit = 8;
-	v.round_lives = 1;
-	v.round_time_s = 120;
-	const MenuPage page = Core_Menu_MatchInfo(v);
-	CHECK(Shows(page, "Rounds: first to 8"));
-	CHECK(Shows(page, "Elimination: 1 life, 2:00"));
-	CHECK_FALSE(Shows(page, "Fraglimit: 8"));
-	CHECK_FALSE(Shows(page, "Rounds: a frag ends one"));
 }

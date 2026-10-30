@@ -60,7 +60,7 @@ set_target_properties(game_jsoncpp PROPERTIES
 # A plain default rather than a cache entry, so a change to the list here
 # reaches existing build trees; a downstream mod passes -DGAME_GAMETYPES=...
 if(NOT DEFINED GAME_GAMETYPES)
-    set(GAME_GAMETYPES "ffa;duel;tdm;ca;ctf") # tdm before ca: a stock `teamplay 1` picks TDM
+    set(GAME_GAMETYPES "ffa;duel;tdm;ctf")
 endif()
 if(NOT "ffa" IN_LIST GAME_GAMETYPES)
     message(FATAL_ERROR "GAME_GAMETYPES must include ffa (the fallback)")
@@ -94,8 +94,6 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/core/gametype_register.cpp"
     ${GAME_GAMETYPE_SOURCES}
     "${MOD_GENERATED_DIR}/gametype_registry.cpp"
-    "${CMAKE_SOURCE_DIR}/core/arena.cpp"
-    "${CMAKE_SOURCE_DIR}/core/arena_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/host_files.cpp"
     "${CMAKE_SOURCE_DIR}/core/host_files_gi.cpp"
     "${CMAKE_SOURCE_DIR}/core/host_gi.cpp"
@@ -212,8 +210,6 @@ if(GAME_BUILD_TESTS)
         tests/test_teams.cpp
         tests/test_join.cpp
         tests/test_scoreboard.cpp
-        tests/test_arena.cpp
-        core/arena.cpp
         core/identity.cpp
         core/match_record.cpp
         core/host_files.cpp

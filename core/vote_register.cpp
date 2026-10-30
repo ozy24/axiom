@@ -113,7 +113,6 @@ VoteSettingsNow SettingsNow()
 {
 	VoteSettingsNow now;
 	now.ctf = ctf->integer != 0;
-	now.rounds = Core_Match_Elimination();
 	now.teams = G_TeamplayEnabled();
 	now.timelimit_min = (int)timelimit->value;
 	now.scorelimit = now.ctf ? capturelimit->integer : fraglimit->integer;
@@ -170,7 +169,7 @@ std::string Commands(const VoteProposal &p)
 	case VoteKind::Gametype:
 	{
 		// The whole ruleset, from the gametype's defaults (decision 0013):
-		// HoonyMode's rounds must not follow a vote to TDM. The map is picked
+		// a variant's settings must not follow a vote to another gametype. The map is picked
 		// once its configs have run (`sv votemap`), from the g_map_list they set.
 		const std::optional<Ruleset> r = Core_Rulesets_Find(p.arg);
 		if (!r || !GametypeById(r->gametype))
@@ -210,7 +209,7 @@ void Ready(const VoteProposal &p)
 // without a restart; powerups only spawn as a map loads, so that reloads it.
 void Apply(const VoteProposal &p)
 {
-	const std::optional<VoteSetting> s = Core_Vote_Setting(p.kind, ctf->integer != 0, Core_Match_Elimination());
+	const std::optional<VoteSetting> s = Core_Vote_Setting(p.kind, ctf->integer != 0);
 	const std::optional<int> value = s ? Core_Vote_SettingValue(*s, p.arg) : std::nullopt;
 	if (!value)
 		return;
@@ -513,7 +512,7 @@ VoteMenuInfo Core_Vote_MenuInfo(const edict_t *ent)
 	const VoteSettingsNow now = SettingsNow();
 	for (VoteKind k : Core_Vote_AllKinds())
 	{
-		const std::optional<VoteSetting> s = Core_Vote_Setting(k, now.ctf, now.rounds);
+		const std::optional<VoteSetting> s = Core_Vote_Setting(k, now.ctf);
 		if (!s || !config.allowed.count(k) || (s->teams_only && !now.teams))
 			continue;
 		MenuVoteSetting row{VoteKindName(k), s->title, {}, Core_Vote_SettingArg(*s, Core_Vote_SettingNow(*s, now))};

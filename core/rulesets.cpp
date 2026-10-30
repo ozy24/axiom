@@ -16,17 +16,6 @@ const RulesetDef core_rulesets[] = {
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
-     "set match_rounds 0\n"
-     "set match_round_countdown 5\n"
-     "set match_round_pause 2\n"
-     "set match_round_freeze 1\n"
-     "set match_round_lives 1\n"
-     "set match_round_time 0\n"
-     "set match_arena 0\n"
-     "set match_arena_health 150\n"
-     "set match_arena_armor 150\n"
-     "set match_damage_score 0\n"
-     "set match_suicide_point 0\n"
      "set match_lock 0\n"
      "set match_warmup_weapons 1\n"
      "set timelimit 10\n"
@@ -44,17 +33,6 @@ const RulesetDef core_rulesets[] = {
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
-     "set match_rounds 0\n"
-     "set match_round_countdown 5\n"
-     "set match_round_pause 2\n"
-     "set match_round_freeze 1\n"
-     "set match_round_lives 1\n"
-     "set match_round_time 0\n"
-     "set match_arena 0\n"
-     "set match_arena_health 150\n"
-     "set match_arena_armor 150\n"
-     "set match_damage_score 0\n"
-     "set match_suicide_point 0\n"
      "set match_lock 0\n"
      "set match_warmup_weapons 1\n"
      "set timelimit 10\n"
@@ -72,51 +50,10 @@ const RulesetDef core_rulesets[] = {
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
-     "set match_rounds 0\n"
-     "set match_round_countdown 5\n"
-     "set match_round_pause 2\n"
-     "set match_round_freeze 1\n"
-     "set match_round_lives 1\n"
-     "set match_round_time 0\n"
-     "set match_arena 0\n"
-     "set match_arena_health 150\n"
-     "set match_arena_armor 150\n"
-     "set match_damage_score 0\n"
-     "set match_suicide_point 0\n"
      "set match_lock 1\n"
      "set match_warmup_weapons 1\n"
      "set timelimit 20\n"
      "set fraglimit 0\n"
-     "set g_map_list_shuffle 1\n"},
-    {"ca", "ca", "clan arena: elimination rounds, 150 health and armor, every weapon, no self damage; first to 8",
-     "set g_gametype ca\n"
-     "set ctf 0\n"
-     "set teamplay 1\n"
-     "set match_flow 1\n"
-     "set match_ready 1\n"
-     "set match_minplayers 2\n"
-     "set match_allow_no_humans 0\n"
-     "set match_warmup_time 0\n"
-     "set match_countdown 10\n"
-     "set match_overtime -1\n"
-     "set match_rounds elimination\n"
-     "set match_round_countdown 5\n"
-     "set match_round_pause 2\n"
-     "set match_round_freeze 0\n"
-     "set match_round_lives 1\n"
-     "set match_round_time 120\n"
-     "set match_arena 1\n"
-     "set match_arena_health 150\n"
-     "set match_arena_armor 150\n"
-     "set match_damage_score 1\n"
-     "set match_suicide_point 0\n"
-     "set match_lock 1\n"
-     "set match_warmup_weapons 1\n"
-     "set g_dm_no_self_damage 1\n"
-     "set g_dm_no_fall_damage 1\n"
-     "set g_friendly_fire 0\n"
-     "set timelimit 0\n"
-     "set fraglimit 8\n"
      "set g_map_list_shuffle 1\n"},
     {"ctf", "ctf", "capture the flag: warmup and ready-up, 20 minutes or 8 captures, sudden death on a tie",
      "set g_gametype ctf\n"
@@ -129,27 +66,14 @@ const RulesetDef core_rulesets[] = {
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
-     "set match_rounds 0\n"
-     "set match_round_countdown 5\n"
-     "set match_round_pause 2\n"
-     "set match_round_freeze 1\n"
-     "set match_round_lives 1\n"
-     "set match_round_time 0\n"
-     "set match_arena 0\n"
-     "set match_arena_health 150\n"
-     "set match_arena_armor 150\n"
-     "set match_damage_score 0\n"
-     "set match_suicide_point 0\n"
      "set match_lock 1\n"
      "set match_warmup_weapons 1\n"
      "set timelimit 20\n"
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
      "set capturelimit 8\n"},
-    // HoonyMode (Duel with match_rounds 1, match_suicide_point 1, first to 5)
-    // is off for now (Chris, 2026-10-29): an admin can still play it as a
-    // variant, rulesets/duel_hoony.cfg listed in g_ruleset_variants. Clan Arena, a
-    // TDM variant, comes next.
+    // The four core gametypes only (decision 0022): no built-in variants. An
+    // admin lists their own in g_ruleset_variants.
 };
 const size_t core_ruleset_count = sizeof(core_rulesets) / sizeof(core_rulesets[0]);
 
@@ -168,17 +92,6 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"match_warmup_time", "0"},
     {"match_countdown", "10"},
     {"match_overtime", "0"},
-    {"match_rounds", "0"},
-    {"match_round_countdown", "5"},
-    {"match_round_pause", "2"},
-    {"match_round_freeze", "1"},
-    {"match_round_lives", "1"},
-    {"match_round_time", "0"},
-    {"match_arena", "0"},
-    {"match_arena_health", "150"},
-    {"match_arena_armor", "150"},
-    {"match_damage_score", "0"},
-    {"match_suicide_point", "0"},
     {"match_lock", "0"},
     {"match_warmup_weapons", "1"},
     {"timelimit", "0"},
@@ -186,11 +99,9 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"capturelimit", "0"},
     {"g_map_list", ""},
     {"g_map_list_shuffle", "0"},
-    {"g_no_items", "0"},          // the powerups vote (decision 0015)
-    {"g_friendly_fire", "0"},     // the friendly fire vote
-    {"g_dm_no_self_damage", "0"}, // Clan Arena (core/arena_register.cpp)
-    {"g_dm_no_fall_damage", "0"}, // stock's, Clan Arena sets it
-    {"g_scoreboard", "0"},        // the column board (core/scoreboard_register.cpp)
+    {"g_no_items", "0"},      // the powerups vote (decision 0015)
+    {"g_friendly_fire", "0"}, // the friendly fire vote
+    {"g_scoreboard", "0"},    // the column board (core/scoreboard_register.cpp)
 };
 const size_t core_gameplay_cvar_count = sizeof(core_gameplay_cvars) / sizeof(core_gameplay_cvars[0]);
 

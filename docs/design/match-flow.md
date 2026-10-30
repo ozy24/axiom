@@ -1,8 +1,9 @@
 # Match flow
 
 Status: **implemented (Phase 2b, part 1)**: states, cvars, arena reset steps 1-3,
-harness tiers 5 and 7, rulesets, rounds. Not yet: door/plat reset (step 4),
-elimination rounds. One state machine shared by every gametype.
+harness tier 5, rulesets. Not yet: door/plat reset (step 4). One state
+machine shared by every gametype. No rounds: they went with Clan Arena and
+HoonyMode (decision 0022; tag `clan-arena-v1`).
 Change this page in the same PR as the code.
 
 ## Principle: off means stock
@@ -64,8 +65,8 @@ game plays.
 - **LIVE:** on entry, the **arena reset** (below) runs and scores are zeroed.
   The end conditions are stock's (`timelimit`, `fraglimit`) plus the
   gametype's (`CheckDMRules` hook), so a gametype that ends on something else
-  (rounds, captures) uses its hook. While one human is playing the match
-  goes on; when every human has left (LIVE, overtime or between rounds),
+  (captures) uses its hook. While one human is playing the match
+  goes on; when every human has left (LIVE or overtime),
   it goes back to WARMUP with the arena reset and scores zeroed, so the
   next to arrive don't find a match the bots played (not with
   `match_allow_no_humans 1`). Dropping below `match_minplayers` doesn't end
@@ -80,27 +81,6 @@ game plays.
   overtime (stock: ends tied). `-1`: sudden death (the next score wins).
   `N` > 0: N more minutes, repeated while tied.
 - **INTERMISSION:** stock's.
-
-**Rounds** come in two kinds (`match_rounds`): `frag` (or `1`, HoonyMode's,
-below) and `elimination` (Clan Arena's: a side with no lives left loses the
-round; docs/design/clan-arena.md has its rules: the roster, lives, the round
-timer, watching teammates, the round countdown without firing).
-
-**Frag rounds** (`match_rounds frag`, HoonyMode): while LIVE or OVERTIME, any change
-in a playing client's score ends the round, unless it ends the match
-(fraglimit, sudden death and forfeits are checked first). Then:
-
-1. **ROUND OVER** for `match_round_pause` seconds (2): the winner plays on,
-   the dead stay dead and can't respawn, and the kill message is on screen.
-2. **ROUND COUNTDOWN** for `match_round_countdown` seconds (5): items back,
-   every playing client respawned at a spawn point with a fresh loadout, and
-   frozen - they can look around but not move or fire
-   (`Core_Match_Frozen`, a marked early return in `ClientThink`).
-3. FIGHT!: released, and the state returns to LIVE or OVERTIME.
-
-Scores are kept and the timelimit keeps running; if it runs out in the pause,
-everyone is respawned before the match decides. Elimination rounds (Clan
-Arena) reuse the same states.
 
 ## Arena reset
 
@@ -130,15 +110,6 @@ isn't a spectator. Every transition prints a `Match:` console line.
 | `match_warmup_time` | `0` | seconds of warmup before starting anyway (0 = wait for ready) |
 | `match_countdown` | `10` | seconds (10 since the 2026-10-26 playtest) |
 | `match_overtime` | `0` | 0 none, -1 sudden death, N minutes |
-| `match_rounds` | `0` | `frag` (or `1`): every score change ends a round (HoonyMode); `elimination`: a side with no lives left loses it (Clan Arena; teams or Duel only) |
-| `match_round_countdown` | `5` | seconds at the spawns before a round (rounds on) |
-| `match_round_freeze` | `1` | the round countdown: 1 frozen, 0 move but no fire (and with elimination, round 1's countdown is the match's) |
-| `match_round_lives` | `1` | elimination: lives per player per round |
-| `match_round_time` | `0` | elimination: a round's length in seconds, then more lives, then more health wins; 0 = none |
-| `match_arena` | `0` | 1: the arena loadout, no items on the map, no drops (`_health`, `_armor`: 150, 150) |
-| `match_damage_score` | `0` | 1: +1 per 100 damage dealt to enemies, in elimination rounds |
-| `match_suicide_point` | `0` | 1: a suicide or death to the world is a point to the only opponent, not -1 (HoonyMode; not in team modes or with more than one opponent) |
-| `match_round_pause` | `2` | seconds after the round-ending frag before the respawn (rounds on) |
 | `match_warmup_weapons` | `1` | warmup: every weapon the map places, full ammo, no drops on death |
 | `match_lock` | `0` | 1: both teams lock as the match goes live (team modes; docs/design/teams.md) |
 
@@ -147,7 +118,7 @@ view in docs/admin.md). The compiled defaults are stock; each gametype's
 built-in ruleset (`ffa`, `duel`, `tdm`, `ctf`) turns the match flow on, and
 `rulesets/<gametype>.cfg` changes it. `sv ruleset <name>` (or `set g_ruleset`
 in server.cfg) switches: every gameplay cvar back to its default, the
-gametype's settings and cfg, then a variant's (an admin's `duel_hoony`, say). `g_ruleset`
+gametype's settings and cfg, then a variant's (an admin's `ctf_instagib`, say). `g_ruleset`
 (serverinfo) names the mode; empty means server.cfg set everything itself.
 The module can't see whether an exec found its file, so a missing one shows
 only the engine's `couldn't exec` warning.

@@ -69,7 +69,6 @@ installs it.
 | `ffa` | Free For All | none | stock deathmatch; the default |
 | `duel` | Duel | `ClientBegin`; `frame`, `match_over`, `match_ended`, `client_command`, `waiting`, `scoreboard` | 1v1 play queue (`gametypes/duel/`) of those who asked (`join`): the front two play, the rest spectate (`queue` lists it); a duellist leaving is a forfeit; the loser rotates to the back. Ruleset `duel` |
 | `tdm` | Team Deathmatch | none | stock teamplay (`retail_mode` `teamplay`). The match flow scores it by team frags; fraglimit is on team totals, as stock. Ruleset `tdm` |
-| `ca` | Clan Arena | none | data only (decision 0021): stock teamplay; the ruleset `ca` turns on elimination rounds, the arena, no self damage and the damage score (docs/design/clan-arena.md). Its own id for its vote row and the Q2REX browser's label |
 | `ctf` | Capture The Flag | `match_over` (capturelimit) | stock CTF (`retail_mode` `ctf`). The match flow scores it by captures; the arena reset sends the flags home. Ruleset `ctf` |
 
 Rogue's Tag and DeathBall remain available through the stock `gamerules` cvar,
@@ -84,8 +83,7 @@ grows in the right direction:
 
 | Need | Who first | Lands in |
 |---|---|---|
-| Rounds (end on frags / time / elimination / condition), respawn policy | Duel (HoonyMode), Clan Arena ruleset | Phase 2b match state machine |
-| Arena reset (items, projectiles, loadouts, placement) | rounds | 2b |
+| Arena reset (items, projectiles, loadouts, placement) | going LIVE | 2b |
 | Death interception ("freeze instead of kill") | Freeze Tag (downstream) | when Freeze Tag is built |
 | Per-player gametype data, outside id's structs, not saved | Freeze Tag (Duel keeps its queue in its own module) | when needed |
 | Per-frame think | Freeze Tag thaw | when needed |

@@ -36,7 +36,7 @@ checks/           compile-time checks built into the module.
 | Host file access | `core/host_files.cpp` (game-path rule, pure), `core/host_files_gi.cpp`, `core/host_files_ext.h` | Q2RED's optional `GetExtension` file access, asked for once per load; callers always have a fallback (decision 0011) |
 | Duel | `gametypes/duel/` (`duel_queue.cpp` pure, `duel_register.cpp` adapter) | 1v1 play queue, forfeit, winner stays on; `queue` command |
 | TDM, CTF | `gametypes/tdm/`, `gametypes/ctf/` (capturelimit), `Core_Gametype_PreInit` in `core/gametype_register.cpp` | Registry gametypes on stock's team code: `g_gametype` sets the stock `teamplay` / `ctf` cvars (decision 0012); the match flow scores by team |
-| Rulesets | `core/rulesets*.cpp` | a gametype's gameplay settings and its variants (decision 0013): built-ins `ffa`, `duel`, `tdm`, `ctf` (HoonyMode off for now); `rulesets/<gametype>.cfg` changes one; `rulesets/<gametype>_<name>.cfg` listed in `g_ruleset_variants` adds a variant |
+| Rulesets | `core/rulesets*.cpp` | a gametype's gameplay settings and its variants (decision 0013): built-ins `ffa`, `duel`, `tdm`, `ctf`; `rulesets/<gametype>.cfg` changes one; `rulesets/<gametype>_<name>.cfg` listed in `g_ruleset_variants` adds a variant |
 | HUD stat slots | `core/stat_slots*.cpp` | Hands out stat indices 54..63 (stock's free range) by owner, idempotently; the CTF block stays stock's |
 | Host seam | `core/host.h`, `core/host_gi.cpp`, `tests/fake_host.h` | The engine interface logic uses: `Print`, `TimeMs`. Grow it only when a module needs more |
 | Stock-client contract | `checks/stock_client_contract.cpp` | Pins stat, ammo and powerup indices to stock |

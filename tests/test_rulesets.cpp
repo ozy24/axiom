@@ -19,7 +19,7 @@ static std::set<std::string> GameplayCvars()
 }
 static const std::set<std::string> kKnownCvars = GameplayCvars();
 
-static const std::vector<std::string> kGametypes = {"ffa", "duel", "tdm", "ca", "ctf"};
+static const std::vector<std::string> kGametypes = {"ffa", "duel", "tdm", "ctf"};
 
 static size_t Find(const std::string &text, const std::string &what)
 {
@@ -83,7 +83,7 @@ TEST_CASE("every built-in sets ctf and teamplay to match its gametype")
 		const std::string gt = core_rulesets[i].gametype;
 		CAPTURE(gt);
 		CHECK(Find(cfg, gt == "ctf" ? "set ctf 1\n" : "set ctf 0\n") != std::string::npos);
-		CHECK(Find(cfg, gt == "tdm" || gt == "ca" ? "set teamplay 1\n" : "set teamplay 0\n") != std::string::npos);
+		CHECK(Find(cfg, gt == "tdm" ? "set teamplay 1\n" : "set teamplay 0\n") != std::string::npos);
 	}
 }
 
@@ -117,7 +117,7 @@ TEST_CASE("team games lock their teams as the match goes live; the others have n
 			continue;
 		const std::string gt = core_rulesets[i].gametype;
 		CAPTURE(gt);
-		const bool teams = gt == "tdm" || gt == "ca" || gt == "ctf";
+		const bool teams = gt == "tdm" || gt == "ctf";
 		CHECK(Find(core_rulesets[i].cfg, teams ? "set match_lock 1\n" : "set match_lock 0\n") != std::string::npos);
 	}
 }
@@ -146,7 +146,7 @@ TEST_CASE("names are restricted so exec can't leave rulesets/")
 
 TEST_CASE("resolve: built-ins, and an admin's variants listed in g_ruleset_variants")
 {
-	// HoonyMode is off (2026-10-29); an admin can list their own.
+	// No built-in variants (decision 0022); an admin can list their own.
 	CHECK_FALSE(Core_Ruleset_Resolve("hoony", "", kGametypes));
 	const auto hoony = Core_Ruleset_Resolve("duel_hoony", "duel_hoony", kGametypes);
 	REQUIRE(hoony);
@@ -174,7 +174,7 @@ TEST_CASE("all: by gametype, its own first, then built-in variants, then the adm
 	std::vector<std::string> names;
 	for (const Ruleset &r : Core_Ruleset_All("ctf_instagib duel_x duel_x junk", kGametypes))
 		names.push_back(r.name);
-	CHECK(names == std::vector<std::string>{"ffa", "duel", "duel_x", "tdm", "ca", "ctf", "ctf_instagib"});
+	CHECK(names == std::vector<std::string>{"ffa", "duel", "duel_x", "tdm", "ctf", "ctf_instagib"});
 }
 
 TEST_CASE("a switch resets every gameplay cvar, then the gametype, then the variant")
@@ -202,20 +202,11 @@ TEST_CASE("a gametype's own switch has no variant step; an admin's variant execs
 	const std::string tdm = Core_Ruleset_Commands(*Core_Ruleset_Resolve("tdm", "", kGametypes));
 	CHECK(Find(tdm, "exec rulesets/tdm.cfg\n") != std::string::npos);
 	CHECK(Find(tdm, "exec") == Find(tdm, "exec rulesets/tdm.cfg\n")); // the only exec
-	CHECK(Find(tdm, "set match_rounds 0\n") != std::string::npos);    // a duel's rounds don't follow
+	CHECK(Find(tdm, "set match_overtime ") != std::string::npos);     // a variant's settings don't follow
 
 	const std::string insta = Core_Ruleset_Commands(*Core_Ruleset_Resolve("ctf_instagib", "ctf_instagib", kGametypes));
 	CHECK(Find(insta, "set g_gametype ctf\n") < Find(insta, "exec rulesets/ctf.cfg\n"));
 	CHECK(Find(insta, "exec rulesets/ctf.cfg\n") < Find(insta, "exec rulesets/ctf_instagib.cfg\n"));
-}
-
-TEST_CASE("no built-in gives a suicide's point to the opponent (HoonyMode is off)")
-{
-	for (size_t i = 0; i < core_ruleset_count; ++i)
-	{
-		CAPTURE(core_rulesets[i].name);
-		CHECK(Find(core_rulesets[i].cfg, "set match_suicide_point 1\n") == std::string::npos);
-	}
 }
 
 TEST_CASE("the settings set at load: the reset, then the gametype's and the variant's own, in order")
@@ -232,7 +223,6 @@ TEST_CASE("the settings set at load: the reset, then the gametype's and the vari
 	CHECK(settings.front().first == core_gameplay_cvars[0].name); // the reset comes first
 	CHECK(last("g_gametype") == "duel");
 	CHECK(last("match_flow") == "1"); // the duel's own
-	CHECK(last("match_rounds") == "0");
 	CHECK(last("timelimit") == "10");
 	CHECK(last("g_map_list") == ""); // reset, quotes stripped
 

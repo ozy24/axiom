@@ -2,7 +2,6 @@
 #include "core/match.h"
 
 #include <algorithm>
-#include <cctype>
 #include <cstdio>
 #include <functional>
 
@@ -18,32 +17,15 @@ const char *MatchStateName(MatchState state)
 		return "live";
 	case MatchState::Overtime:
 		return "overtime";
-	case MatchState::RoundOver:
-		return "round over";
-	case MatchState::RoundCountdown:
-		return "round countdown";
 	case MatchState::Intermission:
 		return "intermission";
 	}
 	return "?";
 }
 
-RoundsMode Core_Match_ParseRounds(std::string_view text)
-{
-	std::string t(text);
-	for (char &c : t)
-		c = (char)std::tolower((unsigned char)c);
-	if (t == "1" || t == "frag")
-		return RoundsMode::Frag;
-	if (t == "elimination")
-		return RoundsMode::Elimination;
-	return RoundsMode::Off;
-}
-
 bool MatchStateInPlay(MatchState state)
 {
-	return state == MatchState::Live || state == MatchState::Overtime || state == MatchState::RoundOver ||
-	       state == MatchState::RoundCountdown;
+	return state == MatchState::Live || state == MatchState::Overtime;
 }
 
 namespace
@@ -110,27 +92,12 @@ const char *GametypeReason(const MatchInput &in)
 }
 } // namespace
 
-int Core_SuicideOpponent(const std::vector<MatchPlayer> &players, int self)
-{
-	int found = -1;
-	for (const MatchPlayer &p : players)
-	{
-		if (!p.playing || p.id == self)
-			continue;
-		if (found != -1)
-			return -1; // more than one opponent: whose point would it be?
-		found = p.id;
-	}
-	return found;
-}
-
 Match::Match(MatchConfig config) : config_(config) {}
 
 void Match::Begin(int64_t now_ms)
 {
 	state_since_ms_ = now_ms;
 	last_countdown_s_ = -1;
-	ClearRounds();
 	if (config_.enabled)
 	{
 		state_ = MatchState::Warmup;
@@ -161,279 +128,6 @@ bool Match::CanStart(const MatchInput &in) const
 		return true;
 	return std::all_of(in.players.begin(), in.players.end(),
 	                   [](const MatchPlayer &p) { return !p.playing || p.ready; });
-}
-
-bool Match::ScoreChanged(const MatchInput &in) const
-{
-	for (const MatchPlayer &p : in.players)
-	{
-		if (!p.playing)
-			continue;
-		for (const auto &[id, score] : round_scores_)
-		{
-			if (id == p.id && score != p.score)
-				return true;
-		}
-	}
-	return false;
-}
-
-void Match::Baseline(const MatchInput &in)
-{
-	round_scores_.clear();
-	for (const MatchPlayer &p : in.players)
-		round_scores_.emplace_back(p.id, p.score);
-}
-
-// HoonyMode: a score changed during a round, and the match isn't over. The
-// round is over: the winner plays on while the dead stay dead; after the
-// pause everyone respawns, frozen, and counts down to the next round.
-bool Match::RoundBreak(const MatchInput &in, MatchState from, std::vector<MatchAction> &out)
-{
-	if (config_.rounds != RoundsMode::Frag)
-		return false;
-	if (round_scores_.empty())
-	{
-		Baseline(in); // the first frame of LIVE: scores were just zeroed
-		return false;
-	}
-	if (!ScoreChanged(in))
-		return false;
-	round_return_ = from;
-	state_ = MatchState::RoundOver;
-	state_since_ms_ = in.now_ms;
-	last_countdown_s_ = -1;
-	out.push_back({MatchActionKind::RoundHold, "", 0});
-	out.push_back({MatchActionKind::Sound, "ctf/flagcap.wav", 0}); // round won, as MuffMode
-	return true;
-}
-
-void Match::ClearRounds()
-{
-	roster_.clear();
-	round_wins_.clear();
-	waiting_ = false;
-}
-
-int Match::SideOf(int id, int team) const
-{
-	return config_.teams ? team : id;
-}
-
-// The round's roster: everyone playing as it starts, with a full set of lives.
-void Match::FillRoster(const MatchInput &in)
-{
-	roster_.clear();
-	for (const MatchPlayer &p : in.players)
-	{
-		if (p.playing)
-			roster_[p.id] = {p.key, p.team, std::max(1, config_.round_lives)};
-	}
-}
-
-std::map<int, int> Match::SideLives(const MatchInput &in) const
-{
-	std::map<int, int> lives;
-	if (config_.teams)
-		lives[1] = lives[2] = 0; // an empty team is a side with no lives
-	for (const auto &[id, entry] : roster_)
-	{
-		const int side = SideOf(id, entry.team);
-		lives[side] += 0; // a leaver's side still counts, with nothing left
-		const bool present = std::any_of(in.players.begin(), in.players.end(), [&](const MatchPlayer &p)
-		                                 { return p.id == id && p.playing && p.key == entry.key; });
-		if (present)
-			lives[side] += entry.lives;
-	}
-	return lives;
-}
-
-int Match::RoundWins(int side) const
-{
-	const auto it = round_wins_.find(side);
-	return it == round_wins_.end() ? 0 : it->second;
-}
-
-bool Match::Died(int id)
-{
-	if (!Elimination() || (state_ != MatchState::Live && state_ != MatchState::Overtime))
-		return false;
-	const auto it = roster_.find(id);
-	if (it == roster_.end())
-		return true; // not in this round: stays out
-	if (it->second.lives > 0)
-		--it->second.lives;
-	return it->second.lives == 0;
-}
-
-bool Match::InRound(int id, const std::string &key, int team) const
-{
-	if (!Elimination() || (state_ != MatchState::Live && state_ != MatchState::Overtime))
-		return true;
-	const auto it = roster_.find(id);
-	return it != roster_.end() && it->second.key == key && (!config_.teams || it->second.team == team) &&
-	       it->second.lives > 0;
-}
-
-void Match::Forget(int id)
-{
-	roster_.erase(id);
-}
-
-bool Match::Eliminated(int id) const
-{
-	if (!Elimination() ||
-	    (state_ != MatchState::Live && state_ != MatchState::Overtime && state_ != MatchState::RoundOver))
-		return false;
-	const auto it = roster_.find(id);
-	return it == roster_.end() || it->second.lives == 0;
-}
-
-// The sides' rounds won, as TopTwo gives scores: teams, or each playing client.
-void Match::SideScores(const MatchInput &in, int &top, int &second, int &count) const
-{
-	std::vector<int> scores;
-	if (config_.teams)
-		scores = {RoundWins(1), RoundWins(2)};
-	else
-	{
-		for (const MatchPlayer &p : in.players)
-		{
-			if (p.playing)
-				scores.push_back(RoundWins(p.id));
-		}
-	}
-	std::sort(scores.begin(), scores.end(), std::greater<int>());
-	count = (int)scores.size();
-	top = count > 0 ? scores[0] : 0;
-	second = count > 1 ? scores[1] : 0;
-}
-
-// A round starts: its roster, its clock, and the call to fight.
-void Match::StartRound(const MatchInput &in, std::vector<MatchAction> &out)
-{
-	waiting_ = false;
-	round_since_ms_ = in.now_ms;
-	if (Elimination())
-		FillRoster(in);
-	out.push_back(
-	    {MatchActionKind::Announce, Elimination() ? "ROUND " + std::to_string(round_) + ": FIGHT!" : "FIGHT!", 0});
-	out.push_back({MatchActionKind::Sound, "misc/tele_up.wav", 0});
-}
-
-// Clan Arena: a side with no lives left loses the round; both at once is a
-// draw (MMREX's stalled round, docs/design/clan-arena.md); the round timer
-// gives it to the side with more lives left, then more health among the
-// living. A decided round may end the match at once (the round limit, sudden
-// death, a passed timelimit: the round under way is always played out), else
-// the survivors play on through the pause.
-bool Match::EliminationBreak(const MatchInput &in, MatchState from, std::vector<MatchAction> &out)
-{
-	if (!Elimination())
-		return false;
-	const std::map<int, int> lives = SideLives(in);
-	int alive = 0, last = -1;
-	for (const auto &[side, left] : lives)
-	{
-		if (left > 0)
-		{
-			++alive;
-			last = side;
-		}
-	}
-	int won = -1;
-	if (alive <= 1)
-		won = alive == 1 && lives.size() >= 2 ? last : -1;
-	else if (config_.round_time_ms > 0 && in.now_ms - round_since_ms_ >= config_.round_time_ms)
-	{
-		// Health and armor of the living, per side.
-		std::map<int, int> health;
-		for (const MatchPlayer &p : in.players)
-		{
-			const auto it = roster_.find(p.id);
-			if (p.playing && it != roster_.end() && it->second.key == p.key && it->second.lives > 0)
-				health[SideOf(p.id, it->second.team)] += std::max(0, p.health);
-		}
-		const auto best = [&](const std::map<int, int> &by, const std::vector<int> &among)
-		{
-			int max = -1;
-			std::vector<int> top;
-			for (int side : among)
-			{
-				const auto it = by.find(side);
-				const int v = it == by.end() ? 0 : it->second;
-				if (v > max)
-				{
-					max = v;
-					top = {side};
-				}
-				else if (v == max)
-					top.push_back(side);
-			}
-			return top;
-		};
-		std::vector<int> sides;
-		for (const auto &[side, left] : lives)
-			sides.push_back(side);
-		std::vector<int> most = best(lives, sides);
-		if (most.size() > 1)
-			most = best(health, most);
-		won = most.size() == 1 ? most[0] : -1;
-	}
-	else
-		return false;
-
-	if (won >= 0)
-		++round_wins_[won];
-	out.push_back({MatchActionKind::RoundWon, "", won});
-	out.push_back({MatchActionKind::Sound, "ctf/flagcap.wav", 0}); // round won, as MuffMode
-	if (won >= 0 && config_.fraglimit > 0 && round_wins_[won] >= config_.fraglimit)
-	{
-		End("rounds", out);
-		return true;
-	}
-	if (from == MatchState::Overtime)
-	{
-		if (config_.overtime < 0 && won >= 0)
-		{
-			End("sudden death", out);
-			return true;
-		}
-		if (config_.overtime > 0 && time_end_ms_ && in.now_ms >= time_end_ms_)
-		{
-			int top, second, count;
-			SideScores(in, top, second, count);
-			if (count < 2 || top != second)
-			{
-				End("overtime", out);
-				return true;
-			}
-			time_end_ms_ = in.now_ms + (int64_t)config_.overtime * 60000;
-			out.push_back({MatchActionKind::Klaxon, "", 0});
-		}
-	}
-	else if (time_end_ms_ && in.now_ms >= time_end_ms_)
-	{
-		int top, second, count;
-		SideScores(in, top, second, count);
-		if (count >= 2 && top == second && config_.overtime != 0)
-		{
-			from = MatchState::Overtime;
-			time_end_ms_ = config_.overtime > 0 ? in.now_ms + (int64_t)config_.overtime * 60000 : 0;
-			out.push_back({MatchActionKind::Klaxon, "", 0});
-		}
-		else
-		{
-			End("timelimit", out);
-			return true;
-		}
-	}
-	round_return_ = from;
-	state_ = MatchState::RoundOver;
-	state_since_ms_ = in.now_ms;
-	last_countdown_s_ = -1;
-	out.push_back({MatchActionKind::RoundHold, "", 0});
-	return true;
 }
 
 namespace
@@ -489,25 +183,10 @@ MatchHudText Match::HudText(const MatchInput &in) const
 	// middle, the clock bottom middle, so the clock always shows. Before the
 	// match it shows the match's length, so players see how long it is; Status names are OpenTDM's
 	// (g_tdm_core.c), capitalised. The clock shows while the match is being
-	// then, round breaks and timed overtime included, down to the timelimit,
+	// then, timed overtime included, down to the timelimit,
 	// else up from LIVE; in sudden death it stays at 0:00.
 	const std::string clock = time_end_ms_ ? Clock(time_end_ms_ - in.now_ms) : Clock(in.now_ms - live_since_ms_);
 	const std::string length = Clock(config_.timelimit_ms); // 0:00 with no timelimit: it counts up
-	// Elimination rounds: "ROUND 3 - RED 3 v 2 BLUE" (lives left per team), or
-	// "ROUND 3" without teams (one line for everyone can't say whose is whose);
-	// the clock is the round's when it has a timer.
-	const auto round_line = [&]
-	{
-		std::string line = "ROUND " + std::to_string(round_);
-		if (config_.teams)
-		{
-			const std::map<int, int> lives = SideLives(in);
-			line += " - RED " + std::to_string(lives.at(1)) + " v " + std::to_string(lives.at(2)) + " BLUE";
-		}
-		return line;
-	};
-	const auto round_clock = [&]
-	{ return config_.round_time_ms > 0 ? Clock(round_since_ms_ + config_.round_time_ms - in.now_ms) : clock; };
 	switch (state_)
 	{
 	case MatchState::Warmup:
@@ -529,21 +208,11 @@ MatchHudText Match::HudText(const MatchInput &in) const
 	case MatchState::Countdown:
 		return {"COUNTDOWN", length}; // the seconds: the big digits (CountdownSeconds)
 	case MatchState::Live:
-		if (Elimination())
-			return {round_line(), round_clock()};
 		return {"", clock};
 	case MatchState::Overtime:
-		if (Elimination())
-			return {(config_.overtime < 0 ? "SUDDEN DEATH - " : "OVERTIME - ") + round_line(), round_clock()};
 		if (config_.overtime < 0)
 			return {"SUDDEN DEATH", "0:00"}; // the next score ends it
 		return {"OVERTIME", clock};
-	case MatchState::RoundOver:
-		return {"ROUND OVER", clock};
-	case MatchState::RoundCountdown:
-		if (waiting_)
-			return {EnoughPlayers(config_, in) ? "WAITING FOR TEAMS" : "WAITING FOR PLAYERS", clock};
-		return {"COUNTDOWN", clock};
 	case MatchState::Intermission:
 		return {"MATCH END", ""};
 	}
@@ -556,43 +225,18 @@ int Match::CountdownSeconds(int64_t now_ms) const
 		return 0;
 	if (state_ == MatchState::Countdown)
 		return SecondsLeft(config_.countdown_ms, now_ms - state_since_ms_);
-	if (state_ == MatchState::RoundCountdown && !waiting_)
-		return SecondsLeft(config_.round_countdown_ms, now_ms - state_since_ms_);
 	return 0;
 }
 
-int64_t Match::ClockEndMs() const
+void Match::GoLive(int64_t now_ms, std::vector<MatchAction> &out)
 {
-	if (Elimination() && config_.round_time_ms > 0 && (state_ == MatchState::Live || state_ == MatchState::Overtime))
-		return round_since_ms_ + config_.round_time_ms;
-	const bool timed = state_ == MatchState::Live || state_ == MatchState::Overtime ||
-	                   state_ == MatchState::RoundOver || state_ == MatchState::RoundCountdown;
-	return timed ? time_end_ms_ : 0;
-}
-
-void Match::GoLive(const MatchInput &in, std::vector<MatchAction> &out)
-{
-	const int64_t now_ms = in.now_ms;
-	round_ = 1;
 	state_ = MatchState::Live;
 	state_since_ms_ = live_since_ms_ = now_ms;
 	time_end_ms_ = config_.timelimit_ms > 0 ? now_ms + config_.timelimit_ms : 0;
 	last_warning_s_ = SecondsLeft(config_.timelimit_ms, 0); // nothing spoken for the full time
-	round_scores_.clear();                                  // scores are zeroed by the reset; filled on the next Update
-	ClearRounds();
 	out.push_back({MatchActionKind::ResetArena, "", 0});
-	if (Elimination() && config_.round_freeze)
-	{
-		// Round 1 gets its own frozen countdown at the spawns (QC Duel); the
-		// roster is taken as it ends.
-		round_ = 0;
-		round_return_ = MatchState::Live;
-		state_ = MatchState::RoundCountdown;
-		last_countdown_s_ = -1;
-		return;
-	}
-	// The roster before the reset's respawns (they ask who's in the round).
-	StartRound(in, out);
+	out.push_back({MatchActionKind::Announce, "FIGHT!", 0});
+	out.push_back({MatchActionKind::Sound, "misc/tele_up.wav", 0});
 }
 
 void Match::End(const char *why, std::vector<MatchAction> &out)
@@ -606,10 +250,7 @@ void Match::ChangeLimits(int64_t timelimit_ms, int fraglimit, int64_t now_ms)
 {
 	config_.timelimit_ms = timelimit_ms;
 	config_.fraglimit = fraglimit;
-	const bool regulation =
-	    state_ == MatchState::Live || ((state_ == MatchState::RoundOver || state_ == MatchState::RoundCountdown) &&
-	                                   round_return_ == MatchState::Live);
-	if (!regulation)
+	if (state_ != MatchState::Live)
 		return;
 	time_end_ms_ = timelimit_ms > 0 ? live_since_ms_ + timelimit_ms : 0;
 	// Nothing spoken for the second it changed in.
@@ -646,8 +287,6 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 		state_since_ms_ = in.now_ms;
 		time_end_ms_ = 0;
 		last_countdown_s_ = -1;
-		round_scores_.clear();
-		ClearRounds();
 		out.push_back({MatchActionKind::ResetArena, "", 0});
 		return out;
 	}
@@ -686,7 +325,7 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 		const int64_t left_ms = config_.countdown_ms - (in.now_ms - state_since_ms_);
 		if (left_ms <= 0)
 		{
-			GoLive(in, out);
+			GoLive(in.now_ms, out);
 			break;
 		}
 		const int left_s = (int)((left_ms + 999) / 1000);
@@ -704,12 +343,6 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 		if (in.gametype_over)
 		{
 			End(GametypeReason(in), out);
-			break;
-		}
-		if (Elimination())
-		{
-			// The round limit and the timelimit are decided as a round ends.
-			EliminationBreak(in, MatchState::Live, out);
 			break;
 		}
 		int top, second, count;
@@ -740,8 +373,6 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 			}
 			break;
 		}
-		if (RoundBreak(in, MatchState::Live, out))
-			break;
 		TimeWarning(in.now_ms, out);
 		break;
 	}
@@ -750,12 +381,6 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 		if (in.gametype_over)
 		{
 			End(GametypeReason(in), out);
-			break;
-		}
-		if (Elimination())
-		{
-			// Before any sudden-death check: only a decided round ends it.
-			EliminationBreak(in, MatchState::Overtime, out);
 			break;
 		}
 		int top, second, count;
@@ -779,80 +404,6 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 				End("overtime", out);
 			}
 			break;
-		}
-		RoundBreak(in, MatchState::Overtime, out);
-		break;
-	}
-	case MatchState::RoundOver:
-	{
-		if (in.gametype_over)
-		{
-			End(GametypeReason(in), out);
-			break;
-		}
-		// Elimination decides the time as a round ends; frag rounds here.
-		const bool out_of_time =
-		    !Elimination() && round_return_ == MatchState::Live && time_end_ms_ && in.now_ms >= time_end_ms_;
-		if (out_of_time || in.now_ms - state_since_ms_ >= config_.round_pause_ms)
-		{
-			// Items back, everyone back in at a spawn.
-			out.push_back({MatchActionKind::ResetArena, "", 1});
-			out.push_back({MatchActionKind::RoundRespawn, "", 0});
-			if (out_of_time)
-			{
-				// Time ran out: decide as LIVE would, on the next frame.
-				state_ = MatchState::Live;
-				out.push_back({MatchActionKind::RoundStart, "", 0});
-				break;
-			}
-			state_ = MatchState::RoundCountdown;
-			state_since_ms_ = in.now_ms;
-			last_countdown_s_ = -1;
-		}
-		break;
-	}
-	case MatchState::RoundCountdown:
-	{
-		if (in.gametype_over)
-		{
-			End(GametypeReason(in), out);
-			break;
-		}
-		if (Elimination() && !Staffed(config_, in))
-		{
-			// A side with nobody on it: no round (MMREX hands it free wins). The
-			// countdown starts again once both sides are back.
-			waiting_ = true;
-			state_since_ms_ = in.now_ms;
-			last_countdown_s_ = -1;
-			break;
-		}
-		waiting_ = false;
-		if (!Elimination() && round_return_ == MatchState::Live && time_end_ms_ && in.now_ms >= time_end_ms_)
-		{
-			// Time ran out between rounds: decide as LIVE would, on the next frame.
-			state_ = MatchState::Live;
-			out.push_back({MatchActionKind::RoundStart, "", 0});
-			break;
-		}
-		const int64_t left_ms = config_.round_countdown_ms - (in.now_ms - state_since_ms_);
-		if (left_ms <= 0)
-		{
-			state_ = round_return_;
-			state_since_ms_ = in.now_ms;
-			++round_;
-			Baseline(in);
-			out.push_back({MatchActionKind::RoundStart, "", 0});
-			StartRound(in, out);
-			break;
-		}
-		const int left_s = (int)((left_ms + 999) / 1000);
-		if (left_s != last_countdown_s_)
-		{
-			last_countdown_s_ = left_s;
-			out.push_back({MatchActionKind::Countdown, "", left_s});
-			if (left_s <= 10 || left_s % 10 == 0)
-				Speak(left_s, out);
 		}
 		break;
 	}

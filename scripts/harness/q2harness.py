@@ -23,8 +23,6 @@ Tiers (plan Phase 1b):
                  on the timelimit, counted from LIVE.
   6. duel        Three bots: two duel, one queues; the match ends, the loser
                  rotates to the back and a match record is written.
-  7. rounds      match_rounds on: a frag ends the round, the next one starts
-                 (Q2RED only: needs bots that fight).
   8. teams       TDM and CTF with the match flow: four bots on two teams, a
                  timelimit end, and a record with both teams.
   9. warmup      Bots fight in an endless warmup; every score stays 0
@@ -35,8 +33,6 @@ Tiers (plan Phase 1b):
                  match-flow and Duel rows, checked from the game tap (Q2RED).
  12. human-teams TDM and CTF: simulated players pick teams; no start with one
                  team; the record has everyone on their team (Q2RED).
- 13. human-rounds  HoonyMode: each scripted suicide ends a round, the next
-                 starts after "Next round in 3..1" (Q2RED).
  14. human-vote  Map votes through simulated players (Q2RED).
  15. maps        The shuffled map rotation: off-list start, a whole pass,
                  no repeat at the reshuffle, g_map_list kept as written.
@@ -52,8 +48,6 @@ Tiers (plan Phase 1b):
                  the caller's team alone, readyall readying everyone (Q2RED).
  20. human-shuffle  The shuffle vote in a TDM warmup: a new even split, team
                  skins to match, the locks off; refused once live (Q2RED).
- 21. human-ca    Clan Arena: elimination rounds, the eliminated watch a
-                 teammate, a mid-round joiner waits, first to 2 (Q2RED).
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -511,10 +505,7 @@ def tier_dm_smoke(args, results):
 def tier_gametype_boot(args, results):
     """Every registered gametype, and Rogue's stock gamerules modes (still run
     as stock, decision 0010), boot q2dm1 with bots and shut down cleanly."""
-    # Clan Arena is a data-only gametype: its rules are its ruleset's, so it
-    # boots through that (`g_gametype ca` alone would play TDM's rules).
-    cases = [(gt, ["+set", "g_ruleset", gt] if gt == "ca" else ["+set", "g_gametype", gt],
-              rf"Gametype: .+ \({re.escape(gt)}\)")
+    cases = [(gt, ["+set", "g_gametype", gt], rf"Gametype: .+ \({re.escape(gt)}\)")
              for gt in args.gametypes.split(",") if gt]
     cases += [(f"gamerules{n}", ["+set", "gamerules", n], rf"Gametype: stock gamerules {re.escape(n)}\b")
               for n in args.stock_gamerules.split(",") if n]
@@ -544,7 +535,7 @@ def tier_gametype_boot(args, results):
 
 
 # The stock mode each team gametype runs on, and the map it's tested on.
-RETAIL_MODE = {"tdm": "teamplay", "ca": "teamplay", "ctf": "ctf"}
+RETAIL_MODE = {"tdm": "teamplay", "ctf": "ctf"}
 GAMETYPE_MAP = {"ctf": "q2ctf1"}
 
 MATCH_SEQUENCE = ["Match: warmup", "Match: warmup -> countdown", "Match: countdown -> live",
@@ -984,57 +975,6 @@ at 16 3 cmd ready
         results.append((label, not detail, detail))
 
 
-def tier_human_rounds(args, results):
-    """HoonyMode's rounds through the human path: two simulated players duel
-    with match_rounds 1; each scripted `kill` (a score change, like a frag)
-    must end the round - both players held, "Next round in 3..1", FIGHT! -
-    and play resume, with the match still ended by its timelimit. Q2RED only."""
-    rig, why = scenario_rig(args, "t13-rounds")
-    if not rig:
-        results.append(("13 human-rounds", True, [f"skipped: {why}"]))
-        return
-    script = """seconds 85
-client 0 name=Alice social=sim-alice puppet
-client 1 name=Bob social=sim-bob puppet
-at 6 0 cmd ready
-at 6 1 cmd ready
-at 26 0 cmd kill
-at 40 1 cmd kill
-"""
-    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_gametype", "duel", "+set", "match_flow", "1",
-                                     "+set", "match_rounds", "1", "+set", "match_round_countdown", "3",
-                                     "+set", "match_overtime", "0", "+set", "fraglimit", "0",
-                                     "+set", "timelimit", "1", "+map", "q2dm1"])
-    log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 160)
-    tap = read_jsonl(rig.dir / "tap.jsonl")
-    detail = []
-    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
-    alice = humans.get("Alice")
-    centre = [r["args"][0] for r in tap if r.get("type") == "locprint" and r["to"] == alice
-              and r["base"] == "{}" and r["args"]]
-    breaks = centre.count("FIGHT!") - 1  # every round after the first starts with FIGHT!
-    seen = ["Match: " + l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
-    round_breaks = seen.count("Match: live -> round over")
-    # Bots fight too, so frags can add rounds; the two suicides make at least two.
-    if breaks < 2 or round_breaks < 2:
-        detail.append(f"{breaks} round countdowns shown, {round_breaks} round breaks logged; expected two "
-                      "or more (two scripted suicides)")
-    if seen[-1:] != ["Match: ended (timelimit)"]:
-        detail.append(f"the match ended {seen[-1:]}, expected by the timelimit")
-    drawn, texts = state_line(tap)
-    for want in ("ROUND OVER", "COUNTDOWN"):
-        if want not in texts:
-            detail.append(f"the state line never showed {want!r}")
-    after_round = texts[texts.index("ROUND OVER"):] if "ROUND OVER" in texts else []
-    if not any(re.fullmatch(r"\d+:\d\d", t) for t in after_round):
-        detail.append("the clock never came back after a round")
-    detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
-    if rig.returncode != 0:
-        detail.append(f"server exited with code {rig.returncode}")
-    detail += error_lines(log, rig)[:20]
-    results.append(("13 human-rounds", not detail, detail))
-
-
 def tier_teams(args, results):
     """TDM and CTF with the match flow: four bots on two teams play warmup ->
     live -> timelimit, and the record has both teams and every player on one."""
@@ -1106,79 +1046,6 @@ def tier_warmup(args, results):
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]
     results.append(("9 warmup", not detail, detail + [f"({len(frags)} obituary lines)"]))
-
-
-def tier_rounds(args, results):
-    """match_rounds on (HoonyMode's mechanics): a frag ends the round, a pause,
-    everyone respawns frozen for the countdown, the next round starts and the
-    bots fight on. Needs bots that
-    fight, so Q2RED only."""
-    rig = RIGS[args.engine_kind](args, args.candidate, "t7-rounds")
-    if not rig.expects_frags:
-        results.append(("7 rounds", True, ["skipped: bots don't fight in a bot-only match on this engine"]))
-        return
-    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_flow", "1", "+set", "match_allow_no_humans", "1",
-                "+set", "match_countdown", "3", "+set", "match_rounds", "1", "+set", "match_round_countdown", "2",
-                "+set", "timelimit", "3"] + rig.bot_args() + ["+map", "q2dm1"])
-    # A frag ends the round (the pause), everyone respawns frozen (the
-    # countdown), the round starts - and a second frag ends that one too: the
-    # bots still play after a round reset (the old hold wiped their SVF_BOT).
-    log = rig.run(startup, [rig.wait_ready(), ("wait", r"Match: live -> round over", 150),
-                            ("wait", r"Match: round countdown -> live", 20),
-                            ("wait", r"(?s)round countdown -> live.*Match: live -> round over", 150),
-                            ("sleep", 1), ("cmd", "quit")],
-                  timeout=args.boot_timeout + 360)
-    detail = []
-    seen = ["Match: " + l.split("Match: ", 1)[1].strip() for l in log.splitlines() if "Match: " in l]
-    cycle = ["Match: live -> round over", "Match: round over -> round countdown", "Match: round countdown -> live"]
-    if not any(seen[i:i + 3] == cycle for i in range(len(seen))):
-        detail.append(f"no full round cycle in {seen}")
-    if seen.count("Match: live -> round over") < 2:
-        detail.append("no second round ended by a frag: the bots stopped playing after the round reset")
-    if rig.returncode != 0:
-        detail.append(f"server exited with code {rig.returncode}")
-    if "==== ShutdownGame ====" not in log:
-        detail.append("no clean ShutdownGame")
-    detail += error_lines(log, rig)[:20]
-    results.append(("7 rounds", not detail, detail))
-
-    # Elimination rounds (Clan Arena's, docs/design/clan-arena.md): six bots in
-    # TDM, one life a round, first to 2. A team with nobody left loses the
-    # round; the eliminated watch until the next; the team score is rounds won.
-    rig = RIGS[args.engine_kind](args, args.candidate, "t7-elimination")
-    # In an exec'd cfg: too many `+set`s pass the engine's argument limit.
-    (rig.dir / "baseq2").mkdir(parents=True, exist_ok=True)
-    (rig.dir / "baseq2" / "t7elim.cfg").write_text(
-        "set match_flow 1\nset match_allow_no_humans 1\nset match_countdown 3\nset match_rounds elimination\n"
-        "set match_round_freeze 0\nset match_round_countdown 2\nset match_round_time 90\nset fraglimit 2\n"
-        "set timelimit 0\n")
-    startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", "tdm",
-                "+exec", "t7elim.cfg"] + rig.bot_args() + ["+map", "q2dm1"])
-    log = rig.run(startup, [rig.wait_ready(), ("wait", r"Match: round 1: ", 200), ("cmd", "sv match"),
-                            ("wait", r"Match: ended", 400), ("sleep", 1), ("cmd", "sv match"), ("sleep", 1),
-                            ("cmd", "quit")],
-                  timeout=args.boot_timeout + 640)
-    detail = []
-    rounds = re.findall(r"Match: round (\d+): (RED|BLUE|draw)", log)
-    if not rounds:
-        detail.append("no round was decided")
-    if "Match: ended (rounds)" not in log:
-        detail.append("the match didn't end on the round limit (fraglimit 2 = first to 2 rounds)")
-    wins = {t: sum(1 for _, w in rounds if w == t) for t in ("RED", "BLUE")}
-    if max(wins.values(), default=0) != 2:
-        detail.append(f"rounds won {wins}, expected one team on 2")
-    after_first = log.split("Match: round 1: ", 1)[-1]
-    if "(eliminated" not in after_first.split("Match: ended", 1)[0]:
-        detail.append("nobody was shown eliminated after round 1 (`sv match`)")
-    if "(eliminated" in log.split("Match: ended", 1)[-1]:
-        detail.append("players eliminated in the deciding round were still watching at the intermission")
-    final = re.findall(r"teams: red (\d+), blue (\d+)", log)
-    if not final or sorted(int(x) for x in final[-1]) != sorted([wins.get("RED", 0), wins.get("BLUE", 0)]):
-        detail.append(f"team scores {final[-1:] if final else None}, expected the rounds won {wins}")
-    if rig.returncode != 0:
-        detail.append(f"server exited with code {rig.returncode}")
-    detail += error_lines(log, rig)[:20]
-    results.append(("7 rounds elimination", not detail, detail))
 
 
 def tier_human_vote(args, results):
@@ -1613,98 +1480,6 @@ at 36 4 cmd callvote shuffle
     results.append((label, not detail, detail))
 
 
-def tier_human_ca(args, results):
-    """Clan Arena (decision 0021) with five simulated players: Alice and Bob
-    on RED, Carol and Dave on BLUE, first to 2 rounds. Alice's suicide puts
-    her out of the round, watching Bob (a teammate); Bob's gives BLUE the
-    round. Eve, joining BLUE mid-round, waits for the next. Round 2 brings
-    everyone back, and BLUE takes the match on the round limit. The HUD's
-    line counts the living, the team board marks the eliminated (X) and
-    says "Round Limit". Q2RED only."""
-    label = "21 human-ca"
-    rig, why = scenario_rig(args, "t21-ca")
-    if not rig:
-        results.append((label, True, [f"skipped: {why}"]))
-        return
-    script = """seconds 75
-client 0 name=Alice social=sim-alice
-client 1 name=Bob social=sim-bob
-client 2 name=Carol social=sim-carol
-client 3 name=Dave social=sim-dave
-client 4 name=Eve social=sim-eve
-at 6 0 cmd team red
-at 6 1 cmd team red
-at 6 2 cmd team blue
-at 6 3 cmd team blue
-at 25 0 cmd kill
-at 28 4 cmd team blue
-at 31 0 cmd kill
-at 30 2 cmd score
-at 35 1 cmd kill
-at 52 0 cmd kill
-at 54 1 cmd kill
-"""
-    # Not puppets: nobody fights, so only the scripted suicides decide the
-    # rounds (puppets' frags made the order of events vary).
-    rulesets = rig.dir / "baseq2" / "rulesets"
-    rulesets.mkdir(parents=True, exist_ok=True)
-    # The built-in ca, quicker: no ready-up, short countdowns, first to 2,
-    # no team lock (Eve joins mid-round). Alice's `kill` is tried twice: one
-    # within 5 s of her LIVE respawn is ignored.
-    (rulesets / "ca.cfg").write_text("set match_ready 0\nset match_countdown 3\nset match_round_countdown 5\n"
-                                     "set fraglimit 2\nset match_lock 0\n")
-    startup = scenario_startup(rig, ["+set", "g_ruleset", "ca", "+map", "q2dm1"])
-    during = [("wait", r"Alice killed themselves", 60), ("sleep", 3), ("cmd", "sv match"),
-              ("wait", r"Match: round 1: ", 60), ("wait", r"(?s)round 1: .*round countdown -> live", 30),
-              ("sleep", 1), ("cmd", "sv match")]
-    log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 140)
-    tap = read_jsonl(rig.dir / "tap.jsonl")
-    detail = []
-    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
-    if not {"Alice", "Bob", "Carol", "Dave", "Eve"} <= set(humans):
-        results.append((label, False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
-        return
-    if "Gametype: Clan Arena (ca)" not in log:
-        detail.append("not Clan Arena")
-    rounds = re.findall(r"Match: round (\d+): (\w+)", log)
-    if rounds[:2] != [("1", "BLUE"), ("2", "BLUE")]:
-        detail.append(f"rounds {rounds}, expected BLUE taking rounds 1 and 2")
-    if "Match: ended (rounds)" not in log:
-        detail.append("the match didn't end on the round limit")
-    dumps = [d for d in re.split(r"<\d+>Match: ", log) if d.startswith(("live", "round"))]
-    first = next((d for d in dumps if "Alice (eliminated" in d), "")
-    if "Alice (eliminated, following Bob)" not in first:
-        detail.append(f"after her suicide Alice wasn't watching Bob: {first[:300]!r}")
-    held = re.search(r"Eve \(eliminated(?:, following (\w+))?\)", log.split("Match: round 1: ", 1)[0])
-    if not held:
-        detail.append("Eve, joining mid-round, wasn't held out")
-    elif held.group(1) not in ("Carol", "Dave"):
-        detail.append(f"Eve (BLUE) was following {held.group(1)}, not a teammate")
-    locs = [r for r in tap if r.get("type") in ("locprint", "print")]
-    if not any(r.get("to") == humans["Eve"] and "you're in from the next" in (r.get("base", "") + r.get("text", ""))
-               for r in locs):
-        detail.append("Eve wasn't told she plays from the next round")
-    second = log.split("Match: round 1: ", 1)[-1]
-    second_dump = second.split("round countdown -> live", 1)[-1].split("Match: round 2", 1)[0]
-    for name in ("Alice", "Bob", "Eve"):
-        if not re.search(rf"^\S*\s+-?\d+ {name}$", second_dump, re.M):
-            detail.append(f"{name} wasn't back in for round 2")
-    texts = [r["text"] for r in tap if r.get("type") == "configstring"]
-    if "ROUND 1 - RED 2 v 2 BLUE" not in texts or "ROUND 1 - RED 1 v 2 BLUE" not in texts:
-        detail.append("the HUD's round line never counted the living (ROUND 1 - RED n v n BLUE)")
-    boards = [r["text"] for r in tap if r.get("type") == "layout" and r["to"] == humans["Carol"]
-              and "ctf -40" in r["text"]]
-    if not any("string2 X " in b for b in boards):
-        detail.append("Carol's team board never marked an eliminated player (X)")
-    if not any("Round Limit: 2" in b for b in boards):
-        detail.append("the team board's limit doesn't say Round Limit")
-    detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
-    if rig.returncode != 0:
-        detail.append(f"server exited with code {rig.returncode}")
-    detail += error_lines(log, rig)[:20]
-    results.append((label, not detail, detail))
-
-
 def sv_match_dumps(log):
     """Each `sv match` in the log: {name: playing}. A dump is a `Match:` line
     followed by indented lines ("  <score> <name>[ (not playing)]")."""
@@ -1814,9 +1589,9 @@ at 6 1 cmd team blue
 
 
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
-         tier_rounds, tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
-         tier_human_rounds, tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
-         tier_human_join, tier_human_readyvote, tier_human_shuffle, tier_human_ca)
+         tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
+         tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
+         tier_human_join, tier_human_readyvote, tier_human_shuffle)
 
 
 def run_tier(tier, args):
@@ -1913,12 +1688,12 @@ def main():
     ap.add_argument("--settle", type=float, default=6, help="seconds after the map loads before saving")
     ap.add_argument("--dm-seconds", type=float, default=60)
     ap.add_argument("--runs", type=int, default=6, help="calibration runs")
-    ap.add_argument("--gametypes", default="ffa,duel,tdm,ca,ctf",
+    ap.add_argument("--gametypes", default="ffa,duel,tdm,ctf",
                     help="gametype ids tier 4 boots (the registry's, GAME_GAMETYPES)")
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "rounds", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_rounds", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "human_ca"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

@@ -1,6 +1,6 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-10-30 (Clan Arena)._
+_Updated at the end of every session. Last update: 2026-10-30 (back to four gametypes)._
 
 ## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
@@ -258,45 +258,27 @@ Done (branch `scoreboard/duel`; Chris finished testing it on 2026-10-29):
   the sim client can't change userinfo mid-game, so the third is untested.
   Tier 11 now reads the Duel rotation from `sv match`.
 
-## Done 2026-10-29: shuffle vote and the playtest batch (#35)
+## Handover (2026-10-30): back to the four core gametypes (decision 0022)
 
-Merged as #35: the team shuffle (decision 0020, tier 20), ready marks (a
-green `R` on the team and FFA boards), `READY UP n/m`, `match_allow_no_humans`
-(a match needs a human; back to warmup when the last leaves), the countdown
-no longer holds fire for the dead (tier 19), the FFA board centred, cvar
-renames (`match_flow`, `g_ruleset_variants`; internal cvars write-protected,
-decision 0004 amended), HoonyMode off (`rulesets/duel_hoony.cfg` still works).
+Chris (2026-10-30): Axiom is FFA, Duel, TDM and CTF; extra modes multiply
+against every system (MuffMode's and MMREX's trap), so **polish the four
+before adding surface**. Removed on branch `remove-rounds`:
+- Clan Arena (#36): the `ca` gametype and ruleset, elimination rounds with
+  lives, watchers, the arena loadout, `g_dm_no_self_damage`, the damage
+  score, the X marks and Round Limit, tier 21.
+- HoonyMode's frag rounds (`match_rounds`, `match_round_countdown`,
+  `match_round_pause`, `match_suicide_point`): the RoundOver and
+  RoundCountdown states, `Core_Match_Frozen` and the suicide-point hooks in
+  id's code, tiers 7 and 13.
+- All of it is kept at the tag **`clan-arena-v1`** (b007469): a downstream
+  mod can start from there.
+- Kept from the CA playtest: the frag/capture limit in big digits under the
+  scores (`yb -56 xr -56` teams, `yb -46 xr -60` FFA/Duel).
 
-## Handover (2026-10-30): Clan Arena (branch `ca`, decision 0021)
-
-Built overnight from the plan Chris approved (design: docs/design/clan-arena.md).
-Chris hasn't played it yet: **playtest it on the rig** (`sv ruleset ca`,
-`map q2dm1`, join, then `bot_count 5`).
-- `ca` is a data-only gametype (own vote row, the Q2REX browser's "Clan
-  Arena" label) on the built-in ruleset `ca`.
-- Elimination rounds with lives (`match_rounds elimination`,
-  `match_round_lives`, `match_round_freeze`, `match_round_time`): a pure roster
-  in `core/match.cpp`; the eliminated watch living teammates only (no free
-  cam); late joiners, team switchers and slot reuse wait for the next round;
-  a mutual wipe is a draw; the winning round ends the match at once; the
-  timelimit waits for the round; sudden death = the next decisive round; an
-  empty team gets no free rounds.
-- The arena (`match_arena`: every weapon but the BFG, ammo at the cap,
-  150/150, no items, no drops), `g_dm_no_self_damage`, the damage score.
-- HUD `ROUND n - RED a v b BLUE`, board `X` and "Round Limit", Match Info,
-  `callvote scorelimit` as a Round Limit.
-- Tests: unit (match, arena, scoreboard, vote, menu, rulesets); tier 7
-  elimination with bots; tier 21 human-ca (scripted, non-puppet players:
-  puppets' frags made the order of events vary); tier 4 boots `ca`.
-- Found by tier 21: a held-out joiner followed an enemy (fixed). Found by
-  tier 7: the deciding round's watchers stayed spectators at intermission
-  (fixed).
-- Not covered by a game test: the arena loadout's 150/150 and no items (unit
-  tests cover the loadout), the damage score in play, "last one standing",
-  the no-free-cam freeze with nobody to follow.
-- Next: QC-style Duel rounds as a built-in variant (`match_round_lives 3`,
-  `match_round_freeze 1`, first to 2) once CA is playtested; then
-  timeouts/pauses and in-game admin; the M4 checklist on Q2REX.
+**Next:** the FFA/Duel miniscore highlight. Mock-up options (Chris hasn't
+chosen): A, the stock team frame `i_ctfj` inset on your face (recommended);
+B, the carousel frame; D, a green `>`; rows "leader and you" (recommended)
+or "top two". Then timeouts/pauses and in-game admin; the M4 checklist.
 
 **The playtest rig** (`~/q2playtest`, `./run.sh`, `./cmd.sh "<console>"`).
 Deploy with a temp file and `mv`, then `map q2dm1` (`gamemap` keeps the old
@@ -326,7 +308,7 @@ default doesn't apply until the server restarts).
   - Arrival and memory across map changes.
   - Lock rosters (an emptied team unlocks; teamkick works in team modes).
   - Readyteam as a vote.
-  - Tests: 19 harness tiers on two engines.
+  - Tests: 18 harness tiers on two engines.
   - About half the code per feature.
 - **MMREX features that do nothing:**
   - `g_dm_spawn_farthest`
@@ -361,7 +343,7 @@ default doesn't apply until the server restarts).
 
 ## Open human gates
 - Single-player checklist for M2a, whenever convenient (any build from now on).
-- **Playtest** (`docs/checklists/playtest.md`): match flow, Duel and HoonyMode in
+- **Playtest** (`docs/checklists/playtest.md`): match flow, Duel, TDM and CTF in
   a retail client. Rig: `scripts/playtest/setup-local-rig.sh` -> `~/q2playtest`,
   join with `connect 127.0.0.1:5073`. Doesn't block further work.
 

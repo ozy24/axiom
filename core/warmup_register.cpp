@@ -2,7 +2,6 @@
 // full ammo, for everyone spawning in warmup; no drops when they die.
 #include "g_local.h"
 
-#include "core/arena_hooks.h"
 #include "core/gametype.h"
 #include "core/match_hooks.h"
 #include "core/warmup_hooks.h"
@@ -90,5 +89,5 @@ void Core_Warmup_Loadout(edict_t *ent)
 
 bool Core_Warmup_KeepsWeapons(const edict_t *ent)
 {
-	return On(ent) || Core_Arena_On(); // the arena: the loadout is everyone's, nothing to drop
+	return On(ent);
 }
