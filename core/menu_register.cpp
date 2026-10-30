@@ -47,6 +47,7 @@ struct MenuState
 	char args[kMenuRows][64]; // VoteFor: "map q2dm3"; VoteVariants: the gametype; VoteSetting: the kind
 	char gametype[32];        // Page::VoteVariants: whose gametype; Page::VoteSetting: which setting;
 	                          // Page::TeamMate: the teammate's client number
+	int list_page;            // a long choice list's page, from 0
 };
 
 bool Active()
@@ -137,7 +138,7 @@ void Fill(pmenu_t *entries, MenuState &state, const MenuPage &page)
 	}
 }
 
-MenuPage Build(const edict_t *ent, Page page, const char *gametype)
+MenuPage Build(const edict_t *ent, Page page, const char *gametype, int list_page)
 {
 	const MenuView view = View(ent);
 	switch (page)
@@ -151,13 +152,13 @@ MenuPage Build(const edict_t *ent, Page page, const char *gametype)
 	case Page::CallVote:
 		return Core_Menu_CallVote(view);
 	case Page::VoteMaps:
-		return Core_Menu_VoteMaps(view);
+		return Core_Menu_VoteMaps(view, list_page);
 	case Page::VoteGametypes:
-		return Core_Menu_VoteGametypes(view);
+		return Core_Menu_VoteGametypes(view, list_page);
 	case Page::VoteVariants:
-		return Core_Menu_VoteVariants(view, gametype);
+		return Core_Menu_VoteVariants(view, gametype, list_page);
 	case Page::VoteSetting:
-		return Core_Menu_VoteSetting(view, gametype);
+		return Core_Menu_VoteSetting(view, gametype, list_page);
 	case Page::Team:
 		return Core_Menu_Team(view);
 	case Page::TeamMate:
@@ -176,7 +177,7 @@ void Update(edict_t *ent)
 	const bool on_row = hnd->cur >= 0 && hnd->cur < kMenuRows;
 	const MenuAction was = on_row ? state->actions[hnd->cur] : MenuAction::None;
 	const std::string arg = on_row ? state->args[hnd->cur] : "";
-	const MenuPage page = Build(ent, state->page, state->gametype);
+	const MenuPage page = Build(ent, state->page, state->gametype, state->list_page);
 	Fill(hnd->entries, *state, page);
 	hnd->cur = Core_Menu_Keep(page, hnd->cur, was, arg);
 }
@@ -188,7 +189,8 @@ void Open(edict_t *ent, Page which, const char *gametype = "")
 	MenuState *state = (MenuState *)gi.TagMalloc(sizeof(MenuState), TAG_LEVEL);
 	state->page = which;
 	Q_strlcpy(state->gametype, gametype, sizeof(state->gametype));
-	const MenuPage page = Build(ent, which, gametype);
+	state->list_page = 0;
+	const MenuPage page = Build(ent, which, gametype, 0);
 	pmenu_t entries[kMenuRows] = {};
 	Fill(entries, *state, page);
 	const int cur = which == Page::Main ? Core_Menu_MainCursor(page, View(ent)) : Core_Menu_Next(page, -1);
@@ -300,6 +302,14 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 	{
 		const std::string kind = state->args[hnd->cur]; // Open frees this menu's state
 		Open(ent, Page::VoteSetting, kind.c_str());
+		break;
+	}
+	case MenuAction::PagePrev:
+	case MenuAction::PageNext:
+	{
+		MenuState *paged = (MenuState *)hnd->arg;
+		paged->list_page = std::max(0, paged->list_page + (paged->actions[hnd->cur] == MenuAction::PageNext ? 1 : -1));
+		PMenu_Update(ent); // the page's choices, under the same row
 		break;
 	}
 	case MenuAction::VoteFor:

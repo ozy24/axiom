@@ -141,10 +141,12 @@ TEST_CASE("menu pages fit stock's 18 rows and the client's 1024-byte layout")
 		v.vote_open = state & 2;
 		v.team = state & 4 ? 1 : 0; // on a team: Spectate shows too (with a vote and Ready, the longest)
 		v.vote_can_call = !v.vote_open;
+		// Page 1 of the long lists has Prev and Next both: the longest.
 		for (const MenuPage &page :
 		     {Core_Menu_Main(v), Core_Menu_MatchInfo(v), Core_Menu_CallVote(v), Core_Menu_VoteMaps(v),
-		      Core_Menu_VoteGametypes(v), Core_Menu_VoteVariants(v, v.vote_gametypes[0].id),
-		      Core_Menu_VoteSetting(v, "timelimit"), Core_Menu_Team(v), Core_Menu_TeamMate(v, 39)})
+		      Core_Menu_VoteMaps(v, 1), Core_Menu_VoteGametypes(v, 1),
+		      Core_Menu_VoteVariants(v, v.vote_gametypes[0].id, 1), Core_Menu_VoteSetting(v, "timelimit", 1),
+		      Core_Menu_Team(v), Core_Menu_TeamMate(v, 39)})
 		{
 			CHECK(page.size() == (size_t)kMenuRows);
 			for (const MenuRow &row : page)
@@ -420,17 +422,45 @@ TEST_CASE("menu: a gametype with variants opens them; one with a single ruleset 
 	CHECK(Row(Core_Menu_VoteGametypes(v), "Team Deathmatch")->action == MenuAction::None);
 }
 
-TEST_CASE("menu: a list longer than the page points to callvote")
+TEST_CASE("menu: a list longer than the page is paged, as MMREX's map vote")
 {
 	MenuView v = Voting(Ffa());
 	v.vote_maps.clear();
-	for (int i = 1; i <= 20; ++i)
+	for (int i = 1; i <= 26; ++i)
 		v.vote_maps.push_back("map" + std::to_string(i));
-	const MenuPage page = Core_Menu_VoteMaps(v);
-	CHECK(page.size() == (size_t)kMenuRows);
-	CHECK(Shows(page, "map13"));
-	CHECK_FALSE(Shows(page, "map14"));
-	CHECK(Shows(page, "More: callvote map"));
+	const MenuPage first = Core_Menu_VoteMaps(v);
+	CHECK(first.size() == (size_t)kMenuRows);
+	CHECK(first[0].text == "Vote: Map (1/3)");
+	CHECK(Shows(first, "map12"));
+	CHECK_FALSE(Shows(first, "map13"));
+	CHECK_FALSE(Row(first, "< Prev Page"));
+	REQUIRE(Row(first, "> Next Page"));
+	CHECK(Row(first, "> Next Page")->action == MenuAction::PageNext);
+
+	const MenuPage middle = Core_Menu_VoteMaps(v, 1);
+	CHECK(middle[0].text == "Vote: Map (2/3)");
+	CHECK(Shows(middle, "map13"));
+	CHECK(Shows(middle, "map24"));
+	CHECK_FALSE(Shows(middle, "map12"));
+	REQUIRE(Row(middle, "< Prev Page"));
+	CHECK(Row(middle, "< Prev Page")->action == MenuAction::PagePrev);
+	CHECK(Row(middle, "> Next Page"));
+
+	const MenuPage last = Core_Menu_VoteMaps(v, 2);
+	CHECK(last[0].text == "Vote: Map (3/3)");
+	CHECK(Shows(last, "map26"));
+	CHECK(Row(last, "< Prev Page"));
+	CHECK_FALSE(Row(last, "> Next Page"));
+	CHECK(last.back().text == "Back");
+	CHECK(Core_Menu_VoteMaps(v, 9)[0].text == "Vote: Map (3/3)"); // clamped
+	CHECK(Core_Menu_VoteMaps(v, -1)[0].text == "Vote: Map (1/3)");
+
+	// A list that fits keeps its plain title and no paging rows.
+	v.vote_maps.resize(14);
+	const MenuPage fits = Core_Menu_VoteMaps(v);
+	CHECK(fits[0].text == "Vote: Map");
+	CHECK(Shows(fits, "map14"));
+	CHECK_FALSE(Row(fits, "> Next Page"));
 }
 
 TEST_CASE("menu: setting votes follow the kinds, each opening its choices")
