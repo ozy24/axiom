@@ -242,10 +242,10 @@ void Watch(edict_t *ent, bool body)
 	ent->deadflag = true;
 	ent->health = 0;
 	cl->respawn_time = level.time + 3600_sec;
+	watching[SlotOf(ent)] = true; // first: the target must pass the teammates-only rule
 	cl->chase_target = TeammateToWatch(ent);
 	cl->update_chase = cl->chase_target != nullptr;
 	gi.linkentity(ent);
-	watching[SlotOf(ent)] = true;
 }
 
 // Back in: through respawn, which clears SVF_NOCLIENT and leaves no second
