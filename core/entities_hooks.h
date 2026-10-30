@@ -25,7 +25,8 @@ bool Core_Entities_Inhibit(edict_t *ent);
 bool Core_Entities_Spawn(edict_t *ent);
 
 // From SpawnEntities once every entity has spawned: aims the jump pads (a
-// trigger_push with a target) and logs what the keys left out.
+// trigger_push with a target), hides trigger_teleport's brush and logs what
+// the keys left out.
 void Core_Entities_Spawned();
 
 // From SP_misc_teleporter_dest: the map's worldspawn asked for no pads

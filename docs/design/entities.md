@@ -45,6 +45,7 @@ their keys`.
 | `target_teleporter` | a point teleporters send players to (its `angle` faces them) |
 | `target_relay` | stock's `trigger_relay` |
 | `target_remove_powerups` | when fired, takes the activator's powerups and timers; a tech or flag drops as if they'd died |
+| `trigger_teleport` | Rogue's, as stock, but its brush hidden like every other trigger's: stock draws it, trigger texture and all (mm-fleshref's teleporter). `Entities: 1 teleport triggers hidden` |
 | worldspawn `no_dm_spawnpads` | no pads drawn under spawn points and teleporter exits |
 
 Not supported: MuffMode's own items (`item_regen` is a new powerup, which

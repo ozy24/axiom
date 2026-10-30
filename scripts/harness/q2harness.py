@@ -1235,7 +1235,8 @@ def tier_human_teamlock(args, results):
     first on each team is captain; a player changes team from the Tab menu
     (playtest 2026-10-29: it did nothing); both teams lock as the match goes live; a
     newcomer is refused (told alone), a rostered player who drops gets back
-    in; the captain unlocks for the newcomer, relocks and kicks them, and
+    in; the captain unlocks for the newcomer, relocks and kicks them (with no join menu left open: a jump would
+    select it), and
     they're refused again; the captain leaves and the next teammate takes
     over; a team whose players all leave unlocks itself. Q2RED only."""
     label = "17 human-teamlock"
@@ -1306,6 +1307,17 @@ at 58 3 disconnect
     # Alice, Bob, Carol, Dave; Bob back after his drop; Eve after the unlock.
     if len(joins) != 6:
         detail.append(f"{len(joins)} team joins, expected 6")
+    # The kick leaves Eve no menu: stock's join menu, with its cursor on a
+    # team, took the next jump of a player kicked mid-fight as a join
+    # (playtest 2026-10-30: kicked to the other team). Its open, in the
+    # kick's frame, is closed again in that frame; an open menu redraws.
+    kicked = [r["t"] for r in locs if r["base"] == "{} was removed from {}.\n"]
+    menus = [r for r in tap if r.get("type") == "layout" and r["to"] == eve and kicked
+             and kicked[0] < r["t"] < kicked[0] + 4000 and '"Join ' in r["text"]]
+    if not kicked:
+        detail.append("Eve was never kicked")
+    elif menus:
+        detail.append(f"Eve was shown the join menu {len(menus)} times after her kick")
     # A playing client who changes team: Dave to RED from the Tab menu (its
     # first choice for him), then back with `team blue`.
     dave = [r["args"][1] for r in locs if r["base"] == "$g_changed_team" and r["args"][0] == f"##P{humans['Dave']}"]
@@ -1639,6 +1651,7 @@ ENTITY_ADDITIONS = """
 { "classname" "trigger_push" "origin" "-48 464 660" "target" "t_apex" }
 { "classname" "target_remove_powerups" "targetname" "t_strip" "origin" "0 0 0" }
 { "classname" "trigger_multiple" "origin" "0 0 0" "mins" "-4096 -4096 -4096" "maxs" "4096 4096 4096" "target" "t_strip" }
+{ "classname" "trigger_teleport" "model" "*1" "target" "t_apex" }
 """
 
 
@@ -1650,7 +1663,8 @@ def tier_entities(args, results):
     in their place), nothing goes unknown, and `sv saveents` writes a
     starting file for a map without one but never over an existing one.
     A map-sized trigger fires target_remove_powerups at the bots (it once
-    crashed on its first player: playtest 2026-10-30)."""
+    crashed on its first player: playtest 2026-10-30), and a
+    trigger_teleport's brush is hidden (stock draws it)."""
     world, rest = bsp_entities(args.retail, "q2dm1").split("}", 1)
     text = world + '"author" "harness"\n"no_dm_spawnpads" "1"\n}' + rest + ENTITY_ADDITIONS
     for gametype, left_out in (("ffa", 4), ("duel", 3)):
@@ -1677,6 +1691,9 @@ def tier_entities(args, results):
             detail.append(f"expected '{want}', got {found}")
         if "Entities: 1 jump pads aimed" not in log:
             detail.append("the jump pad wasn't aimed at its target_position")
+        # Stock draws its brush, trigger texture and all (playtest 2026-10-30).
+        if "Entities: 1 teleport triggers hidden" not in log:
+            detail.append("the trigger_teleport wasn't hidden")
         for unknown in re.findall(r".* is not a valid field|.*doesn't have a spawn function", log):
             if any(k in unknown for k in ("gametype", "powerups", "notq2", "notarena", "author", "no_dm_spawnpads",
                                           "ammo_slugs_small", "target_position", "target_remove_powerups")):

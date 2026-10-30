@@ -186,11 +186,22 @@ void Core_Entities_Spawned()
 {
 	if (!deathmatch->integer)
 		return;
-	int pads = 0;
+	int pads = 0, hidden = 0;
 	for (uint32_t i = game.maxclients + 1; i < globals.num_edicts; ++i)
 	{
 		edict_t *ent = g_edicts + i;
-		if (!ent->inuse || !ent->classname || strcmp(ent->classname, "trigger_push") || !ent->target)
+		if (!ent->inuse || !ent->classname)
+			continue;
+		// Rogue's trigger_teleport, unlike every other trigger, leaves its
+		// brush drawn: the trigger texture shows (playtest 2026-10-30,
+		// mm-fleshref). MuffMode hides it, as InitTrigger does.
+		if (!strcmp(ent->classname, "trigger_teleport") && !(ent->svflags & SVF_NOCLIENT))
+		{
+			ent->svflags |= SVF_NOCLIENT;
+			++hidden;
+			continue;
+		}
+		if (strcmp(ent->classname, "trigger_push") || !ent->target)
 			continue;
 		const edict_t *apex = G_PickTarget(ent->target);
 		if (!apex)
@@ -210,6 +221,8 @@ void Core_Entities_Spawned()
 	}
 	if (pads)
 		gi.Com_PrintFmt("Entities: {} jump pads aimed\n", pads);
+	if (hidden)
+		gi.Com_PrintFmt("Entities: {} teleport triggers hidden\n", hidden);
 	if (left_out)
 		gi.Com_PrintFmt("Entities: {} left out of {} by their keys\n", left_out, Mode().gametype.c_str());
 }

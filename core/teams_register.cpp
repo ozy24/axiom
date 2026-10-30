@@ -210,7 +210,12 @@ void Kick(edict_t *ent, edict_t *target)
 	gi.LocBroadcast_Print(PRINT_HIGH, "{} was removed from {}.\n", target->client->pers.netname, TeamName(team));
 	gi.Com_PrintFmt("Teams: {} kicked from {} by {}\n", Core_PlayerName(target).c_str(), TeamName(team),
 	                Core_PlayerName(ent).c_str());
-	CTFObserver(target); // drops a carried flag and tech; the respawn reopens the join menu
+	CTFObserver(target); // drops a carried flag and tech
+	// Not stock's join menu, which the respawn opens: its cursor sits on a
+	// team, and a player kicked mid-fight joined it with their next jump
+	// (playtest 2026-10-30: kicked to the other team).
+	PMenu_Close(target);
+	gi.LocCenter_Print(target, "You were removed from {}.\nTab opens the menu.", TeamName(team));
 	Announce(teams.Sync(Snapshot()));
 }
 
