@@ -767,6 +767,16 @@ bool Core_Match_HoldWatcher(const edict_t *ent)
 	return Core_Match_Watching(ent) && !ent->client->chase_target;
 }
 
+bool Core_Match_Elimination()
+{
+	return begun && match.Elimination();
+}
+
+bool Core_Match_Eliminated(const edict_t *ent)
+{
+	return begun && match.Elimination() && ent->client && match.Eliminated(SlotOf(ent));
+}
+
 bool Core_Match_RoundInPlay()
 {
 	return begun && match.Elimination() && (match.State() == MatchState::Live || match.State() == MatchState::Overtime);

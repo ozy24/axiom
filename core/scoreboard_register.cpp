@@ -131,18 +131,21 @@ void Core_Scoreboard_Died(const edict_t *self)
 	CountOf((uint32_t)(self - g_edicts) - 1).deaths++;
 }
 
-void Core_Scoreboard_TeamReady(std::string &layout, size_t max)
+void Core_Scoreboard_TeamMarks(std::string &layout, size_t max)
 {
-	if (!Core_Match_ReadyUp())
+	const bool ready_up = Core_Match_ReadyUp();
+	if (!ready_up && !Core_Match_Elimination())
 		return;
-	std::set<int> ready;
+	std::set<int> marked;
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		const edict_t *other = ClientEdict(i);
-		if (Present(other) && Core_Match_Playing(other) && Core_Match_IsReady(other))
-			ready.insert((int)i);
+		if (!Present(other) || !Core_Match_Playing(other))
+			continue;
+		if (ready_up ? Core_Match_IsReady(other) : Core_Match_Eliminated(other))
+			marked.insert((int)i);
 	}
-	layout += Core_Scoreboard_TeamReady(layout, ready, max);
+	layout += Core_Scoreboard_TeamMarks(layout, marked, ready_up ? 'R' : 'X', max);
 }
 
 bool Core_Scoreboard_Columns(const edict_t *ent, std::string &layout)

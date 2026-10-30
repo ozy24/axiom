@@ -73,6 +73,10 @@ bool Core_Match_HoldWatcher(const edict_t *ent);
 void Core_Match_Disconnect(edict_t *ent);
 // An elimination round is being played (LIVE or overtime): the damage score counts.
 bool Core_Match_RoundInPlay();
+// Elimination rounds are on (the board's Round Limit, its X marks).
+bool Core_Match_Elimination();
+// Out of the elimination round under way (watching, or dead with no lives left).
+bool Core_Match_Eliminated(const edict_t *ent);
 
 // `ready` / `notready`; true if handled. From ClientCommand, before id's chain.
 bool Core_Match_ClientCommand(edict_t *ent, const char *cmd);

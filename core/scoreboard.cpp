@@ -179,10 +179,20 @@ void Spectators(std::string &out, std::vector<ScoreboardPlayer> watching, int ro
 
 std::string Core_Scoreboard_ReadyMark(int x, int y)
 {
-	return Tokens("xv", x, "yv", y, "string2 R");
+	return Core_Scoreboard_Mark(x, y, 'R');
+}
+
+std::string Core_Scoreboard_Mark(int x, int y, char mark)
+{
+	return Tokens("xv", x, "yv", y, "string2", std::string(1, mark));
 }
 
 std::string Core_Scoreboard_TeamReady(std::string_view layout, const std::set<int> &ready, size_t max)
+{
+	return Core_Scoreboard_TeamMarks(layout, ready, 'R', max);
+}
+
+std::string Core_Scoreboard_TeamMarks(std::string_view layout, const std::set<int> &ready, char mark_char, size_t max)
 {
 	// Stock's team rows: "ctf <x> <y> <client> ...", x -40 or 200, y from 42.
 	// The spectators' rows use the same x but come after the "$g_pc_spectators"
@@ -200,7 +210,7 @@ std::string Core_Scoreboard_TeamReady(std::string_view layout, const std::set<in
 		const long client = std::strtol(next, &next, 10);
 		if ((x != kTeamRowX[0] && x != kTeamRowX[1]) || y < kTeamFirstRowY || !ready.count((int)client))
 			continue;
-		const std::string mark = Core_Scoreboard_ReadyMark(kTeamReadyX[x == kTeamRowX[1]], (int)y);
+		const std::string mark = Core_Scoreboard_Mark(kTeamReadyX[x == kTeamRowX[1]], (int)y, mark_char);
 		if (layout.size() + out.size() + mark.size() < max)
 			out += mark;
 	}
