@@ -174,7 +174,8 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   a time limit vote moves the clock without a restart, friendly fire and
   an out-of-range time are refused, and a powerups vote reloads the map
   with the voted time limit kept. The column scoreboard (decision 0018)
-  shows a suicide as a death.
+  shows a suicide as a death; a frag between them tells both players
+  (`g_frag_messages`), the place line while live.
 - **Tier 17 human-teamlock:** TDM with five simulated players on the
   built-in ruleset (`match_lock 1`): first-on captains, both teams locked
   at LIVE, a newcomer refused (told alone), a dropped player back in, the
