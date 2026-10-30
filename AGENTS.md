@@ -197,6 +197,11 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   locked by the server: a passed `callvote shuffle` gives a 3/2 split that
   isn't the old groups, every team skin follows, RED is unlocked; once
   live, a shuffle is refused (Q2RED only).
+- **Tier 22 entities:** a q2dm1 `.ent` override (the BSP's entities plus
+  MuffMode's keys, small ammo, a jump pad and its targets) in FFA and
+  Duel: the file replaces the BSP's, each mode leaves out what its keys
+  say, nothing is unknown, the pad is aimed, and `sv saveents` writes
+  q2dm2's list but never over an existing file (docs/design/entities.md).
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

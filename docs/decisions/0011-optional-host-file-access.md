@@ -20,5 +20,9 @@ and Q2REX doesn't offer it, so:
 Harness tier 6 checks the record lands in `baseq2/matches` on Q2RED and in the
 working directory on Q2REX.
 
+**Reopened 2026-10-30 (0023):** `.ent` override files are the first reader:
+`LoadFile` when offered, else the plain path from `basedir`. `sv saveents`
+always writes the plain path: the extension writes only records.
+
 **Reopen if:** Q2REX or retail gains file access (then 0003's reopen condition
 may be met), or a feature needs to read data that `exec` can't carry.

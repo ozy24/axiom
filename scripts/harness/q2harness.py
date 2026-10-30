@@ -48,6 +48,8 @@ Tiers (plan Phase 1b):
                  the caller's team alone, readyall readying everyone (Q2RED).
  20. human-shuffle  The shuffle vote in a TDM warmup: a new even split, team
                  skins to match, the locks off; refused once live (Q2RED).
+ 22. entities    A .ent override with MuffMode's mode keys, ammo and jump
+                 pad: each mode spawns what its keys say; sv saveents.
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -1611,10 +1613,91 @@ at 6 1 cmd team blue
         results.append((label, not detail, detail))
 
 
+def bsp_entities(retail, mapname):
+    """The entity string of maps/<mapname>.bsp in retail's pak0."""
+    data = (pathlib.Path(retail) / "baseq2" / "pak0.pak").read_bytes()
+    _, offset, length = struct.unpack("<4sii", data[:12])
+    for i in range(length // 64):
+        name, start, size = struct.unpack("<56sii", data[offset + i * 64:offset + i * 64 + 64])
+        if name.split(b"\0")[0].decode() == f"maps/{mapname}.bsp":
+            bsp = data[start:start + size]
+            ents_at, ents_len = struct.unpack("<ii", bsp[8:16])
+            return bsp[ents_at:ents_at + ents_len].split(b"\0")[0].decode("latin1")
+    raise RuntimeError(f"maps/{mapname}.bsp not in pak0")
+
+
+# MuffMode's map entities (docs/design/entities.md), added to q2dm1's own in
+# an override file: what each mode leaves out, and what it can't spawn.
+ENTITY_ADDITIONS = """
+{ "classname" "item_quad" "origin" "-80 432 676" "gametype" "duel" }
+{ "classname" "item_health_mega" "origin" "-80 400 676" "gametype" "tournament" }
+{ "classname" "item_armor_combat" "origin" "-80 464 676" "not_gametype" "duel" }
+{ "classname" "item_adrenaline" "origin" "-112 432 676" "powerups_off" "1" }
+{ "classname" "item_health" "origin" "-112 464 676" "notq2" "1" "notarena" "1" }
+{ "classname" "ammo_slugs_small" "origin" "-48 432 676" }
+{ "classname" "target_position" "targetname" "t_apex" "origin" "200 432 900" }
+{ "classname" "trigger_push" "origin" "-48 464 660" "target" "t_apex" }
+{ "classname" "target_remove_powerups" "targetname" "t_strip" "origin" "0 0 0" }
+"""
+
+
+def tier_entities(args, results):
+    """A .ent override for q2dm1 with MuffMode's mode keys, ammo, jump pad and
+    targets: it replaces the BSP's entities in deathmatch, each mode leaves
+    out what its keys say (FFA: the Duel-only quad and mega, the
+    no-powerups adrenaline, the not-Quake-II health; Duel: the combat armour
+    in their place), nothing goes unknown, and `sv saveents` writes a
+    starting file for a map without one but never over an existing one."""
+    world, rest = bsp_entities(args.retail, "q2dm1").split("}", 1)
+    text = world + '"author" "harness"\n"no_dm_spawnpads" "1"\n}' + rest + ENTITY_ADDITIONS
+    for gametype, left_out in (("ffa", 4), ("duel", 3)):
+        rig = RIGS[args.engine_kind](args, args.candidate, f"t22-{gametype}")
+        game_dir = rig.dir / "baseq2" if args.engine_kind == "q2red" else rig.base / "baseq2"
+        (game_dir / "maps").mkdir(parents=True, exist_ok=True)
+        (game_dir / "maps" / "q2dm1.ent").write_text(text, encoding="latin1")
+        startup = ["+set", "deathmatch", "1", "+set", "maxclients", "4", "+set", "g_gametype", gametype,
+                   "+map", "q2dm1"]
+        steps = [rig.wait_ready(), ("sleep", 3), ("cmd", "sv saveents"), ("sleep", 1)]
+        if gametype == "ffa":
+            steps += [("cmd", "gamemap q2dm2"), ("wait", rig.ready_re, 60, 2),
+                      ("sleep", 3), ("cmd", "sv saveents"), ("wait", r"Entities written to", 20)]
+        steps += [("sleep", 1), ("cmd", "quit")]
+        log = rig.run(startup, steps, timeout=args.boot_timeout + 120)
+        detail = []
+        if not re.search(r"Entities: \S*maps/q2dm1\.ent\n", log):
+            detail.append("no 'Entities: maps/q2dm1.ent' line: the override wasn't used")
+        want = f"Entities: {left_out} left out of {gametype} by their keys"
+        if want not in log:
+            found = re.findall(r"Entities: \d+ left out.*", log)
+            detail.append(f"expected '{want}', got {found}")
+        if "Entities: 1 jump pads aimed" not in log:
+            detail.append("the jump pad wasn't aimed at its target_position")
+        for unknown in re.findall(r".* is not a valid field|.*doesn't have a spawn function", log):
+            if any(k in unknown for k in ("gametype", "powerups", "notq2", "notarena", "author", "no_dm_spawnpads",
+                                          "ammo_slugs_small", "target_position", "target_remove_powerups")):
+                detail.append(f"unknown to the module: {unknown.strip()}")
+        if not re.search(r"q2dm1\.ent already exists", log):
+            detail.append("sv saveents didn't refuse the existing q2dm1.ent")
+        if gametype == "ffa":
+            written = [p for p in rig.dir.rglob("q2dm2.ent")]
+            if not written:
+                detail.append("sv saveents wrote no q2dm2.ent")
+            elif not written[0].read_text(errors="replace").lstrip().startswith("{"):
+                detail.append(f"{written[0]} isn't an entity list")
+            if len(re.findall(r"Entities: \S*\.ent\n", log)) != 1:
+                detail.append("an override was used for q2dm2, which has none")
+        if rig.returncode != 0:
+            detail.append(f"server exited with code {rig.returncode}")
+        if "==== ShutdownGame ====" not in log:
+            detail.append("no clean ShutdownGame")
+        detail += error_lines(log, rig)[:20]
+        results.append((f"22 entities {gametype}", not detail, detail))
+
+
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
          tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
-         tier_human_join, tier_human_readyvote, tier_human_shuffle)
+         tier_human_join, tier_human_readyvote, tier_human_shuffle, tier_entities)
 
 
 def run_tier(tier, args):
@@ -1716,7 +1799,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

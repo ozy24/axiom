@@ -5,6 +5,7 @@
 #include "core/match_hooks.h" // [mod]
 #include "core/id_view_hooks.h" // [mod]
 #include "core/miniscore_hooks.h" // [mod]
+#include "core/entities_hooks.h" // [mod]
 
 struct spawn_t
 {
@@ -476,6 +477,9 @@ void ED_CallSpawn(edict_t *ent)
 		ent->classname = GetItemByIndex(IT_WEAPON_PLASMABEAM)->classname;
 	// pmm
 
+	if (Core_Entities_Spawn(ent)) // [mod] MuffMode's ammo and points as stock's; its own entities (deathmatch)
+		return; // [mod]
+
 	// check item spawn functions
 	for (i = 0, item = itemlist; i < IT_TOTAL; i++, item++)
 	{
@@ -897,6 +901,9 @@ void ED_ParseField(const char *key, const char *value, edict_t *ent)
 		return;
 	}
 
+	if (Core_Entities_Key(ent, key, value)) // [mod] a mode key (gametype, powerups_on...), kept for G_InhibitEntity
+		return; // [mod]
+
 	gi.Com_PrintFmt("{} is not a valid field\n", key);
 }
 
@@ -1072,6 +1079,9 @@ void G_FindTeams()
 // inhibit entities from game based on cvars & spawnflags
 inline bool G_InhibitEntity(edict_t *ent)
 {
+	if (Core_Entities_Inhibit(ent)) // [mod] its keys leave it out of this mode (deathmatch)
+		return true; // [mod]
+
 	// dm-only
 	if (deathmatch->integer)
 		return ent->spawnflags.has(SPAWNFLAG_NOT_DEATHMATCH);
@@ -1198,6 +1208,8 @@ void SpawnEntities(const char *mapname, const char *entities, const char *spawnp
 	// reserve some spots for dead player bodies for coop / deathmatch
 	InitBodyQue();
 
+	entities = Core_Entities_Override(mapname, entities); // [mod] a .ent override file (deathmatch)
+
 	// parse ents
 	while (1)
 	{
@@ -1249,6 +1261,8 @@ void SpawnEntities(const char *mapname, const char *entities, const char *spawnp
 	G_PrecacheInventoryItems();
 
 	G_FindTeams();
+
+	Core_Entities_Spawned(); // [mod] aims the jump pads
 
 	// ZOID
 	CTFSpawn();

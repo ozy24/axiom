@@ -37,3 +37,18 @@ bool Core_HostFiles_Write(const std::string &game_path, std::string_view data)
 	const q2red_filesystem_api_v1_t *fs = Extension();
 	return fs && !game_path.empty() && fs->WriteFile(game_path.c_str(), data.data(), data.size()) == 1;
 }
+
+bool Core_HostFiles_Read(const std::string &game_path, std::string &data)
+{
+	const q2red_filesystem_api_v1_t *fs = Extension();
+	if (!fs || !fs->LoadFile || game_path.empty())
+		return false;
+	void *buffer = nullptr;
+	const int64_t length = fs->LoadFile(game_path.c_str(), &buffer);
+	if (length < 0 || !buffer)
+		return false;
+	data.assign(static_cast<const char *>(buffer), static_cast<size_t>(length));
+	if (fs->FreeFile)
+		fs->FreeFile(buffer);
+	return true;
+}

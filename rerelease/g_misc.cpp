@@ -3,6 +3,7 @@
 // g_misc.c
 
 #include "g_local.h"
+#include "core/entities_hooks.h" // [mod]
 
 /*QUAKED func_group (0 0 0) ?
 Used to group brushes together just for editor convenience.
@@ -2106,6 +2107,8 @@ void SP_misc_teleporter_dest(edict_t *ent)
 	// Paril-KEX N64 doesn't display these
 	if (level.is_n64)
 		return;
+	if (Core_Entities_NoSpawnPads()) // [mod] the map asked for none (no_dm_spawnpads)
+		return; // [mod]
 
 	gi.setmodel(ent, "models/objects/dmspot/tris.md2");
 	ent->s.skinnum = 0;

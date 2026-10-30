@@ -131,6 +131,33 @@ vote one with `callvote shuffle`, decision 0020). For a public
 server, put `set match_lock 0` in `rulesets/tdm.cfg` and `rulesets/ctf.cfg`.
 Details: docs/design/teams.md, docs/decisions/0016.
 
+## Changing a map's items
+
+A map's entities can be replaced without repacking it: put the whole
+entity list in `maps/<map>.ent` and a deathmatch level spawns from it.
+`sv saveents` writes the current map's list there as a starting point (it
+never overwrites one). Each entity can carry keys that choose its modes:
+
+```
+{
+"classname" "item_armor_combat"
+"origin" "-320 -672 2"
+"gametype" "ffa"           // only in FFA; "ffa tdm" for two
+}
+{
+"classname" "item_power_screen"
+"origin" "-320 -672 2"
+"not_gametype" "ffa"       // everywhere but FFA
+}
+```
+
+Also `notteam`, `notfree`, `powerups_on` and `powerups_off` (with the
+powerups vote). MuffMode's maps and `.ent` files use the same keys and
+work as they are. The log names the file it used (`Entities:
+maps/q2dm1.ent`); a broken one is skipped with the reason. `set
+g_entity_override_load 0` turns the files off. Details:
+docs/design/entities.md.
+
 ## Voting and maps
 
 | | Default | |
