@@ -30,7 +30,7 @@ they never read as frags and deaths (Chris, 2026-10-30).
   match. Both count from when the match goes live and pause while the
   player spectates.
 - **Ping**, capped at 999 as the client does.
-- No date line, and the board starts just under stock's frag limit and
+- No date line, and the board starts a row under stock's frag limit and
   clock line (Chris, 2026-10-30). Stock's frag limit, its clock and the
   intermission's "press a button" line stay as they were.
 - About 8 or 9 rows fit, players and spectators together: the 1024-byte

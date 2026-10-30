@@ -15,7 +15,7 @@ constexpr int kRankX = -8, kRowX = 16, kFphX = 222, kTimeX = 262, kPingX = 302, 
 // The team board's rows (stock's CTFScoreboardMessage) and their ready marks:
 // just right of the captain's `*` (-64, 174), where MuffMode puts its tick.
 constexpr int kTeamRowX[2] = {-40, 200}, kTeamReadyX[2] = {-56, 182}, kTeamFirstRowY = 42;
-constexpr int kTitleY = 8, kFirstRowY = 20, kRowHeight = 8; // just under the limit and clock line (yv -10)
+constexpr int kTitleY = 16, kFirstRowY = 28, kRowHeight = 8; // a row under the limit and clock line (yv -10)
 constexpr int kSpectatorX[2] = {16, 216};
 // The spectators' heading and one line ("xv 16 yv 132 string2 Min xv 43 ..."
 // and "ctf 16 140 31 0 999 \"\" "), with room to spare.
