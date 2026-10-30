@@ -1133,7 +1133,8 @@ def tier_human_settings(args, results):
     modes and a time out of range with the usage; a powerups vote reloads the
     map, and the voted time limit is still there after it. The built-in
     ruleset's column scoreboard (decision 0018) shows Bob's suicide as a
-    death, and its frag messages tell both players of each frag. Q2RED only."""
+    death, and its frag messages tell both players of each frag, and the
+    clients are told classic jumps are on. Q2RED only."""
     rig, why = scenario_rig(args, "t16-settings")
     if not rig:
         results.append(("16 human-settings", True, [f"skipped: {why}"]))
@@ -1222,6 +1223,11 @@ at 40 0 cmd vote yes
         detail.append(f"killer messages not in FFA's form: {odd[:3]}")
     if any(len(r.get("args", [])) != 1 for r in victims + killers):
         detail.append("a frag message without the other player's name as its one argument")
+    # Classic jumps (decision 0024) are on in deathmatch by default, and the
+    # clients are told, so their prediction jumps as the server does.
+    classic = [r["text"] for r in tap if r.get("type") == "configstring" and r["index"] == CONFIG_CLASSIC_JUMPS]
+    if not classic or classic[-1] != "1":
+        detail.append(f"classic jumps' configstring {CONFIG_CLASSIC_JUMPS} was {classic}, expected '1'")
     detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
@@ -1640,6 +1646,9 @@ def bsp_entities(retail, mapname):
 
 # MuffMode's map entities (docs/design/entities.md), added to q2dm1's own in
 # an override file: what each mode leaves out, and what it can't spawn.
+# bg_local.h's CONFIG_CLASSIC_JUMPS (pinned by core/movement_register.cpp).
+CONFIG_CLASSIC_JUMPS = 12106
+
 ENTITY_ADDITIONS = """
 { "classname" "item_quad" "origin" "-80 432 676" "gametype" "duel" }
 { "classname" "item_health_mega" "origin" "-80 400 676" "gametype" "tournament" }

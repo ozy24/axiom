@@ -233,7 +233,8 @@ These come from id's code and the engine; each was verified in source.
    `docs/baselines/save-names.txt`. Adding names is fine; regenerate the
    baseline with `--update` and commit it with the change.
 2. **Stock clients run their own cgame.** Movement is predicted client-side, so
-   no movement changes. About 10 stat slots are free (`bg_local.h`). Ammo and
+   no movement changes (one exception, Chris's: original Quake II's jumps
+   below height 0, `g_classic_jumps`, decision 0024). About 10 stat slots are free (`bg_local.h`). Ammo and
    powerup stats are bit-packed by enum index, so no new ammo or powerup types.
    New `$loc` keys show raw on stock clients, so ship no loc file. The
    `static_assert`s in `checks/stock_client_contract.cpp` pin every stat,

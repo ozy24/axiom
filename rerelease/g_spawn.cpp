@@ -6,6 +6,7 @@
 #include "core/id_view_hooks.h" // [mod]
 #include "core/miniscore_hooks.h" // [mod]
 #include "core/entities_hooks.h" // [mod]
+#include "core/movement_hooks.h" // [mod]
 
 struct spawn_t
 {
@@ -1552,6 +1553,7 @@ void SP_worldspawn(edict_t *ent)
 	// it to be changed in sp/coop
 	gi.configstring(CS_AIRACCEL, G_Fmt("{}", sv_airaccelerate->integer).data());
 	pm_config.airaccel = sv_airaccelerate->integer;
+	Core_Movement_Spawn(); // [mod] classic jumps in deathmatch (g_classic_jumps)
 
 	game.airacceleration_modified = sv_airaccelerate->modified_count;
 

@@ -279,6 +279,16 @@ MuffMode's maps now play as in MuffMode, and `.ent` overrides work
 - Not done: a player actually riding a jump pad (the throw is unit-tested;
   try mm-longyd on the rig), the WIP-only entities (`item_regen`,
   `target_delay`, shooters).
+- Playtest on BB (2026-10-30), fixed on the branch: `teamkick` left the
+  join menu open and a jump joined the kicked player to a team (tier 17);
+  Rogue's `trigger_teleport` drew its trigger brush over mm-fleshref's
+  teleporter (tier 22); classic jumps below height 0 for mm-mcoil
+  (`g_classic_jumps`, decision 0024, the one exception to hard rule 2;
+  tier 16 checks the configstring, unit tests the numbers; not yet a
+  player measuring a jump). BB still runs 589a095.
+- Open from the same playtest: teleporters stop you dead (stock zeroes
+  velocity for 160 ms; MuffMode's `g_teleporter_freeze 0`, BB's setting,
+  keeps your speed out of the exit). Chris asked for reasons only so far.
 - Stacked on `match/overtime` (overtime + the mover reset), which waits for
   Chris's playtest; PR both together or rebase once that merges.
 
@@ -363,14 +373,6 @@ default doesn't apply until the server restarts).
   at runtime runs it. Likely the engine drops what `AddCommandString`
   queues during the first map load; needs a tier (server.cfg start plus a
   rulesets/<gt>.cfg) and a fix.
-- **Jumps below height 0 (found 2026-10-30, Chris to decide):** players
-  on BB said mm-mcoil's jumps don't work. MuffMode's movement brings back
-  original Quake II's below-zero quirk: under z 0, steps go from 18 to 20
-  units and jump velocity from 270 to 274 (`repos/MuffMode/src/shared/movement.cpp`,
-  its `docs/q2re-divergence.md`). The whole of mm-mcoil is below 0
-  (z -368 to 112), so every jump there was higher. Matching it is a
-  movement change that stock clients don't predict (hard rule 2): it needs
-  a decision before any code.
 - One intermittent Q2RED segfault in a CTF server with simulated players
   (tier 12, 2026-10-27, once under `--jobs 4`); not reproduced in 16 more
   runs. CI now keeps CRASHLOG.TXT (collect-logs.sh); look there if it recurs.

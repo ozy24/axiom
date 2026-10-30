@@ -5,6 +5,7 @@
 
 #define GAME_INCLUDE
 #include "bg_local.h"
+#include "core/movement.h" // [mod] classic jumps
 
 // [Paril-KEX] generic code to detect & fix a stuck object
 stuck_result_t G_FixStuckObject_Generic(vec3_t &origin, const vec3_t &own_mins, const vec3_t &own_maxs, std::function<stuck_object_trace_fn_t> trace)
@@ -462,7 +463,7 @@ void PM_StepSlideMove()
 	down_v = pml.velocity;
 
 	up = start_o;
-	up[2] += STEPSIZE;
+	up[2] += Core_Movement_StepSize(pm_config.classic_jumps, pml.origin[2]); // [mod] was STEPSIZE
 
 	trace = PM_Trace(start_o, pm->mins, pm->maxs, up);
 	if (trace.allsolid)
@@ -525,7 +526,7 @@ void PM_StepSlideMove()
 		(pm->waterlevel < WATER_WAIST || (!(pm->cmd.buttons & BUTTON_JUMP) && pml.velocity.z <= 0)))
 	{
 		down = pml.origin;
-		down[2] -= STEPSIZE;
+		down[2] -= Core_Movement_StepSize(pm_config.classic_jumps, pml.origin[2]); // [mod] was STEPSIZE
 		trace = PM_Trace(pml.origin, pm->mins, pm->maxs, down);
 		if (trace.fraction < 1.f)
 		{
@@ -1095,11 +1096,7 @@ void PM_CheckJump()
 	pm->groundentity = nullptr;
 	pm->s.pm_flags &= ~PMF_ON_GROUND;
 
-	float jump_height = 270.f;
-
-	pml.velocity[2] += jump_height;
-	if (pml.velocity[2] < jump_height)
-		pml.velocity[2] = jump_height;
+	pml.velocity[2] = Core_Movement_JumpSpeed(pm_config.classic_jumps, pml.velocity[2], pml.origin[2]); // [mod] was += 270, at least 270
 }
 
 /*
@@ -1183,7 +1180,7 @@ void PM_CheckSpecialMovement()
 
 	// we're currently standing on ground, and the snapped position
 	// is a step
-	if (pm->groundentity && fabsf(pml.origin.z - trace.endpos.z) <= STEPSIZE)
+	if (pm->groundentity && fabsf(pml.origin.z - trace.endpos.z) <= Core_Movement_StepSize(pm_config.classic_jumps, pml.origin[2])) // [mod] was STEPSIZE
 		return;
 
 	water_level_t level;
