@@ -50,10 +50,8 @@ to warmup. For a bot-only server, `set match_allow_no_humans 1`.
 
 ## Adding a variant
 
-A variant is another way to play a gametype. HoonyMode, Duel where every
-frag ends a round, was built in and is off for now; you can still run it
-as your own variant (`rulesets/duel_hoony.cfg` with `set match_rounds 1`,
-`set match_suicide_point 1`, `set fraglimit 5`, `set timelimit 15`).
+A variant is another way to play a gametype: Instagib CTF, say, with
+`rulesets/ctf_instagib.cfg`. None are built in (decision 0022).
 To add your own, name the file `<gametype>_<name>.cfg`, write only how it
 differs from the gametype, and list it in `server.cfg`:
 

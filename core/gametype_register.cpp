@@ -17,14 +17,12 @@ const GametypeDef *active = nullptr;
 // retail_mode's stock label. Other engines just carry the cvars, unused.
 void PublishLobbyMode(const GametypeDef &def)
 {
-	const bool rounds = gi.cvar("match_rounds", "0", CVAR_NOFLAGS)->integer != 0;
-	const std::string name = rounds ? std::string(def.title) + " (rounds)" : def.title;
 	const std::pair<const char *, const char *> values[] = {
 	    {"q2rex_lobby_mode", def.id},
-	    {"q2rex_lobby_mode_name", name.c_str()},
+	    {"q2rex_lobby_mode_name", def.title},
 	    {"q2rex_lobby_retail_mode", def.retail_mode},
 	    {"q2rex_lobby_factory", ""},
-	    {"q2rex_lobby_score_kind", rounds ? "rounds" : "frags"},
+	    {"q2rex_lobby_score_kind", "frags"},
 	};
 	for (const auto &[cvar, value] : values)
 	{

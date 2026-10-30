@@ -130,8 +130,6 @@ sim client (network)                  Q2RED                          game module
     never `##P`; the match runs to a 15 s timelimit; after the map change the
     loser waits and the queued human plays, including a client that comes back
     after a delay.
-  - **HoonyMode:** a frag ends the round, both are held, then respawn; the
-    deciding frag ends the match.
   - **TDM / CTF:**
     - `team red` / `team blue` joins;
     - warmup needs both teams;

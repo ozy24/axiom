@@ -9,7 +9,7 @@
 #     BOTS    ozbot-re checkout     (default ~/Code/Projects/ozbot-re; dist/ built)
 #
 # Then:  RIG/run.sh   start (LAN lobby on UDP 5073; log RIG/server.out)
-#        RIG/cmd.sh "sv ruleset hoony"; RIG/cmd.sh "map q2dm1"   (sv ruleset only
+#        RIG/cmd.sh "sv ruleset tdm"; RIG/cmd.sh "map q2dm1"   (sv ruleset only
 #        works once a map is up; server.cfg starts in a mode with `set g_ruleset`)
 #        RIG/update.sh  copy in the latest build/linux-release/game_x64.so
 #        RIG/stop.sh

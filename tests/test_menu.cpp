@@ -56,7 +56,7 @@ MenuView Longest()
 	v.hostname = v.gametype = v.map = v.map_file = v.next_map = v.ruleset = std::string(60, 'W');
 	v.red = v.blue = 99;
 	v.team = 0;
-	v.ready_up = v.ready_required = v.rounds = v.warmup = true;
+	v.ready_up = v.ready_required = v.warmup = true;
 	v.overtime = -1;
 	v.capturelimit = v.fraglimit = 999;
 	v.timelimit_min = 999;

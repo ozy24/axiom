@@ -169,7 +169,7 @@ std::string Commands(const VoteProposal &p)
 	case VoteKind::Gametype:
 	{
 		// The whole ruleset, from the gametype's defaults (decision 0013):
-		// HoonyMode's rounds must not follow a vote to TDM. The map is picked
+		// a variant's settings must not follow a vote to another gametype. The map is picked
 		// once its configs have run (`sv votemap`), from the g_map_list they set.
 		const std::optional<Ruleset> r = Core_Rulesets_Find(p.arg);
 		if (!r || !GametypeById(r->gametype))

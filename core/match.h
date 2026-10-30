@@ -9,7 +9,6 @@
 #include <array>
 #include <cstdint>
 #include <string>
-#include <utility>
 #include <vector>
 
 enum class MatchState
@@ -18,51 +17,38 @@ enum class MatchState
 	Countdown,
 	Live,
 	Overtime,
-	RoundOver,      // a frag ended the round: the winner plays on, the dead stay dead
-	RoundCountdown, // then everyone respawned, frozen, counting down to the next round
 	Intermission,
 };
 
 const char *MatchStateName(MatchState state);
 
-// The match is being played: live, overtime, or between rounds. Not warmup,
-// the countdown or the intermission.
+// The match is being played: live or overtime. Not warmup, the countdown or
+// the intermission.
 bool MatchStateInPlay(MatchState state);
-
-struct MatchPlayer;
-
-// The one playing client other than `self`, or -1 if there isn't exactly one
-// (match_suicide_point gives that opponent a suicide's point).
-int Core_SuicideOpponent(const std::vector<MatchPlayer> &players, int self);
 
 struct MatchConfig
 {
-	bool enabled = false;              // match_flow: false = stock (live immediately)
-	bool ready_required = true;        // match_ready
-	int min_players = 2;               // match_minplayers: playing clients, bots too
-	bool allow_no_humans = false;      // match_allow_no_humans: bots may play a match alone
-	int64_t warmup_time_ms = 0;        // match_warmup_time; 0 = wait for ready
-	int64_t countdown_ms = 10000;      // match_countdown
-	int overtime = 0;                  // match_overtime: 0 none, -1 sudden death, N minutes
-	int64_t timelimit_ms = 0;          // timelimit, from the start of LIVE; 0 = none
-	int fraglimit = 0;                 // 0 = none
-	bool rounds_on_frag = false;       // match_rounds 1: every score change ends a round (HoonyMode)
-	int64_t round_pause_ms = 2000;     // match_round_pause: after the frag, before the respawn
-	int64_t round_countdown_ms = 5000; // match_round_countdown: frozen at the spawns
-	bool teams = false;                // TDM, CTF: the lead and ties go by MatchInput::team_scores
-	bool fraglimit_on_teams = false;   // TDM: fraglimit applies to team totals (stock CheckEndTDMLevel)
-	int64_t join_grace_ms = 0;         // a new level: no countdown before this (players reloading the map)
-	int64_t join_wait_ms = 0;          // ... nor, until this, while a human is still loading it
+	bool enabled = false;            // match_flow: false = stock (live immediately)
+	bool ready_required = true;      // match_ready
+	int min_players = 2;             // match_minplayers: playing clients, bots too
+	bool allow_no_humans = false;    // match_allow_no_humans: bots may play a match alone
+	int64_t warmup_time_ms = 0;      // match_warmup_time; 0 = wait for ready
+	int64_t countdown_ms = 10000;    // match_countdown
+	int overtime = 0;                // match_overtime: 0 none, -1 sudden death, N minutes
+	int64_t timelimit_ms = 0;        // timelimit, from the start of LIVE; 0 = none
+	int fraglimit = 0;               // 0 = none
+	bool teams = false;              // TDM, CTF: the lead and ties go by MatchInput::team_scores
+	bool fraglimit_on_teams = false; // TDM: fraglimit applies to team totals (stock CheckEndTDMLevel)
+	int64_t join_grace_ms = 0;       // a new level: no countdown before this (players reloading the map)
+	int64_t join_wait_ms = 0;        // ... nor, until this, while a human is still loading it
 
 	bool operator==(const MatchConfig &o) const
 	{
 		return enabled == o.enabled && ready_required == o.ready_required && min_players == o.min_players &&
 		       allow_no_humans == o.allow_no_humans && warmup_time_ms == o.warmup_time_ms &&
 		       countdown_ms == o.countdown_ms && overtime == o.overtime && timelimit_ms == o.timelimit_ms &&
-		       fraglimit == o.fraglimit && rounds_on_frag == o.rounds_on_frag && round_pause_ms == o.round_pause_ms &&
-		       round_countdown_ms == o.round_countdown_ms && teams == o.teams &&
-		       fraglimit_on_teams == o.fraglimit_on_teams && join_grace_ms == o.join_grace_ms &&
-		       join_wait_ms == o.join_wait_ms;
+		       fraglimit == o.fraglimit && teams == o.teams && fraglimit_on_teams == o.fraglimit_on_teams &&
+		       join_grace_ms == o.join_grace_ms && join_wait_ms == o.join_wait_ms;
 	}
 };
 
@@ -99,16 +85,12 @@ MatchHudText Core_Match_StockHudText(int64_t now_ms, int64_t timelimit_ms);
 
 enum class MatchActionKind
 {
-	Announce,     // text to every player (centre print)
-	Klaxon,       // the stock klaxon, heard everywhere: overtime and sudden death begin
-	Sound,        // text = a stock sound, heard everywhere: the spoken countdown, FIGHT, round won, match end
-	Countdown,    // value = whole seconds left, sent once per second
-	ResetArena,   // value 0: going LIVE - reset items, zero scores, respawn players
-	              // value 1: between rounds - reset items and projectiles only
-	RoundHold,    // the round is over: dead players stay dead (no respawn) until RoundRespawn
-	RoundRespawn, // every playing client back in at a spawn, frozen until RoundStart
-	RoundStart,   // the round begins: everyone released
-	EndMatch,     // go to intermission
+	Announce,   // text to every player (centre print)
+	Klaxon,     // the stock klaxon, heard everywhere: overtime and sudden death begin
+	Sound,      // text = a stock sound, heard everywhere: the spoken countdown, FIGHT, match end
+	Countdown,  // value = whole seconds left, sent once per second
+	ResetArena, // going LIVE (or back to warmup): reset items, zero scores, respawn players
+	EndMatch,   // go to intermission
 };
 
 struct MatchAction
@@ -158,55 +140,38 @@ class Match
 	{
 		return !config_.enabled || (state_ != MatchState::Warmup && state_ != MatchState::Countdown);
 	}
-	// When the HUD clock reaches zero (level ms), or 0 for no clock: none in
-	// warmup, the countdown or sudden death; the timelimit from LIVE, then
-	// timed overtime. Only meaningful when OwnsRules().
-	// Whether playing clients are held in place (the round countdown): they can
-	// look around but not move or fire.
-	bool Frozen() const
-	{
-		return config_.enabled && state_ == MatchState::RoundCountdown;
-	}
 	// Whether playing clients may move but not fire: the match countdown.
 	bool HoldFire() const
 	{
 		return config_.enabled && state_ == MatchState::Countdown;
 	}
-	// The round being played (rounds_on_frag): 1 from LIVE, +1 each new round.
-	int Round() const
-	{
-		return round_;
-	}
 	// The HUD's match status and clock (docs/design/hud.md). The status, top
 	// middle: OpenTDM's names (WAITING FOR PLAYERS / TEAMS, WARMUP, COUNTDOWN,
-	// OVERTIME, SUDDEN DEATH, ROUND OVER, MATCH END), none in normal live
+	// OVERTIME, SUDDEN DEATH, MATCH END), none in normal live
 	// play. The clock, bottom middle, always: the match's length before it
 	// starts, then the time left (or up from LIVE with no timelimit), 0:00 in
 	// sudden death. Both empty with the match flow off.
 	MatchHudText HudText(const MatchInput &in) const;
-	// The HUD's big countdown digits: whole seconds left in the match or round
+	// The HUD's big countdown digits: whole seconds left in the match
 	// countdown, else 0 (hidden).
 	int CountdownSeconds(int64_t now_ms) const;
 
 	// A vote changed the time or frag limit (decision 0015). Before LIVE the
-	// match just starts with them. In regulation time (LIVE, or between its
-	// rounds) the end moves, still counted from LIVE: a limit already passed
-	// ends the match at the next update, as stock's CheckDMRules would.
-	// Overtime keeps its own end.
+	// match just starts with them. In regulation time (LIVE) the end moves,
+	// still counted from LIVE: a limit already passed ends the match at the
+	// next update, as stock's CheckDMRules would. Overtime keeps its own end.
 	void ChangeLimits(int64_t timelimit_ms, int fraglimit, int64_t now_ms);
 
+	// When the HUD clock reaches zero (level ms), or 0 for no clock: none in
+	// warmup, the countdown or sudden death; the timelimit from LIVE, then
+	// timed overtime. Only meaningful when OwnsRules().
 	int64_t ClockEndMs() const
 	{
-		const bool timed = state_ == MatchState::Live || state_ == MatchState::Overtime ||
-		                   state_ == MatchState::RoundOver || state_ == MatchState::RoundCountdown;
-		return timed ? time_end_ms_ : 0;
+		return MatchStateInPlay(state_) ? time_end_ms_ : 0;
 	}
 
   private:
 	bool CanStart(const MatchInput &in) const;
-	bool ScoreChanged(const MatchInput &in) const;
-	bool RoundBreak(const MatchInput &in, MatchState from, std::vector<MatchAction> &out);
-	void Baseline(const MatchInput &in);
 	void GoLive(int64_t now_ms, std::vector<MatchAction> &out);
 	void End(const char *why, std::vector<MatchAction> &out);
 	void TimeWarning(int64_t now_ms, std::vector<MatchAction> &out);
@@ -217,8 +182,5 @@ class Match
 	int64_t live_since_ms_ = 0;
 	int64_t time_end_ms_ = 0; // LIVE/OVERTIME deadline (0 = none)
 	int last_countdown_s_ = -1;
-	int last_warning_s_ = 0;                     // LIVE: the seconds left last spoken for (timelimit warnings)
-	MatchState round_return_ = MatchState::Live; // where RoundCountdown goes back to
-	int round_ = 0;
-	std::vector<std::pair<int, int>> round_scores_; // (id, score) when the round began
+	int last_warning_s_ = 0; // LIVE: the seconds left last spoken for (timelimit warnings)
 };

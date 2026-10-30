@@ -255,140 +255,6 @@ TEST_CASE("a top score held by the leader alone is not a tie")
 	CHECK(m.State() == MatchState::Intermission);
 }
 
-// --- Rounds (HoonyMode) ------------------------------------------------------
-
-namespace
-{
-MatchConfig Hoony()
-{
-	MatchConfig c = Enabled();
-	c.rounds_on_frag = true;
-	c.round_pause_ms = 1000;
-	c.round_countdown_ms = 2000;
-	c.fraglimit = 3;
-	return c;
-}
-
-bool HasReset(const std::vector<MatchAction> &out, int value)
-{
-	return std::any_of(out.begin(), out.end(),
-	                   [&](const MatchAction &a) { return a.kind == MatchActionKind::ResetArena && a.value == value; });
-}
-} // namespace
-
-TEST_CASE("a frag ends the round: a pause, a frozen respawn and countdown, the next round")
-{
-	Match m(Hoony());
-	const int64_t live = ToLive(m);
-	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)})); // baseline
-	auto out = m.Update(At(live + 5000, {P(1, true, 1), P(2, true, 0)}));
-	// The round is over: the dead stay dead, the winner plays on, nothing reset yet.
-	REQUIRE(m.State() == MatchState::RoundOver);
-	CHECK(Has(out, MatchActionKind::RoundHold));
-	CHECK_FALSE(Has(out, MatchActionKind::ResetArena));
-	CHECK_FALSE(m.Frozen());
-	out = m.Update(At(live + 5900, {P(1, true, 1), P(2, true, 0)}));
-	CHECK(m.State() == MatchState::RoundOver);
-	// After the pause: items back, everyone respawned, frozen for the countdown.
-	out = m.Update(At(live + 6000, {P(1, true, 1), P(2, true, 0)}));
-	REQUIRE(m.State() == MatchState::RoundCountdown);
-	CHECK(HasReset(out, 1));
-	CHECK_FALSE(HasReset(out, 0)); // scores are kept between rounds
-	CHECK(Has(out, MatchActionKind::RoundRespawn));
-	CHECK(m.Frozen());
-	out = m.Update(At(live + 6100, {P(1, true, 1), P(2, true, 0)}));
-	CHECK(Has(out, MatchActionKind::Countdown));
-	out = m.Update(At(live + 8000, {P(1, true, 1), P(2, true, 0)}));
-	CHECK(m.State() == MatchState::Live);
-	CHECK(Has(out, MatchActionKind::RoundStart));
-	CHECK_FALSE(m.Frozen());
-	// the new round's baseline is 1-0: no break until the score moves again
-	m.Update(At(live + 8100, {P(1, true, 1), P(2, true, 0)}));
-	CHECK(m.State() == MatchState::Live);
-	m.Update(At(live + 9000, {P(1, true, 1), P(2, true, 1)}));
-	CHECK(m.State() == MatchState::RoundOver);
-}
-
-TEST_CASE("time running out during the pause still respawns everyone, then ends")
-{
-	MatchConfig c = Hoony();
-	c.fraglimit = 0;
-	Match m(c);
-	const int64_t live = ToLive(m);
-	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)}));
-	m.Update(At(live + 59500, {P(1, true, 1), P(2, true, 0)}));
-	REQUIRE(m.State() == MatchState::RoundOver);
-	auto out = m.Update(At(live + 60000, {P(1, true, 1), P(2, true, 0)}));
-	CHECK(Has(out, MatchActionKind::RoundRespawn)); // nobody left dead
-	CHECK(m.State() == MatchState::Live);
-	m.Update(At(live + 60100, {P(1, true, 1), P(2, true, 0)}));
-	CHECK(m.State() == MatchState::Intermission);
-}
-
-TEST_CASE("the deciding frag ends the match instead of starting a round")
-{
-	Match m(Hoony());
-	const int64_t live = ToLive(m);
-	m.Update(At(live + 100, {P(1, true, 2), P(2, true, 0)}));
-	m.Update(At(live + 3000, {P(1, true, 2), P(2, true, 0)}));
-	auto out = m.Update(At(live + 4000, {P(1, true, 3), P(2, true, 0)}));
-	CHECK(m.State() == MatchState::Intermission);
-	CHECK(Has(out, MatchActionKind::EndMatch));
-	CHECK_FALSE(Has(out, MatchActionKind::RoundHold));
-}
-
-TEST_CASE("a duellist leaving between rounds is still a forfeit")
-{
-	Match m(Hoony());
-	const int64_t live = ToLive(m);
-	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)}));
-	m.Update(At(live + 500, {P(1, true, 1), P(2, true, 0)}));
-	REQUIRE(m.State() == MatchState::RoundOver);
-	m.Update(At(live + 600, {P(1, true, 1)}, true));
-	CHECK(m.State() == MatchState::Intermission);
-}
-
-TEST_CASE("rounds off (the default): a frag is just a frag")
-{
-	Match m(Enabled());
-	const int64_t live = ToLive(m);
-	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)}));
-	m.Update(At(live + 500, {P(1, true, 1), P(2, true, 0)}));
-	CHECK(m.State() == MatchState::Live);
-}
-
-TEST_CASE("sudden death with rounds still ends on the first frag")
-{
-	MatchConfig c = Hoony();
-	c.fraglimit = 0;
-	c.overtime = -1;
-	Match m(c);
-	const int64_t live = ToLive(m);
-	m.Update(At(live + 100, {P(1, true, 2), P(2, true, 2)}));
-	m.Update(At(live + 60000, {P(1, true, 2), P(2, true, 2)}));
-	REQUIRE(m.State() == MatchState::Overtime);
-	m.Update(At(live + 61000, {P(1, true, 3), P(2, true, 2)}));
-	CHECK(m.State() == MatchState::Intermission);
-}
-
-TEST_CASE("timed overtime keeps its rounds and returns to overtime")
-{
-	MatchConfig c = Hoony();
-	c.fraglimit = 0;
-	c.overtime = 2;
-	Match m(c);
-	const int64_t live = ToLive(m);
-	m.Update(At(live + 100, {P(1, true, 1), P(2, true, 1)}));
-	m.Update(At(live + 60000, {P(1, true, 1), P(2, true, 1)}));
-	REQUIRE(m.State() == MatchState::Overtime);
-	m.Update(At(live + 61000, {P(1, true, 2), P(2, true, 1)}));
-	REQUIRE(m.State() == MatchState::RoundOver);
-	m.Update(At(live + 62000, {P(1, true, 2), P(2, true, 1)}));
-	REQUIRE(m.State() == MatchState::RoundCountdown);
-	m.Update(At(live + 64000, {P(1, true, 2), P(2, true, 1)}));
-	CHECK(m.State() == MatchState::Overtime);
-}
-
 // --- Teams (TDM, CTF) ----------------------------------------------------------
 
 namespace
@@ -521,14 +387,6 @@ TEST_CASE("scores only count from LIVE; the clock only runs from LIVE")
 	CHECK(stock.ScoresCount());
 }
 
-TEST_CASE("a suicide's point goes to the only opponent, or nobody")
-{
-	CHECK(Core_SuicideOpponent({P(1), P(2)}, 1) == 2);
-	CHECK(Core_SuicideOpponent({P(1), P(2), P(3, false, 0, false)}, 2) == 1); // a spectator isn't one
-	CHECK(Core_SuicideOpponent({P(1), P(2), P(3)}, 1) == -1);                 // FFA: whose point?
-	CHECK(Core_SuicideOpponent({P(1)}, 1) == -1);
-}
-
 // --- The HUD's match status and clock ------------------------------------------
 
 namespace
@@ -621,26 +479,6 @@ TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
 	CHECK(sudden.HudText(At(live3 + 61000, {P(1, true, 3), P(2, true, 3)})) == Hud("SUDDEN DEATH", "0:00"));
 }
 
-TEST_CASE("the HUD in rounds: the clock, round over, the countdown, the clock")
-{
-	Match m(Hoony()); // pause 1 s, countdown 2 s, timelimit 60 s
-	const int64_t live = ToLive(m);
-	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)}));
-	CHECK(m.HudText(At(live + 100, {P(1, true), P(2, true)})) == Hud("", "1:00"));
-	m.Update(At(live + 5000, {P(1, true, 1), P(2, true, 0)}));
-	REQUIRE(m.State() == MatchState::RoundOver);
-	CHECK(m.HudText(At(live + 5000, {})) == Hud("ROUND OVER", "0:55")); // the clock runs on
-	m.Update(At(live + 6000, {P(1, true, 1), P(2, true, 0)}));
-	REQUIRE(m.State() == MatchState::RoundCountdown);
-	CHECK(m.HudText(At(live + 6000, {})) == Hud("COUNTDOWN", "0:54"));
-	CHECK(m.CountdownSeconds(live + 6000) == 2);
-	CHECK(m.CountdownSeconds(live + 7500) == 1);
-	m.Update(At(live + 8000, {P(1, true, 1), P(2, true, 0)}));
-	REQUIRE(m.State() == MatchState::Live);
-	CHECK(m.HudText(At(live + 8000, {})) == Hud("", "0:52"));
-	CHECK(m.CountdownSeconds(live + 8000) == 0);
-}
-
 TEST_CASE("the HUD is empty with the match flow off (stock HUD)")
 {
 	Match m;
@@ -670,7 +508,7 @@ TEST_CASE("overtime and sudden death sound the klaxon; the HUD names them, no ce
 	CHECK(kinds(out, MatchActionKind::Announce) == 0);
 }
 
-TEST_CASE("no firing in the match countdown; the round countdown freezes outright")
+TEST_CASE("no firing in the match countdown")
 {
 	Match m(Enabled());
 	m.Begin(0);
@@ -678,7 +516,6 @@ TEST_CASE("no firing in the match countdown; the round countdown freezes outrigh
 	m.Update(At(1000, {P(1, true), P(2, true)}));
 	REQUIRE(m.State() == MatchState::Countdown);
 	CHECK(m.HoldFire());
-	CHECK_FALSE(m.Frozen()); // they can still move
 	m.Update(At(4000, {P(1, true), P(2, true)}));
 	REQUIRE(m.State() == MatchState::Live);
 	CHECK_FALSE(m.HoldFire());
@@ -733,23 +570,6 @@ TEST_CASE("sounds: the last 30 and 20 seconds, then every second from 10")
 	CHECK(heard[1] == "world/20sec.wav");
 	CHECK(heard[2] == "world/10.wav");
 	CHECK(heard[11] == "world/1.wav");
-}
-
-TEST_CASE("sounds: a won round plays flagcap; the next round's FIGHT plays tele_up")
-{
-	Match m(Hoony());
-	const int64_t live = ToLive(m);
-	m.Update(At(live + 100, {P(1, true, 0), P(2, true, 0)})); // baseline
-	auto out = m.Update(At(live + 5000, {P(1, true, 1), P(2, true, 0)}));
-	REQUIRE(m.State() == MatchState::RoundOver);
-	CHECK(Sounds(out) == std::vector<std::string>{"ctf/flagcap.wav"});
-	m.Update(At(live + 6000, {P(1, true, 1), P(2, true, 0)}));
-	REQUIRE(m.State() == MatchState::RoundCountdown);
-	out = m.Update(At(live + 6100, {P(1, true, 1), P(2, true, 0)}));
-	CHECK(Sounds(out) == std::vector<std::string>{"world/2.wav"});
-	out = m.Update(At(live + 8000, {P(1, true, 1), P(2, true, 0)}));
-	REQUIRE(m.State() == MatchState::Live);
-	CHECK(Sounds(out) == std::vector<std::string>{"misc/tele_up.wav"});
 }
 
 TEST_CASE("sounds: the match end plays the jingle over the scoreboard")

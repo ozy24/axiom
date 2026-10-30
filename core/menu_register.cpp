@@ -98,7 +98,6 @@ MenuView View(const edict_t *ent)
 	v.fraglimit = fraglimit->integer;
 	v.capturelimit = capturelimit->integer;
 	v.overtime = CvarInt("match_overtime");
-	v.rounds = CvarInt("match_rounds") != 0;
 	v.match_flow = Core_Match_OwnsRules();
 	v.warmup = v.match_flow && !Core_Match_InPlay();
 

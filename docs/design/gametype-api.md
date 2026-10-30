@@ -83,8 +83,7 @@ grows in the right direction:
 
 | Need | Who first | Lands in |
 |---|---|---|
-| Rounds (end on frags / time / elimination / condition), respawn policy | Duel (HoonyMode), Clan Arena ruleset | Phase 2b match state machine |
-| Arena reset (items, projectiles, loadouts, placement) | rounds | 2b |
+| Arena reset (items, projectiles, loadouts, placement) | going LIVE | 2b |
 | Death interception ("freeze instead of kill") | Freeze Tag (downstream) | when Freeze Tag is built |
 | Per-player gametype data, outside id's structs, not saved | Freeze Tag (Duel keeps its queue in its own module) | when needed |
 | Per-frame think | Freeze Tag thaw | when needed |

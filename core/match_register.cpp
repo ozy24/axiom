@@ -41,7 +41,7 @@ gtime_t last_time;
 std::array<bool, MAX_CLIENTS> ready{};
 
 cvar_t *match_flow, *match_ready, *match_minplayers, *match_allow_no_humans, *match_warmup_time, *match_countdown,
-    *match_overtime, *match_rounds, *match_round_countdown, *match_round_pause, *match_suicide_point;
+    *match_overtime;
 
 void RegisterCvars()
 {
@@ -54,10 +54,6 @@ void RegisterCvars()
 	match_warmup_time = gi.cvar("match_warmup_time", "0", CVAR_NOFLAGS);
 	match_countdown = gi.cvar("match_countdown", "10", CVAR_NOFLAGS);
 	match_overtime = gi.cvar("match_overtime", "0", CVAR_NOFLAGS);
-	match_rounds = gi.cvar("match_rounds", "0", CVAR_NOFLAGS);
-	match_round_countdown = gi.cvar("match_round_countdown", "5", CVAR_NOFLAGS);
-	match_round_pause = gi.cvar("match_round_pause", "2", CVAR_NOFLAGS);
-	match_suicide_point = gi.cvar("match_suicide_point", "0", CVAR_NOFLAGS);
 	// Where finished-match records go (relative to the server's working
 	// directory); empty = none.
 	g_matchlog_dir = gi.cvar("g_matchlog_dir", "", CVAR_NOFLAGS);
@@ -74,9 +70,6 @@ MatchConfig ReadConfig()
 	c.warmup_time_ms = (int64_t)(match_warmup_time->value * 1000);
 	c.countdown_ms = (int64_t)(match_countdown->value * 1000);
 	c.overtime = match_overtime->integer;
-	c.rounds_on_frag = match_rounds->integer != 0;
-	c.round_countdown_ms = (int64_t)(match_round_countdown->value * 1000);
-	c.round_pause_ms = (int64_t)(match_round_pause->value * 1000);
 	c.timelimit_ms = (int64_t)(timelimit->value * 60000);
 	c.fraglimit = fraglimit->integer;
 	// TDM and CTF run on stock's team code (Core_Gametype_PreInit): the lead
@@ -165,10 +158,8 @@ bool Transient(const edict_t *ent)
 }
 
 // Puts the level back to its start: no projectiles or dropped items, every map
-// item present. With `players`, also every player fresh at a spawn point with a
-// zero score (going LIVE); without, players and scores are left alone (between
-// rounds, where RoundHold / RoundStart handle the players).
-void ResetArena(bool players)
+// item present, and every player fresh at a spawn point with a zero score.
+void ResetArena()
 {
 	if (ctf->integer)
 	{
@@ -204,8 +195,6 @@ void ResetArena(bool players)
 				m->nextthink = 0_ms; // cancel any pending respawn timer
 		}
 	}
-	if (!players)
-		return;
 	if (G_TeamplayEnabled())
 		G_ResetTeamScores();
 	for (uint32_t i = 0; i < game.maxclients; ++i)
@@ -291,37 +280,6 @@ void ZeroScores()
 	}
 	if (G_TeamplayEnabled())
 		G_ResetTeamScores();
-}
-
-// The round is over: a playing client who is dead stays dead (no respawn on a
-// button press) until RoundRespawn. The winner plays on. Run every frame of
-// the pause, so a death during it is held too.
-void HoldDead()
-{
-	for (uint32_t i = 0; i < game.maxclients; ++i)
-	{
-		edict_t *ent = ClientEdict(i);
-		if (Playing(ent) && ent->deadflag)
-			ent->client->respawn_time = level.time + 3600_sec;
-	}
-}
-
-// After the pause: every playing client back in at a spawn point with a fresh
-// loadout - the dead through respawn (which leaves their body), the living
-// straight to a spawn. Frozen until RoundStart (Core_Match_Frozen).
-void RoundRespawn()
-{
-	for (uint32_t i = 0; i < game.maxclients; ++i)
-	{
-		edict_t *ent = ClientEdict(i);
-		if (!Playing(ent))
-			continue;
-		ent->client->respawn_time = level.time;
-		if (ent->deadflag)
-			respawn(ent);
-		else
-			PutClientInServer(ent);
-	}
 }
 
 std::string UtcNow()
@@ -421,17 +379,8 @@ void Act(const std::vector<MatchAction> &actions)
 		case MatchActionKind::Countdown:
 			break; // shown by the HUD's big digits (Core_Match_SetStats)
 		case MatchActionKind::ResetArena:
-			ResetArena(a.value == 0);
+			ResetArena();
 			break;
-		case MatchActionKind::RoundHold:
-			HoldDead();
-			break;
-		case MatchActionKind::RoundRespawn:
-			RoundRespawn();
-			break;
-		case MatchActionKind::RoundStart:
-			break; // the release: Core_Match_Frozen is false from here
-
 		case MatchActionKind::EndMatch:
 			end_reason = a.text;
 			gi.Com_PrintFmt("Match: ended ({})\n", a.text.c_str());
@@ -504,8 +453,6 @@ void Core_Match_Frame()
 	Act(actions);
 	if (!match.ScoresCount())
 		ZeroScores();
-	if (match.State() == MatchState::RoundOver)
-		HoldDead();
 	PublishHud();
 }
 
@@ -534,18 +481,6 @@ bool Core_Match_ServerCommand(const char *cmd)
 		                : ent->deadflag ? " (dead)"
 		                                : "");
 	}
-	return true;
-}
-
-bool Core_Match_SuicidePoint(edict_t *self)
-{
-	RegisterCvars();
-	if (!match_suicide_point->integer || !deathmatch->integer || G_TeamplayEnabled() || !self->client)
-		return false;
-	const int opponent = Core_SuicideOpponent(Snapshot().players, (int)(self - g_edicts) - 1);
-	if (opponent < 0)
-		return false;
-	ClientEdict((uint32_t)opponent)->client->resp.score++;
 	return true;
 }
 
@@ -612,11 +547,6 @@ bool Core_Match_HoldFire(const edict_t *ent)
 	// Not the dead: fire is also the respawn button, and someone who died as
 	// the countdown began was stuck until LIVE (playtest 2026-10-29).
 	return Core_Match_OwnsRules() && match.HoldFire() && Playing(ent) && !ent->deadflag;
-}
-
-bool Core_Match_Frozen(const edict_t *ent)
-{
-	return Core_Match_OwnsRules() && match.Frozen() && Playing(ent);
 }
 
 bool Core_Match_ClockEnd(gtime_t &end)

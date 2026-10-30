@@ -195,7 +195,7 @@ void ClientObituary(edict_t *self, edict_t *inflictor, edict_t *attacker, mod_t 
 	if (base)
 	{
 		gi.LocBroadcast_Print(PRINT_MEDIUM, base, self->client->pers.netname);
-		if (deathmatch->integer && !mod.no_point_loss && !Core_Match_SuicidePoint(self)) // [mod]
+		if (deathmatch->integer && !mod.no_point_loss)
 		{
 			self->client->resp.score--;
 
@@ -405,7 +405,7 @@ void ClientObituary(edict_t *self, edict_t *inflictor, edict_t *attacker, mod_t 
 			}
 			return;
 		}
-		else if (!Core_Match_SuicidePoint(self)) // [mod]
+		else
 		{
 			self->client->resp.score--;
 
@@ -3214,12 +3214,6 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 		return;
 	}
 
-	if (Core_Match_Frozen(ent)) // [mod] the round countdown: look, but no moving or firing
-	{
-		client->ps.pmove.pm_type = PM_FREEZE; // [mod]
-		client->buttons = client->latched_buttons = BUTTON_NONE; // [mod]
-		return; // [mod]
-	}
 	if (Core_Match_HoldFire(ent)) // [mod] the match countdown: move, but no firing
 	{
 		client->buttons &= ~BUTTON_ATTACK; // [mod]

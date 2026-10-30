@@ -11,19 +11,10 @@ void Core_Match_Frame();
 // Whether the match flow, not stock CheckDMRules, decides when the level ends.
 bool Core_Match_OwnsRules();
 
-// Whether a client is held in place for the round countdown (HoonyMode):
-// from ClientThink, which then neither moves it nor lets it fire.
-bool Core_Match_Frozen(const edict_t *ent);
-
 // Whether a client may move but not fire: the match countdown. From
 // ClientThink, which then drops the fire button. Never the dead, so they can
 // press it to respawn.
 bool Core_Match_HoldFire(const edict_t *ent);
-
-// A suicide (or a death to the world) with match_suicide_point 1 and exactly
-// one opponent, outside team modes: the point goes to the opponent instead of
-// off the player (HoonyMode). True if it did; false, and stock scoring runs.
-bool Core_Match_SuicidePoint(edict_t *self);
 
 // The HUD's match-state line (docs/design/hud.md). Statusbar: from
 // G_InitStatusbar, adds the line to the deathmatch status bar. SetStats: from

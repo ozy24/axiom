@@ -1,6 +1,6 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-10-29 (shuffle vote)._
+_Updated at the end of every session. Last update: 2026-10-30 (back to four gametypes)._
 
 ## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
@@ -258,39 +258,35 @@ Done (branch `scoreboard/duel`; Chris finished testing it on 2026-10-29):
   the sim client can't change userinfo mid-game, so the third is untested.
   Tier 11 now reads the Duel rotation from `sv match`.
 
-## Handover (2026-10-29, end of a long session)
+## Handover (2026-10-30): back to the four core gametypes (decision 0022)
 
-**Branch `scoreboard/duel`:** merged as #34 (2026-10-29). The rename drill
-now gives the renamed mod a dummy `repository` too (About shows it).
+Chris (2026-10-30): Axiom is FFA, Duel, TDM and CTF; extra modes multiply
+against every system (MuffMode's and MMREX's trap), so **polish the four
+before adding surface**. Removed on branch `remove-rounds`:
+- Clan Arena (#36): the `ca` gametype and ruleset, elimination rounds with
+  lives, watchers, the arena loadout, `g_dm_no_self_damage`, the damage
+  score, the X marks and Round Limit, tier 21.
+- HoonyMode's frag rounds (`match_rounds`, `match_round_countdown`,
+  `match_round_pause`, `match_suicide_point`): the RoundOver and
+  RoundCountdown states, `Core_Match_Frozen` and the suicide-point hooks in
+  id's code, tiers 7 and 13.
+- All of it is kept at the tag **`clan-arena-v1`** (b007469): a downstream
+  mod can start from there.
+- Kept from the CA playtest: the frag/capture limit in big digits under the
+  scores (`yb -56 xr -56` teams, `yb -46 xr -60` FFA/Duel).
 
-**The playtest rig** (`~/q2playtest`, `./run.sh`, `./cmd.sh "<console>"`):
-Duel on q2dm1 with the branch's build. Deploy with a temp file and `mv`,
-then `map q2dm1` (`gamemap` keeps the old module loaded). Its version
-string shows a stale commit (the build id is read at configure time);
-`cmp` the .so against the build instead. With ready-up, bots ready
-themselves and start a match alone, so add them (`bot_count N`) after
-the human has entered.
+**Next:** the FFA/Duel miniscore highlight. Mock-up options (Chris hasn't
+chosen): A, the stock team frame `i_ctfj` inset on your face (recommended);
+B, the carousel frame; D, a green `>`; rows "leader and you" (recommended)
+or "top two". Then timeouts/pauses and in-game admin; the M4 checklist.
 
-**Team shuffle (branch `vote/shuffle`, decision 0020):** `callvote
-shuffle` and `sv shuffle` in TDM/CTF warmup (or the countdown) with three
-or more players on teams: a random even split, never the same two groups
-back; unlocks both teams and respawns everyone on a team (as going LIVE
-does, not stock's suicide-per-player team change). In `g_vote_allow`'s
-default; "Shuffle Teams" on the Call a Vote page. No `balance` vote: no
-ratings (Chris). Harness tier 20 (checked against a build that logs the
-split but doesn't move anyone: fails on the team skins). Tiers 12, 17,
-19 and 20 pass locally. On the same branch, ready marks: a green `R` by
-each ready player in ready-up, on the team board right of the captain's
-`*` (x -56 / 182) and on the FFA board right of Ping; bots always ready.
-Not MuffMode's tick picture: a stock client draws it 24x24 and covers the
-row (MuffMode shrinks it in its own client code). Duel keeps its tick.
-Chris checked the shuffle and the team board's R on the rig (2026-10-29);
-the FFA R is untested on a client. PR once he's done.
-
-**After that, Chris's options** (he hadn't chosen): Clan Arena as a TDM
-ruleset (elimination rounds that count the living, a spawn loadout,
-`match_lock 1`); or timeouts/pauses plus in-game admin controls. Later in Phase 4:
-the M4 checklist on Q2REX and a retail listen server.
+**The playtest rig** (`~/q2playtest`, `./run.sh`, `./cmd.sh "<console>"`).
+Deploy with a temp file and `mv`, then `map q2dm1` (`gamemap` keeps the old
+module loaded). Its version string shows a stale commit (the build id is read
+at configure time); `cmp` the .so against the build instead. Bots ready
+themselves, so add them (`bot_count N`) after the human has entered. A cvar
+the old module registered keeps its old value across a module swap (a new
+default doesn't apply until the server restarts).
 
 **MMREX comparison (2026-10-29)**, from an agent's read of
 `repos/Q2REX/mmrex/src/sgame` (183k lines):
@@ -312,7 +308,7 @@ the M4 checklist on Q2REX and a retail listen server.
   - Arrival and memory across map changes.
   - Lock rosters (an emptied team unlocks; teamkick works in team modes).
   - Readyteam as a vote.
-  - Tests: 19 harness tiers on two engines.
+  - Tests: 18 harness tiers on two engines.
   - About half the code per feature.
 - **MMREX features that do nothing:**
   - `g_dm_spawn_farthest`
@@ -347,7 +343,7 @@ the M4 checklist on Q2REX and a retail listen server.
 
 ## Open human gates
 - Single-player checklist for M2a, whenever convenient (any build from now on).
-- **Playtest** (`docs/checklists/playtest.md`): match flow, Duel and HoonyMode in
+- **Playtest** (`docs/checklists/playtest.md`): match flow, Duel, TDM and CTF in
   a retail client. Rig: `scripts/playtest/setup-local-rig.sh` -> `~/q2playtest`,
   join with `connect 127.0.0.1:5073`. Doesn't block further work.
 

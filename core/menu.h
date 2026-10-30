@@ -136,8 +136,7 @@ struct MenuView
 	int timelimit_min = 0;
 	int fraglimit = 0;
 	int capturelimit = 0;
-	int overtime = 0; // match_overtime: minutes, -1 sudden death, 0 none
-	bool rounds = false;
+	int overtime = 0;        // match_overtime: minutes, -1 sudden death, 0 none
 	bool match_flow = false; // match_flow: warmup, countdown and the HUD
 	bool warmup = false;     // the match flow, before LIVE (warmup or the countdown)
 

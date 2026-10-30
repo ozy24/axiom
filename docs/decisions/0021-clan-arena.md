@@ -2,6 +2,9 @@
 
 **Decided:** 2026-10-29/30 (Chris), after comparing MMREX's and MuffMode's CA.
 
+**Superseded by 0022** (2026-10-30): Clan Arena and rounds were removed from
+the base; the work is kept at the tag `clan-arena-v1`.
+
 1. **Its own gametype id `ca`**, with no code of its own (`gametypes/ca` is
    data on stock teamplay). The Q2REX browser only labels a server "Clan
    Arena" for mode id `ca`, a TDM variant would nest under TDM in the vote

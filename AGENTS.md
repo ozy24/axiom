@@ -16,8 +16,10 @@ Software's GPL `quake2-rerelease-dll`. The working name is Axiom; the name lives
 in one place, `mod.json`, and must never be hard-coded (see "Identity" below).
 
 Principles:
-- Core gametypes: FFA, TDM, CTF, Duel. Variants (HoonyMode, Clan Arena) are
-  rulesets, not code.
+- Core gametypes: FFA, TDM, CTF, Duel, and only those (decision 0022):
+  polish them before adding surface. Every extra mode multiplies against
+  every system. A variant is an admin's ruleset, not code; rounds, arenas
+  and the like belong to downstream mods.
 - Streamlined: no over-complicated systems such as voting factories. Every
   feature earns its place.
 - A base for downstream mods (Jump, Rocket Arena, Freeze Tag, Horde) to build on
@@ -144,8 +146,6 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   don't fight in a bot-only match).
 - **Tier 6 duel:** three bots, `g_gametype duel`: one queues, the match runs to
   its timelimit, and a `Duel: … next: …` line shows the rotation.
-- **Tier 7 rounds:** `match_rounds 1` with six bots: a frag must end a round
-  and the next round start (Q2RED only; Q2REX's bots don't fight).
 - **Tier 9 warmup:** six bots fight in a warmup that never starts
   (`match_minplayers 99`); `sv match` must show every score still 0, and
   the warmup loadout names q2dm1's weapons (Q2RED only).
@@ -160,10 +160,6 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
 - **Tier 12 human-teams:** `tdm` and `ctf` with four simulated players who
   pick teams with `team red` / `team blue`: no countdown while one team is
   empty, then a timelimit end and a record with everyone on their team.
-- **Tier 13 human-rounds:** HoonyMode with two simulated players: each
-  scripted suicide ends a round ("Next round in 3..1", FIGHT!) and the match
-  still ends on its timelimit. Scenario settings go in an exec'd cfg: too
-  many `+set`s pass the engine's argument limit.
 - **Tier 14 human-vote:** three simulated players in an FFA warmup: a
   refused map vote fails, its caller waits out the cooldown, a map off the
   list is answered with the list, then a vote answered with stock's `yes`
@@ -189,7 +185,7 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   Duel and TDM: a newcomer spectates with the menu open and joins by `join`
   or the menu; after `gamemap` and `map` (a module reload) the last level's
   players are back as they were (TDM: on their team) and a watcher still
-  watches; Duel queues only those who asked. Tiers 11, 13, 14 and 16 set
+  watches; Duel queues only those who asked. Tiers 11, 14 and 16 set
   `g_auto_join 1`: they test what comes after joining.
 - **Tier 19 human-readyvote:** TDM in a ready-up warmup with four
   simulated players: `callvote readyteam` is voted on by the caller's
@@ -208,7 +204,8 @@ one extra health point, a renamed think function) and fails as it should.
 The stock reference is the `stock-reference` tag (pinned in
 `scripts/harness/pins.env`), never a fresh build of `main`.
 
-Harness gotchas: coop save slots must be named `coop_*` or Q2RED reloads a
+Harness gotchas: scenario settings go in an exec'd cfg (too many `+set`s pass
+the engine's argument limit); coop save slots must be named `coop_*` or Q2RED reloads a
 fresh map instead of the save; rig paths must stay under 900 characters
 (Q2RED's `MAX_OSPATH`, 1024 since its A61); the engine binary is copied into each rig
 so its crash logs land there. Locally, `scripts/harness/setup-local-kit.sh`

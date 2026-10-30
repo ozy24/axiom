@@ -267,8 +267,6 @@ MenuPage Core_Menu_MatchInfo(const MenuView &v)
 	{
 		Add(page, "Overtime: " + (v.overtime < 0 ? std::string("sudden death") : Minutes(v.overtime)));
 		Add(page, std::string("Ready-up: ") + (v.ready_required ? "on" : "off"));
-		if (v.rounds)
-			Add(page, "Rounds: a frag ends one");
 	}
 	else
 	{
