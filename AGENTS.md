@@ -143,7 +143,8 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
 - **Tier 5 match-flow:** `match_flow 1` with bots: the `Match:` lines must
   run warmup → countdown → live → intermission, ended by the timelimit counted
   from LIVE, on both engines (Q2REX's bots begin as clients even though they
-  don't fight in a bot-only match).
+  don't fight in a bot-only match); going live puts the movers back
+  (`Movers: N reset`, q2dm1's two plats).
 - **Tier 6 duel:** three bots, `g_gametype duel`: one queues, the match runs to
   its timelimit, and a `Duel: … next: …` line shows the rotation.
 - **Tier 9 warmup:** six bots fight in a warmup that never starts

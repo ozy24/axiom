@@ -13,6 +13,7 @@
 #include "mod_identity.h"
 #include "core/maps_hooks.h"
 #include "core/match_hooks.h"
+#include "core/movers_hooks.h"
 #include "core/scoreboard_hooks.h"
 #include "core/teams_hooks.h"
 #include "core/join_hooks.h"
@@ -144,9 +145,10 @@ void CenterAll(const std::string &text)
 
 bool Transient(const edict_t *ent)
 {
-	static const char *const kinds[] = {"rocket",        "grenade", "hand_grenade",   "bolt",       "bfg blast",
-	                                    "disint ball",   "tracker", "prox_mine",      "prox_field", "tesla_mine",
-	                                    "tesla trigger", "nuke",    "food_cube_trap", "pain daemon"};
+	static const char
+	    *const kinds[] = {"rocket",         "grenade",     "hand_grenade", "bolt",       "bfg blast",     "disint ball",
+	                      "tracker",        "prox_mine",   "prox_field",   "tesla_mine", "tesla trigger", "nuke",
+	                      "food_cube_trap", "pain daemon", "DelayedUse"}; // a trigger's delayed firing, still to come
 	if (ent->item && ent->spawnflags.has(SPAWNFLAG_ITEM_DROPPED))
 		return true; // dropped weapons, packs, the dead's items
 	if (!ent->classname)
@@ -159,10 +161,12 @@ bool Transient(const edict_t *ent)
 	return false;
 }
 
-// Puts the level back to its start: no projectiles or dropped items, every map
-// item present, and every player fresh at a spawn point with a zero score.
+// Puts the level back to its start: no projectiles or dropped items, the
+// movers (doors, plats, trains...) where they began, every map item present,
+// and every player fresh at a spawn point with a zero score.
 void ResetArena()
 {
+	gi.Com_PrintFmt("Movers: {} reset\n", Core_Movers_Reset());
 	if (ctf->integer)
 	{
 		// Flags home first: a dropped flag is freed, a taken one shown again.
@@ -414,6 +418,7 @@ void Core_Match_Frame()
 	Core_Teams_Frame();
 	Core_Join_Frame();
 	Core_Scoreboard_Frame();
+	Core_Movers_Frame();
 	Core_Vote_Frame();
 	Core_Maps_Frame();
 	// Settings that change before the match starts take effect: an admin's

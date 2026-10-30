@@ -110,6 +110,7 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/core/menu.cpp"
     "${CMAKE_SOURCE_DIR}/core/miniscore.cpp"
     "${CMAKE_SOURCE_DIR}/core/miniscore_register.cpp"
+    "${CMAKE_SOURCE_DIR}/core/movers_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/scoreboard.cpp"
     "${CMAKE_SOURCE_DIR}/core/scoreboard_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/warmup_register.cpp"

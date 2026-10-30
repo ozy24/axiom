@@ -544,7 +544,8 @@ MATCH_SEQUENCE = ["Match: warmup", "Match: warmup -> countdown", "Match: countdo
 
 def tier_match_flow(args, results):
     """Warmup on: bots (always ready) run warmup -> countdown -> live, and the
-    timelimit, counted from LIVE, ends it (docs/design/match-flow.md)."""
+    timelimit, counted from LIVE, ends it (docs/design/match-flow.md); going
+    live puts the movers back (q2dm1's plats)."""
     rig = RIGS[args.engine_kind](args, args.candidate, "t5-match")
     startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_flow", "1", "+set", "match_allow_no_humans", "1",
                 "+set", "match_countdown", "3", "+set", "timelimit", "0.25"] + rig.bot_args() + ["+map", "q2dm1"])
@@ -558,6 +559,10 @@ def tier_match_flow(args, results):
     want = MATCH_SEQUENCE
     if seen != want:
         detail.append(f"transitions {seen}, expected {want}")
+    # The arena reset at LIVE puts the movers back (q2dm1: its two plats).
+    resets = [int(n) for n in re.findall(r"Movers: (\d+) reset", log)]
+    if not resets or resets[0] < 2:
+        detail.append(f"movers reset at LIVE: {resets}, expected q2dm1's two plats")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     if "==== ShutdownGame ====" not in log:
