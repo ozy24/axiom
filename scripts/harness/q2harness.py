@@ -1322,9 +1322,10 @@ at 58 3 disconnect
     # team, took the next jump of a player kicked mid-fight as a join
     # (playtest 2026-10-30: kicked to the other team). Its open, in the
     # kick's frame, is closed again in that frame; an open menu redraws.
-    kicked = [r["t"] for r in locs if r["base"] == "{} was removed from {}.\n"]
+    # By frame: the open's layout can be stamped a millisecond after the kick.
+    kicked = [r["frame"] for r in locs if r["base"] == "{} was removed from {}.\n"]
     menus = [r for r in tap if r.get("type") == "layout" and r["to"] == eve and kicked
-             and kicked[0] < r["t"] < kicked[0] + 4000 and '"Join ' in r["text"]]
+             and kicked[0] < r["frame"] < kicked[0] + 160 and '"Join ' in r["text"]]
     if not kicked:
         detail.append("Eve was never kicked")
     elif menus:
