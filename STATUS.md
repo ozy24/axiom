@@ -1,6 +1,6 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-10-30 (map entities)._
+_Updated at the end of every session. Last update: 2026-10-31 (playtest batch merged, #39)._
 
 ## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
@@ -292,8 +292,11 @@ MuffMode's maps now play as in MuffMode, and `.ent` overrides work
   sends you out of the exit at the speed you went in, for both stock
   teleporters (`misc_teleporter`, Rogue's `trigger_teleport`). BB's
   rulesets set 0. Unit-tested only: no tier walks a player through one yet.
-- Stacked on `match/overtime` (overtime + the mover reset), which waits for
-  Chris's playtest; PR both together or rebase once that merges.
+- Merged with `match/overtime` (overtime + the mover reset) as PR #39
+  (6170da0, 2026-10-31), with the startup ruleset fix (tier 23: the files'
+  `set` lines apply as the game loads, before the first map spawns).
+- **BB runs a61e783**, before the startup ruleset fix: after a restart,
+  apply the ruleset by hand until 6170da0 (or later) is deployed there.
 
 ## Handover (2026-10-30): back to the four core gametypes (decision 0022)
 
@@ -373,7 +376,13 @@ default doesn't apply until the server restarts).
   (tier 12, 2026-10-27, once under `--jobs 4`); not reproduced in 16 more
   runs. CI now keeps CRASHLOG.TXT (collect-logs.sh); look there if it recurs.
   Seen again 2026-10-30: tier 18 human-join tdm under `--jobs 4` locally
-  (crash log lost to a cleanup); three reruns passed.
+  (crash log lost to a cleanup); three reruns passed. 2026-10-31: not
+  reproduced in six full `--jobs 4` passes and 48 runs of tiers 12 and 18
+  eight at a time; every rig keeps its crash log.
+- Q2REX under Wine on the jumpbox once stalled after loading base1 (tier 1,
+  the stock DLL: no answer to `save`); a rerun passed. Wine also sometimes
+  prints "error: XDG_RUNTIME_DIR is invalid" inside `unshare -rn`: it's in
+  the rig's benign lines (a runtime dir of its own stopped saves).
 - Q2REX's built-in bots never enter a bot-only match (retail admits bots
   only after a human spawns), so tier 3 can't check frags on Q2REX.
 - `jumpbox.lan` returns a bogus AAAA record (`::`); use `ssh -4`.
