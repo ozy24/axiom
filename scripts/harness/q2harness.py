@@ -333,9 +333,14 @@ class Q2RexRig(Rig):
                "-userpath", self.winpath(self.home),
                "+set", "basedir", self.winpath(self.base), "+set", "game", "baseq2",
                "+set", "dedicated", "1", "+set", "ip_hostport", str(a.port)] + startup
+        # A runtime dir of the rig's own: inside `unshare -rn` the session's
+        # /run/user/<uid> isn't ours, and Wine's "error: XDG_RUNTIME_DIR is
+        # invalid or not set" then lands in the log (CI, PR #39: tiers 22, 23).
+        runtime = self.dir / "xdg-runtime"
+        runtime.mkdir(mode=0o700, exist_ok=True)
         env = dict(os.environ, WINEPREFIX=a.wineprefix, WINEARCH="win64", WINEDEBUG="-all",
                    WINEDLLOVERRIDES="winemenubuilder.exe=d", COMPUTERNAME="q2harness",
-                   USERNAME="q2harness")
+                   USERNAME="q2harness", XDG_RUNTIME_DIR=str(runtime))
         return cmd, env, self.server
 
     def bot_args(self):
