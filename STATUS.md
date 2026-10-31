@@ -296,8 +296,8 @@ MuffMode's maps now play as in MuffMode, and `.ent` overrides work
 - Merged with `match/overtime` (overtime + the mover reset) as PR #39
   (6170da0, 2026-10-31), with the startup ruleset fix (tier 23: the files'
   `set` lines apply as the game loads, before the first map spawns).
-- **BB runs a61e783**, before the startup ruleset fix: after a restart,
-  apply the ruleset by hand until 6170da0 (or later) is deployed there.
+- **BB runs 6170da0** (main after #39, deployed 2026-10-31 when it emptied):
+  after a restart its FFA ruleset applied by itself, with no hand steps.
 
 ## Handover (2026-10-30): back to the four core gametypes (decision 0022)
 
