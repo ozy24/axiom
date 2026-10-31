@@ -276,22 +276,23 @@ MuffMode's maps now play as in MuffMode, and `.ent` overrides work
   wicked): counts match MuffMode's, no unknown keys or classnames left.
   Harness tier 22 (Q2RED here; Q2REX runs in CI on the PR: its read path
   is the plain `basedir` one).
-- Not done: a player actually riding a jump pad (the throw is unit-tested;
-  try mm-longyd on the rig), the WIP-only entities (`item_regen`,
-  `target_delay`, shooters).
+- Played and confirmed by Chris (2026-10-31): jump pads, teleporters and
+  classic jumps work in play. No harness tier moves a player through them;
+  the numbers are unit-tested. Not done: the WIP-only entities
+  (`item_regen`, `target_delay`, shooters).
 - Playtest on BB (2026-10-30), fixed on the branch: `teamkick` left the
   join menu open and a jump joined the kicked player to a team (tier 17);
   Rogue's `trigger_teleport` drew its trigger brush over mm-fleshref's
   teleporter (tier 22); classic jumps below height 0 for mm-mcoil
   (`g_classic_jumps`, decision 0024, the one exception to hard rule 2;
-  tier 16 checks the configstring, unit tests the numbers; not yet a
-  player measuring a jump). BB runs a61e783 (2026-10-31), with
+  tier 16 checks the configstring, unit tests the numbers; confirmed in
+  play by Chris). BB runs a61e783 (2026-10-31), with
   `g_teleporter_freeze 0` in its rulesets.
 - Teleporters stopped you dead (stock zeroes your speed and holds you
   160 ms): `g_teleporter_freeze` (MuffMode's name; default 1, stock) at 0
   sends you out of the exit at the speed you went in, for both stock
   teleporters (`misc_teleporter`, Rogue's `trigger_teleport`). BB's
-  rulesets set 0. Unit-tested only: no tier walks a player through one yet.
+  rulesets set 0. Unit-tested; confirmed in play by Chris.
 - Merged with `match/overtime` (overtime + the mover reset) as PR #39
   (6170da0, 2026-10-31), with the startup ruleset fix (tier 23: the files'
   `set` lines apply as the game loads, before the first map spawns).
@@ -315,10 +316,8 @@ before adding surface**. Removed on branch `remove-rounds`:
 - Kept from the CA playtest: the frag/capture limit in big digits under the
   scores (`yb -56 xr -56` teams, `yb -46 xr -60` FFA/Duel).
 
-**Next:** the FFA/Duel miniscore highlight. Mock-up options (Chris hasn't
-chosen): A, the stock team frame `i_ctfj` inset on your face (recommended);
-B, the carousel frame; D, a green `>`; rows "leader and you" (recommended)
-or "top two". Then timeouts/pauses and in-game admin; the M4 checklist.
+**Next:** timeouts/pauses and in-game admin; the M4 checklist. (The FFA/Duel
+miniscore stays as built: the top two, no highlight. Chris, 2026-10-31.)
 
 **The playtest rig** (`~/q2playtest`, `./run.sh`, `./cmd.sh "<console>"`).
 Deploy with a temp file and `mv`, then `map q2dm1` (`gamemap` keeps the old
