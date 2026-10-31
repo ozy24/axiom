@@ -278,6 +278,23 @@ void Match::ChangeLimits(int64_t timelimit_ms, int fraglimit, int64_t now_ms)
 
 // LIVE with a timelimit: the stock voice at 30 and 20 seconds left, then every
 // second from 10, as MuffMode does.
+void Match::ToWarmup(int64_t now_ms, std::vector<MatchAction> &out)
+{
+	state_ = MatchState::Warmup;
+	state_since_ms_ = now_ms;
+	time_end_ms_ = 0;
+	last_countdown_s_ = -1;
+	out.push_back({MatchActionKind::ResetArena, "", 0});
+}
+
+std::vector<MatchAction> Match::BackToWarmup(int64_t now_ms)
+{
+	std::vector<MatchAction> out;
+	if (config_.enabled && MatchStateInPlay(state_))
+		ToWarmup(now_ms, out);
+	return out;
+}
+
 void Match::TimeWarning(int64_t now_ms, std::vector<MatchAction> &out)
 {
 	if (!time_end_ms_)
@@ -302,11 +319,7 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 	// (Chris, 2026-10-29). Not with match_allow_no_humans.
 	if (!config_.allow_no_humans && MatchStateInPlay(state_) && !HumansPlaying(in))
 	{
-		state_ = MatchState::Warmup;
-		state_since_ms_ = in.now_ms;
-		time_end_ms_ = 0;
-		last_countdown_s_ = -1;
-		out.push_back({MatchActionKind::ResetArena, "", 0});
+		ToWarmup(in.now_ms, out);
 		return out;
 	}
 

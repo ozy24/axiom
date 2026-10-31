@@ -27,8 +27,8 @@ void Core_Match_SetStats(edict_t *ent);
 // rules; then none in warmup, the countdown or sudden death.
 bool Core_Match_ClockEnd(gtime_t &end);
 
-// `sv match`: the state, every client's score and the team scores; true if
-// handled. From ServerCommand.
+// `sv match`: the state, every client's score and the team scores; `sv
+// readyall`, `sv readyteam red|blue`; true if handled. From ServerCommand.
 bool Core_Match_ServerCommand(const char *cmd);
 
 // The Tab menu's Ready row (core/menu_register.cpp): whether ready-up is on
@@ -37,6 +37,9 @@ bool Core_Match_ServerCommand(const char *cmd);
 bool Core_Match_ReadyUp();
 bool Core_Match_Warmup(); // the match flow is in warmup (votes are open there by default)
 bool Core_Match_InPlay(); // being played: live or between rounds; with the flow off, until the intermission
+// `sv spectate` took a duellist out of a match under way: back to warmup
+// (Match::BackToWarmup). Nothing outside play or with the flow off.
+void Core_Match_BackToWarmup();
 // The timelimit or fraglimit cvar changed (a passed setting vote): the match
 // under way takes the new limits without a restart (Match::ChangeLimits).
 void Core_Match_LimitsChanged();

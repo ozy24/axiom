@@ -26,7 +26,14 @@ bool Core_Teams_ClientCommand(edict_t *ent, const char *cmd);
 // match is live or with the match flow off.
 bool Core_Teams_ShuffleNow();
 
-// `sv lockteam`, `sv unlockteam`, `sv teams`, `sv shuffle`; true if handled. From ServerCommand.
+// `sv spectate` in a team game (core/join_register.cpp): `target` off their
+// team and its roster, so a locked team keeps them out, to spectating. Bot
+// and NoTeam: nothing done.
+enum class TeamsResult;
+TeamsResult Core_Teams_Remove(edict_t *target);
+
+// `sv lockteam`, `sv unlockteam` (a team, or both), `sv teams`, `sv shuffle`;
+// true if handled. From ServerCommand.
 bool Core_Teams_ServerCommand(const char *cmd);
 
 // The Tab menu: the locks and captains as `ent` sees them, into its view.

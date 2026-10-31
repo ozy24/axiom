@@ -206,6 +206,12 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
 - **Tier 23 startup-ruleset:** an empty server started with `set g_ruleset
   ffa`: rulesets/ffa.cfg's settings and a file it execs are in force as the
   first map spawns (its `.ent` folder is the file's), with nobody connecting.
+- **Tier 24 admin-commands:** the console's match commands. TDM with four
+  simulated players: `sv readyteam red` readies RED alone, `sv readyall`
+  starts the match, `sv lockteam` locks both, `sv spectate` takes a player
+  off RED and the lock keeps him out. Duel: `sv spectate` on a duellist
+  while live goes back to warmup (no forfeit) and the queued player steps
+  up (Q2RED only).
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

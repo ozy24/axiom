@@ -107,6 +107,18 @@ chooses to play (`join`, or the menu); players stay in from map to map.
 
 Set it in `server.cfg`. Details: docs/design/joining.md.
 
+## Running a match from the console
+
+| | |
+|---|---|
+| `sv readyall` | in a ready-up warmup: everyone playing is ready, so the countdown starts (as a passed `callvote readyall`) |
+| `sv readyteam red\|blue` | the same for one team |
+| `sv spectate <player>` | out of play, in any mode: a name as shown (any case, spaces and all) or a client number. On a team: off it and its roster, so a locked team keeps them out (a captain's `teamkick`). In Duel, a duellist in a match under way sends it back to warmup and the next in line steps up: no forfeit |
+| `kick <player>` | the engine's own: off the server |
+| `sv match` | the state, and everyone's score |
+
+Bots aren't moved: use `bot_count`.
+
 ## Scoreboard
 
 | Cvar | Default | What |
@@ -127,8 +139,8 @@ else.
 | `match_warmup_weapons` | 1 | in warmup, everyone has every weapon the map places, with full ammo; 0 = stock's start |
 | `match_lock` | 1 in `tdm` and `ctf` | lock both teams as the match goes live; 0 = only when a captain locks |
 
-From the console: `sv lockteam red|blue`, `sv unlockteam red|blue`,
-`sv teams` to see each team's lock, captain and players, and `sv shuffle`
+From the console: `sv lockteam` and `sv unlockteam` (both teams, or
+`red` / `blue` for one), `sv teams` to see each team's lock, captain and players, and `sv shuffle`
 to split the players into two new random teams (warmup only; players can
 vote one with `callvote shuffle`, decision 0020). For a public
 server, put `set match_lock 0` in `rulesets/tdm.cfg` and `rulesets/ctf.cfg`.

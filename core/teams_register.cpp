@@ -9,7 +9,6 @@
 #include "core/teams.h"
 #include "core/teams_hooks.h"
 
-#include <cctype>
 #include <string>
 #include <vector>
 
@@ -131,35 +130,6 @@ void Refused(edict_t *ent, TeamsResult r, int team)
 	}
 }
 
-// The client a command's argument names: a name (as typed, any case) or a
-// client number. Null if none or more than one.
-edict_t *Named(const char *arg)
-{
-	edict_t *found = nullptr;
-	for (uint32_t i = 0; i < game.maxclients; ++i)
-	{
-		edict_t *ent = Slot(i);
-		if (Present(ent) && !Q_strcasecmp(Core_PlayerName(ent).c_str(), arg))
-		{
-			if (found)
-				return nullptr;
-			found = ent;
-		}
-	}
-	if (found)
-		return found;
-	bool digits = *arg != '\0';
-	for (const char *c = arg; *c; ++c)
-		digits = digits && isdigit((unsigned char)*c);
-	if (digits)
-	{
-		const uint32_t n = (uint32_t)atoi(arg);
-		if (n < game.maxclients && Present(Slot(n)))
-			return Slot(n);
-	}
-	return nullptr;
-}
-
 void Captain(edict_t *ent, edict_t *target)
 {
 	const int team = TeamOf(ent);
@@ -195,6 +165,18 @@ void LockTeam(edict_t *ent, bool lock)
 	gi.Com_PrintFmt("Teams: {} {} by {}\n", TeamName(team), lock ? "locked" : "unlocked", Core_PlayerName(ent).c_str());
 }
 
+// Off the team and its roster, to spectating: a captain's kick, or the server's.
+void Remove(edict_t *target, int team)
+{
+	CTFObserver(target); // drops a carried flag and tech
+	// Not stock's join menu, which the respawn opens: its cursor sits on a
+	// team, and a player kicked mid-fight joined it with their next jump
+	// (playtest 2026-10-30: kicked to the other team).
+	PMenu_Close(target);
+	gi.LocCenter_Print(target, "You were removed from {}.\nTab opens the menu.", TeamName(team));
+	Announce(teams.Sync(Snapshot()));
+}
+
 void Kick(edict_t *ent, edict_t *target)
 {
 	const int team = TeamOf(ent);
@@ -210,13 +192,7 @@ void Kick(edict_t *ent, edict_t *target)
 	gi.LocBroadcast_Print(PRINT_HIGH, "{} was removed from {}.\n", target->client->pers.netname, TeamName(team));
 	gi.Com_PrintFmt("Teams: {} kicked from {} by {}\n", Core_PlayerName(target).c_str(), TeamName(team),
 	                Core_PlayerName(ent).c_str());
-	CTFObserver(target); // drops a carried flag and tech
-	// Not stock's join menu, which the respawn opens: its cursor sits on a
-	// team, and a player kicked mid-fight joined it with their next jump
-	// (playtest 2026-10-30: kicked to the other team).
-	PMenu_Close(target);
-	gi.LocCenter_Print(target, "You were removed from {}.\nTab opens the menu.", TeamName(team));
-	Announce(teams.Sync(Snapshot()));
+	Remove(target, team);
 }
 
 void ReadyTeam(edict_t *ent)
@@ -295,6 +271,15 @@ void Core_Teams_Frame()
 	was_warmup = warmup;
 }
 
+TeamsResult Core_Teams_Remove(edict_t *target)
+{
+	const int team = TeamOf(target);
+	const TeamsResult r = teams.Remove(Core_PlayerKey(target));
+	if (r == TeamsResult::Ok)
+		Remove(target, team);
+	return r;
+}
+
 bool Core_Teams_ShuffleNow()
 {
 	if (!Active() || !Core_Match_OwnsRules() || Core_Match_InPlay() || level.intermissiontime)
@@ -368,7 +353,7 @@ bool Core_Teams_ClientCommand(edict_t *ent, const char *cmd)
 	if (wants_target && gi.argc() > 1)
 	{
 		// The whole argument: a lobby name token decodes only as one (core/player_name.h).
-		target = Named(gi.args());
+		target = Core_PlayerNamed(gi.args());
 		if (!target)
 		{
 			gi.LocClient_Print(ent, PRINT_HIGH, "No one player called '{}'.\n", gi.args());
@@ -389,22 +374,28 @@ bool Core_Teams_ServerCommand(const char *cmd)
 	const bool lock = !Q_strcasecmp(cmd, "lockteam");
 	if (lock || !Q_strcasecmp(cmd, "unlockteam"))
 	{
-		const int team = ArgTeam();
+		// No team named: both, the usual move before a match.
+		const int team = gi.argc() > 2 ? ArgTeam() : -1;
 		if (!Active() || !team)
 		{
-			gi.Com_PrintFmt("Usage: sv {} red|blue (team games only)\n", cmd);
+			gi.Com_PrintFmt("Usage: sv {} [red|blue] (team games only)\n", cmd);
 			return true;
 		}
-		const TeamsResult r = lock ? teams.Lock(team) : teams.Unlock(team);
-		if (r == TeamsResult::Ok)
+		for (int t = 1; t <= 2; ++t)
 		{
-			gi.LocBroadcast_Print(PRINT_HIGH, lock ? "{} is locked.\n" : "{} is unlocked.\n", TeamName(team));
-			gi.Com_PrintFmt("Teams: {} {} by the server\n", TeamName(team), lock ? "locked" : "unlocked");
+			if (team != -1 && t != team)
+				continue;
+			const TeamsResult r = lock ? teams.Lock(t) : teams.Unlock(t);
+			if (r == TeamsResult::Ok)
+			{
+				gi.LocBroadcast_Print(PRINT_HIGH, lock ? "{} is locked.\n" : "{} is unlocked.\n", TeamName(t));
+				gi.Com_PrintFmt("Teams: {} {} by the server\n", TeamName(t), lock ? "locked" : "unlocked");
+			}
+			else if (r == TeamsResult::Empty)
+				gi.Com_PrintFmt("{} has nobody on it.\n", TeamName(t));
+			else
+				gi.Com_PrintFmt("{} is already {}.\n", TeamName(t), lock ? "locked" : "unlocked");
 		}
-		else if (r == TeamsResult::Empty)
-			gi.Com_PrintFmt("{} has nobody on it.\n", TeamName(team));
-		else
-			gi.Com_PrintFmt("{} is already {}.\n", TeamName(team), lock ? "locked" : "unlocked");
 		return true;
 	}
 	if (!Q_strcasecmp(cmd, "shuffle"))

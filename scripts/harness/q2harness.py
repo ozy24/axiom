@@ -1762,10 +1762,115 @@ def tier_startup_ruleset(args, results):
     detail += error_lines(log, rig)[:20]
     results.append(("23 startup-ruleset", not detail, detail))
 
+def tier_admin_commands(args, results):
+    """The server's console commands for a match (docs/admin.md). TDM, four
+    simulated players in a ready-up warmup: `sv readyteam red` readies RED
+    alone (no countdown), `sv readyall` starts the match, `sv lockteam` with
+    no team locks both, `sv spectate Bob` takes him off RED and its roster,
+    so the lock keeps him out. Duel, three: `sv spectate` on a duellist in a
+    match under way is no forfeit: back to warmup, the queued player steps
+    up (Chris, 2026-10-31). Q2RED only."""
+    cases = {
+        "tdm": ("""seconds 62
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Carol social=sim-carol puppet
+client 3 name=Dave social=sim-dave puppet
+at 6 0 cmd team red
+at 6 1 cmd team red
+at 6 2 cmd team blue
+at 6 3 cmd team blue
+at 44 1 cmd team red
+""", "set match_ready 1\nset match_countdown 3\nset match_lock 0\nset timelimit 5\n",
+            [("sleep", 14), ("cmd", "sv readyteam red"), ("sleep", 3), ("cmd", "sv readyall"),
+             ("wait", r"Match: countdown -> live", 30), ("sleep", 1), ("cmd", "sv lockteam"), ("sleep", 1),
+             ("cmd", "sv spectate Bob"), ("sleep", 1), ("cmd", "sv spectate Bob"), ("cmd", "sv spectate Nobody"),
+             ("sleep", 26), ("cmd", "sv match"), ("cmd", "sv teams")]),
+        "duel": ("""seconds 50
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob join=1 puppet
+client 2 name=Carol social=sim-carol join=2 puppet
+""", "set match_ready 0\nset match_countdown 3\nset timelimit 5\nset g_auto_join 1\n",
+            [("wait", r"Match: countdown -> live", 60), ("sleep", 2), ("cmd", "sv match"), ("cmd", "sv spectate Alice"),
+             ("sleep", 10), ("cmd", "sv match")]),
+    }
+    for gt, (script, cfg, during) in cases.items():
+        label = f"24 admin-commands {gt}"
+        rig, why = scenario_rig(args, f"t24-{gt}")
+        if not rig:
+            results.append((label, True, [f"skipped: {why}"]))
+            continue
+        rulesets = rig.dir / "baseq2" / "rulesets"
+        rulesets.mkdir(parents=True, exist_ok=True)
+        (rulesets / f"{gt}.cfg").write_text(cfg)
+        startup = scenario_startup(rig, ["+set", "g_ruleset", gt, "+map", "q2dm1"])
+        log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 150)
+        tap = read_jsonl(rig.dir / "tap.jsonl")
+        detail = []
+        humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+        want = {"Alice", "Bob", "Carol", "Dave"} if gt == "tdm" else {"Alice", "Bob", "Carol"}
+        if not want <= set(humans):
+            results.append((label, False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
+            continue
+        locs = [r for r in tap if r.get("type") == "locprint"]
+        dumps = sv_match_dumps(log)
+        if gt == "tdm":
+            at = lambda line: log.find(line)
+            red, everyone = at("Match: RED readied by the server"), at("Match: everyone readied by the server")
+            start = at("Match: warmup -> countdown")
+            if red < 0 or everyone < 0:
+                detail.append(f"readied lines: RED {red >= 0}, everyone {everyone >= 0}")
+            elif not everyone < start:
+                detail.append("the countdown started before `sv readyall` (RED alone isn't everyone)")
+            if not any(r["base"] == "{} is ready.\n" and r["args"] == ["RED"] for r in locs) or \
+                    not any(r["base"] == "Everyone is ready.\n" for r in locs):
+                detail.append("no 'RED is ready.' / 'Everyone is ready.' broadcast")
+            teams = [l.split("Teams: ", 1)[1].strip() for l in log.splitlines() if "Teams: " in l]
+            for line in ("RED locked by the server", "BLUE locked by the server"):
+                if line not in teams:
+                    detail.append(f"no 'Teams: {line}' (saw {teams})")
+            if log.count("Join: Bob moved to spectate by the server") != 1:
+                detail.append("`sv spectate Bob` didn't log once")
+            for line in ("Bob is already spectating.", "No one player called 'Nobody'."):
+                if line not in log:
+                    detail.append(f"no '{line}'")
+            bob = humans["Bob"]
+            removed = [r for r in locs if r["to"] == bob and r["base"].startswith("You were removed from {}.")]
+            if not removed:
+                detail.append("Bob wasn't told he was removed")
+            elif not any(r["to"] == bob and r["base"] == "{} is locked.\n" and r["t"] > removed[0]["t"] for r in locs):
+                detail.append("Bob's `team red` after his removal wasn't refused by the lock")
+            final = dumps[-1] if dumps else {}
+            if final.get("Bob") is not False or final.get("Alice") is not True:
+                detail.append(f"the last `sv match`: {final}, expected Bob not playing, Alice playing")
+            roster = re.search(r"^\S*RED: locked, captain .*\n((?:\s+.*\n)*)", log, re.M)
+            if roster and "Bob" in roster.group(1):
+                detail.append(f"Bob still on RED's list: {roster.group(1)!r}")
+        else:
+            # Without it the match played on, Carol taking over Alice's half (a broken build, 2026-10-31).
+            removed = log.find("Join: Alice moved to spectate by the server")
+            if "Match: ended" in log or "forfeit" in log:
+                detail.append("the duellist's removal ended the match (a forfeit)")
+            if "Match: back to warmup (a player removed)" not in log:
+                detail.append("no 'Match: back to warmup (a player removed)'")
+            if removed < 0 or "Match: warmup -> countdown" not in log[removed:]:
+                detail.append("the match didn't start again from warmup after the removal")
+            before, after = (dumps[0], dumps[-1]) if len(dumps) >= 2 else ({}, {})
+            if before.get("Alice") is not True or before.get("Carol") is not False:
+                detail.append(f"before: playing {before}, expected Alice duelling and Carol waiting")
+            if after.get("Alice") is not False or after.get("Bob") is not True or after.get("Carol") is not True:
+                detail.append(f"after: playing {after}, expected Alice spectating, Bob and Carol duelling")
+        if rig.returncode != 0:
+            detail.append(f"server exited with code {rig.returncode}")
+        detail += error_lines(log, rig)[:20]
+        results.append((label, not detail, detail))
+
+
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
          tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
-         tier_human_join, tier_human_readyvote, tier_human_shuffle, tier_entities, tier_startup_ruleset)
+         tier_human_join, tier_human_readyvote, tier_human_shuffle, tier_entities, tier_startup_ruleset,
+         tier_admin_commands)
 
 
 def run_tier(tier, args):
@@ -1867,7 +1972,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset", "admin_commands"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")
