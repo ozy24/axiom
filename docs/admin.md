@@ -34,7 +34,10 @@ set timelimit 15
 set fraglimit 100
 ```
 
-It applies every time TDM starts, by vote or by `sv ruleset tdm`.
+It applies every time TDM starts, by vote or by `sv ruleset tdm`, and
+when the server starts in TDM (`set g_ruleset tdm`). Write settings as
+`set name value`: at startup those apply before the first map spawns, and
+anything else in the file runs only once the first player arrives.
 
 A public FFA that starts as soon as two players are in, with no ready-up:
 

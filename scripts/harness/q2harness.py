@@ -1725,10 +1725,43 @@ def tier_entities(args, results):
         results.append((f"22 entities {gametype}", not detail, detail))
 
 
+def tier_startup_ruleset(args, results):
+    """server.cfg's starting mode on an empty server: with `set g_ruleset ffa`
+    at startup, rulesets/ffa.cfg's settings (and a file it execs) are in
+    force as the first map spawns, with nobody connecting. The engine holds
+    what's queued while a map loads until a player arrives, and runs no
+    frames before then, so Bloody Blastard came up after every restart with
+    its first map spawned without them (2026-10-30). A spawn-time setting
+    shows it: the file points the .ent overrides at a folder with q2dm1's."""
+    rig = RIGS[args.engine_kind](args, args.candidate, "t23-startup")
+    game_dir = rig.dir / "baseq2" if args.engine_kind == "q2red" else rig.base / "baseq2"
+    (game_dir / "rulesets").mkdir(parents=True, exist_ok=True)
+    (game_dir / "rulesets" / "ffa.cfg").write_text(
+        'set fraglimit 17 // a; comment\nset g_entity_override_dir "t23ents"\nexec rulesets/t23more.cfg\n')
+    (game_dir / "rulesets" / "t23more.cfg").write_text('set g_map_list "q2dm3 q2dm8"\n')
+    (game_dir / "t23ents").mkdir(parents=True, exist_ok=True)
+    (game_dir / "t23ents" / "q2dm1.ent").write_text(bsp_entities(args.retail, "q2dm1"), encoding="latin1")
+    startup = ["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_ruleset", "ffa", "+map", "q2dm1"]
+    log = rig.run(startup, [rig.wait_ready(), ("sleep", 4), ("cmd", "fraglimit"), ("cmd", "g_map_list"),
+                            ("sleep", 1), ("cmd", "quit")], timeout=args.boot_timeout + 60)
+    detail = []
+    if "Ruleset: starting ffa" not in log:
+        detail.append("no 'Ruleset: starting ffa' line")
+    if not re.search(r"Entities: \S*t23ents/q2dm1\.ent\n", log):
+        detail.append("the first map didn't spawn from t23ents/q2dm1.ent: the file's settings came after it")
+    if not re.search(r'"fraglimit" is "17"', log):
+        detail.append(f"fraglimit isn't the file's 17: {re.findall(r'.fraglimit. is .*', log)}")
+    if not re.search(r'"g_map_list" is "q2dm3 q2dm8"', log):
+        detail.append("g_map_list isn't the exec'd file's")
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append(("23 startup-ruleset", not detail, detail))
+
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
          tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
-         tier_human_join, tier_human_readyvote, tier_human_shuffle, tier_entities)
+         tier_human_join, tier_human_readyvote, tier_human_shuffle, tier_entities, tier_startup_ruleset)
 
 
 def run_tier(tier, args):
@@ -1830,7 +1863,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

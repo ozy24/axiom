@@ -203,6 +203,9 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   say, nothing is unknown, the pad is aimed, a map-sized trigger fires
   `target_remove_powerups` at the bots, and `sv saveents` writes
   q2dm2's list but never over an existing file (docs/design/entities.md).
+- **Tier 23 startup-ruleset:** an empty server started with `set g_ruleset
+  ffa`: rulesets/ffa.cfg's settings and a file it execs are in force as the
+  first map spawns (its `.ent` folder is the file's), with nobody connecting.
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

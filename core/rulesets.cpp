@@ -3,6 +3,7 @@
 #include "core/rulesets.h"
 
 #include <algorithm>
+#include <cctype>
 
 const RulesetDef core_rulesets[] = {
     {"ffa", "ffa", "free for all with warmup and ready-up, 10 minutes, sudden death on a tie",
@@ -236,42 +237,6 @@ std::vector<Ruleset> Core_Ruleset_All(std::string_view g_ruleset_variants, const
 	return out;
 }
 
-std::vector<std::pair<std::string, std::string>> Core_Ruleset_Settings(const Ruleset &r)
-{
-	std::vector<std::pair<std::string, std::string>> out;
-	for (size_t i = 0; i < core_gameplay_cvar_count; ++i)
-		out.emplace_back(core_gameplay_cvars[i].name, core_gameplay_cvars[i].value);
-	const auto lines = [&](std::string_view cfg)
-	{
-		// Our own text: `set <name> <value>` per line.
-		size_t at = 0;
-		while (at < cfg.size())
-		{
-			size_t end = cfg.find('\n', at);
-			if (end == std::string_view::npos)
-				end = cfg.size();
-			const std::string_view line = cfg.substr(at, end - at);
-			at = end + 1;
-			if (line.substr(0, 4) != "set ")
-				continue;
-			const size_t space = line.find(' ', 4);
-			if (space == std::string_view::npos)
-				continue;
-			std::string value(line.substr(space + 1));
-			if (value.size() >= 2 && value.front() == '"' && value.back() == '"')
-				value = value.substr(1, value.size() - 2);
-			out.emplace_back(std::string(line.substr(4, space - 4)), value);
-		}
-	};
-	if (const RulesetDef *own = Own(r.gametype))
-		lines(own->cfg);
-	else
-		out.emplace_back("g_gametype", r.gametype);
-	if (!r.variant.empty() && r.builtin)
-		lines(r.builtin->cfg);
-	return out;
-}
-
 std::string Core_Ruleset_Commands(const Ruleset &r)
 {
 	std::string text;
@@ -290,4 +255,74 @@ std::string Core_Ruleset_Commands(const Ruleset &r)
 	}
 	text += "set g_ruleset " + r.name + "\n";
 	return text;
+}
+
+namespace
+{
+// The console's tokens: quoted strings, or runs of non-space.
+std::vector<std::string> Tokens(std::string_view line)
+{
+	std::vector<std::string> out;
+	size_t i = 0;
+	while (i < line.size())
+	{
+		while (i < line.size() && (unsigned char)line[i] <= ' ')
+			++i;
+		if (i >= line.size())
+			break;
+		if (line.compare(i, 2, "//") == 0)
+			break;
+		std::string token;
+		if (line[i] == '"')
+		{
+			++i;
+			while (i < line.size() && line[i] != '"')
+				token += line[i++];
+			++i;
+		}
+		else
+		{
+			while (i < line.size() && (unsigned char)line[i] > ' ')
+				token += line[i++];
+		}
+		out.push_back(std::move(token));
+	}
+	return out;
+}
+
+bool Is(std::string_view word, std::string_view lower)
+{
+	return word.size() == lower.size() && std::equal(word.begin(), word.end(), lower.begin(), [](char a, char b)
+	                                                 { return std::tolower((unsigned char)a) == b; });
+}
+} // namespace
+
+std::vector<RulesetCfgStep> Core_Ruleset_ParseCfg(std::string_view text)
+{
+	std::vector<RulesetCfgStep> steps;
+	std::string line;
+	bool quoted = false;
+	const auto flush = [&]
+	{
+		const std::vector<std::string> t = Tokens(line);
+		line.clear();
+		if (t.size() >= 3 && (Is(t[0], "set") || Is(t[0], "seta") || Is(t[0], "sets") || Is(t[0], "setu")))
+			steps.push_back({false, t[1], t[2]});
+		else if (t.size() >= 2 && Is(t[0], "exec"))
+			steps.push_back({true, t[1], {}});
+	};
+	for (const char c : text)
+	{
+		if (c == '"')
+			quoted = !quoted;
+		if (c == '\n' || c == '\r' || (c == ';' && !quoted))
+		{
+			quoted = false;
+			flush();
+			continue;
+		}
+		line += c;
+	}
+	flush();
+	return steps;
 }

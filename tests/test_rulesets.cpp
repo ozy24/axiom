@@ -211,22 +211,62 @@ TEST_CASE("a gametype's own switch has no variant step; an admin's variant execs
 
 TEST_CASE("the settings set at load: the reset, then the gametype's and the variant's own, in order")
 {
-	const auto settings = Core_Ruleset_Settings(*Core_Ruleset_Resolve("duel", "", kGametypes));
+	const auto settings = Core_Ruleset_ParseCfg(Core_Ruleset_Commands(*Core_Ruleset_Resolve("duel", "", kGametypes)));
 	auto last = [&](const std::string &cvar)
 	{
 		std::string value = "(unset)";
-		for (const auto &[name, v] : settings)
-			if (name == cvar)
-				value = v;
+		for (const RulesetCfgStep &s : settings)
+			if (!s.exec && s.name == cvar)
+				value = s.value;
 		return value;
 	};
-	CHECK(settings.front().first == core_gameplay_cvars[0].name); // the reset comes first
+	CHECK(settings.front().name == core_gameplay_cvars[0].name); // the reset comes first
 	CHECK(last("g_gametype") == "duel");
 	CHECK(last("match_flow") == "1"); // the duel's own
 	CHECK(last("timelimit") == "10");
 	CHECK(last("g_map_list") == ""); // reset, quotes stripped
 
-	// An admin's variant: the gametype's own settings; its file is queued.
-	const auto insta = Core_Ruleset_Settings(*Core_Ruleset_Resolve("ctf_instagib", "ctf_instagib", kGametypes));
-	CHECK(std::find(insta.begin(), insta.end(), std::make_pair(std::string("ctf"), std::string("1"))) != insta.end());
+	// An admin's variant: the gametype's own settings, then its file's exec.
+	const auto insta =
+	    Core_Ruleset_ParseCfg(Core_Ruleset_Commands(*Core_Ruleset_Resolve("ctf_instagib", "ctf_instagib", kGametypes)));
+	CHECK(std::any_of(insta.begin(), insta.end(),
+	                  [](const RulesetCfgStep &s) { return s.name == "ctf" && s.value == "1"; }));
+	CHECK(std::any_of(insta.begin(), insta.end(),
+	                  [](const RulesetCfgStep &s) { return s.exec && s.name == "rulesets/ctf_instagib.cfg"; }));
+}
+
+TEST_CASE("ruleset files: their set and exec lines, split as the console splits them")
+{
+	const std::vector<RulesetCfgStep> steps = Core_Ruleset_ParseCfg("// Bloody Blastard's FFA\n"
+	                                                                "set fraglimit 30\n"
+	                                                                "seta timelimit \"15\"   // was 20\r\n"
+	                                                                "SET g_map_list \"q2dm1 q2dm3; q2dm8\"\n"
+	                                                                "set g_no_items 1 // a; b\n"
+	                                                                "fraglimit 40\n"
+	                                                                "exec rulesets/more.cfg; set g_auto_join 1\n"
+	                                                                "set lonely\n"
+	                                                                "  sets hostname \"BB\" s");
+	REQUIRE(steps.size() == 7);
+	CHECK((!steps[0].exec && steps[0].name == "fraglimit" && steps[0].value == "30"));
+	CHECK((steps[1].name == "timelimit" && steps[1].value == "15"));
+	CHECK((steps[2].name == "g_map_list" && steps[2].value == "q2dm1 q2dm3; q2dm8")); // a quoted ; stays
+	CHECK((steps[3].name == "g_no_items" && steps[3].value == "1"));
+	// The console splits on the ; inside that comment: " b" is a line of its own, and nothing.
+	CHECK((steps[4].exec && steps[4].name == "rulesets/more.cfg"));
+	CHECK((steps[5].name == "g_auto_join" && steps[5].value == "1"));
+	CHECK((steps[6].name == "hostname" && steps[6].value == "BB"));
+	CHECK(Core_Ruleset_ParseCfg("").empty());
+}
+
+TEST_CASE("ruleset files: a switch's own text reads back as its sets and its exec")
+{
+	const std::optional<Ruleset> r = Core_Ruleset_Resolve("tdm", "", {"ffa", "duel", "tdm", "ctf"});
+	REQUIRE(r);
+	const std::vector<RulesetCfgStep> steps = Core_Ruleset_ParseCfg(Core_Ruleset_Commands(*r));
+	const auto exec = std::find_if(steps.begin(), steps.end(), [](const RulesetCfgStep &s) { return s.exec; });
+	REQUIRE(exec != steps.end());
+	CHECK(exec->name == "rulesets/tdm.cfg");
+	CHECK(std::any_of(steps.begin(), exec,
+	                  [](const RulesetCfgStep &s) { return s.name == "teamplay" && s.value == "1"; }));
+	CHECK((steps.back().name == "g_ruleset" && steps.back().value == "tdm"));
 }

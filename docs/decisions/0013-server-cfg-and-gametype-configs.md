@@ -46,9 +46,13 @@ allow-list, no hidden entries and no file format of our own.
   the server console on each switch. Players see nothing.
 - A cvar an admin's cfg sets that isn't in `core_gameplay_cvars` isn't
   reset, so it can leak. Gameplay cvars join the list as features add them.
-- Starting in a mode from `server.cfg` costs one extra map load at boot:
-  `sv` commands don't exist before the game is loaded, so the module applies
-  `g_ruleset` on its first frame and reloads the map.
+- Starting in a mode from `server.cfg`: `sv` commands don't exist before
+  the game is loaded, so as it loads the module sets the mode's settings
+  itself, and the `set` lines of its files (following their `exec`s), so
+  the first map spawns in it. The engine holds the queued switch until a
+  player arrives, then runs it whole, so a file's other commands (a bare
+  `fraglimit 30`) wait for that first player. (2026-10-30: the files used
+  to wait too, and BB's first map after a restart spawned without them.)
 
 **Reopen if:** admins find any step of this surprising. The measure is what
 an admin has to learn and write, not what the code can do.
