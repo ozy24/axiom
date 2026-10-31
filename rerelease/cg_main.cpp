@@ -24,6 +24,7 @@ static void InitCGame()
 
 	pm_config.n64_physics = !!atoi(cgi.get_configstring(CONFIG_N64_PHYSICS));
 	pm_config.airaccel = atoi(cgi.get_configstring(CS_AIRACCEL));
+	pm_config.classic_jumps = !!atoi(cgi.get_configstring(CONFIG_CLASSIC_JUMPS)); // [mod]
 }
 
 static void ShutdownCGame()
@@ -70,6 +71,8 @@ static void CG_ParseConfigString(int32_t i, const char *s)
 		pm_config.n64_physics = !!atoi(s);
 	else if (i == CS_AIRACCEL)
 		pm_config.airaccel = atoi(s);
+	else if (i == CONFIG_CLASSIC_JUMPS) // [mod]
+		pm_config.classic_jumps = !!atoi(s); // [mod]
 }
 
 void CG_ParseCenterPrint (const char *str, int isplit, bool instant);

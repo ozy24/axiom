@@ -143,7 +143,8 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
 - **Tier 5 match-flow:** `match_flow 1` with bots: the `Match:` lines must
   run warmup → countdown → live → intermission, ended by the timelimit counted
   from LIVE, on both engines (Q2REX's bots begin as clients even though they
-  don't fight in a bot-only match).
+  don't fight in a bot-only match); going live puts the movers back
+  (`Movers: N reset`, q2dm1's two plats).
 - **Tier 6 duel:** three bots, `g_gametype duel`: one queues, the match runs to
   its timelimit, and a `Duel: … next: …` line shows the rotation.
 - **Tier 9 warmup:** six bots fight in a warmup that never starts
@@ -196,6 +197,15 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   locked by the server: a passed `callvote shuffle` gives a 3/2 split that
   isn't the old groups, every team skin follows, RED is unlocked; once
   live, a shuffle is refused (Q2RED only).
+- **Tier 22 entities:** a q2dm1 `.ent` override (the BSP's entities plus
+  MuffMode's keys, small ammo, a jump pad and its targets) in FFA and
+  Duel: the file replaces the BSP's, each mode leaves out what its keys
+  say, nothing is unknown, the pad is aimed, a map-sized trigger fires
+  `target_remove_powerups` at the bots, and `sv saveents` writes
+  q2dm2's list but never over an existing file (docs/design/entities.md).
+- **Tier 23 startup-ruleset:** an empty server started with `set g_ruleset
+  ffa`: rulesets/ffa.cfg's settings and a file it execs are in force as the
+  first map spawns (its `.ent` folder is the file's), with nobody connecting.
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.
@@ -226,7 +236,8 @@ These come from id's code and the engine; each was verified in source.
    `docs/baselines/save-names.txt`. Adding names is fine; regenerate the
    baseline with `--update` and commit it with the change.
 2. **Stock clients run their own cgame.** Movement is predicted client-side, so
-   no movement changes. About 10 stat slots are free (`bg_local.h`). Ammo and
+   no movement changes (one exception, Chris's: original Quake II's jumps
+   below height 0, `g_classic_jumps`, decision 0024). About 10 stat slots are free (`bg_local.h`). Ammo and
    powerup stats are bit-packed by enum index, so no new ammo or powerup types.
    New `$loc` keys show raw on stock clients, so ship no loc file. The
    `static_assert`s in `checks/stock_client_contract.cpp` pin every stat,

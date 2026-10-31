@@ -15,6 +15,10 @@ bool Core_HostFiles_Available();
 // where saves go, atomically. False when unavailable, refused or failed.
 bool Core_HostFiles_Write(const std::string &game_path, std::string_view data);
 
+// Reads `game_path` through the engine's search path (paks included) into
+// `data`. False when unavailable or the file isn't there.
+bool Core_HostFiles_Read(const std::string &game_path, std::string &data);
+
 // A game path the extension accepts - relative, '/'-separated, under 64
 // bytes, [A-Za-z0-9_.-], no empty or '.'-led component - built as
 // "<dir>/<file>". Empty if `dir` or the result doesn't qualify. Pure.

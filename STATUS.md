@@ -1,6 +1,6 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-10-30 (back to four gametypes)._
+_Updated at the end of every session. Last update: 2026-10-30 (map entities)._
 
 ## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
@@ -258,6 +258,43 @@ Done (branch `scoreboard/duel`; Chris finished testing it on 2026-10-29):
   the sim client can't change userinfo mid-game, so the third is untested.
   Tier 11 now reads the Duel rotation from `sv match`.
 
+## Map entities (2026-10-30, decision 0023; branch `maps/entities`)
+
+MuffMode's maps now play as in MuffMode, and `.ent` overrides work
+(docs/design/entities.md):
+- Mode keys (`gametype`/`not_gametype` with MuffMode's names,
+  `notteam`/`notfree`, `powerups_on`/`powerups_off`, the ruleset keys):
+  mm-fleshref's Power Screen in FFA, Combat Armour elsewhere.
+- Quake III jump pads (mm-longyd's 13, wicked, reclam, thunders,
+  winpain), small/large ammo as stock ammo with MuffMode's amounts and the
+  pak0 models, `target_position`, `target_teleporter`, `target_relay`,
+  `target_remove_powerups`, `no_dm_spawnpads`.
+- `maps/<map>.ent` replaces the BSP's entities in deathmatch
+  (`g_entity_override_load` 1, `g_entity_override_dir`); `sv saveents`
+  writes a starting file. Deathmatch only: single player and coop are stock.
+- Checked on the rig's real maps (fleshref, longyd, conven, thunders, kmach,
+  wicked): counts match MuffMode's, no unknown keys or classnames left.
+  Harness tier 22 (Q2RED here; Q2REX runs in CI on the PR: its read path
+  is the plain `basedir` one).
+- Not done: a player actually riding a jump pad (the throw is unit-tested;
+  try mm-longyd on the rig), the WIP-only entities (`item_regen`,
+  `target_delay`, shooters).
+- Playtest on BB (2026-10-30), fixed on the branch: `teamkick` left the
+  join menu open and a jump joined the kicked player to a team (tier 17);
+  Rogue's `trigger_teleport` drew its trigger brush over mm-fleshref's
+  teleporter (tier 22); classic jumps below height 0 for mm-mcoil
+  (`g_classic_jumps`, decision 0024, the one exception to hard rule 2;
+  tier 16 checks the configstring, unit tests the numbers; not yet a
+  player measuring a jump). BB runs a61e783 (2026-10-31), with
+  `g_teleporter_freeze 0` in its rulesets.
+- Teleporters stopped you dead (stock zeroes your speed and holds you
+  160 ms): `g_teleporter_freeze` (MuffMode's name; default 1, stock) at 0
+  sends you out of the exit at the speed you went in, for both stock
+  teleporters (`misc_teleporter`, Rogue's `trigger_teleport`). BB's
+  rulesets set 0. Unit-tested only: no tier walks a player through one yet.
+- Stacked on `match/overtime` (overtime + the mover reset), which waits for
+  Chris's playtest; PR both together or rebase once that merges.
+
 ## Handover (2026-10-30): back to the four core gametypes (decision 0022)
 
 Chris (2026-10-30): Axiom is FFA, Duel, TDM and CTF; extra modes multiply
@@ -308,7 +345,7 @@ default doesn't apply until the server restarts).
   - Arrival and memory across map changes.
   - Lock rosters (an emptied team unlocks; teamkick works in team modes).
   - Readyteam as a vote.
-  - Tests: 18 harness tiers on two engines.
+  - Tests: 19 harness tiers on two engines.
   - About half the code per feature.
 - **MMREX features that do nothing:**
   - `g_dm_spawn_farthest`
@@ -335,6 +372,8 @@ default doesn't apply until the server restarts).
 - One intermittent Q2RED segfault in a CTF server with simulated players
   (tier 12, 2026-10-27, once under `--jobs 4`); not reproduced in 16 more
   runs. CI now keeps CRASHLOG.TXT (collect-logs.sh); look there if it recurs.
+  Seen again 2026-10-30: tier 18 human-join tdm under `--jobs 4` locally
+  (crash log lost to a cleanup); three reruns passed.
 - Q2REX's built-in bots never enter a bot-only match (retail admits bots
   only after a human spawns), so tier 3 can't check frags on Q2REX.
 - `jumpbox.lan` returns a bogus AAAA record (`::`); use `ssh -4`.

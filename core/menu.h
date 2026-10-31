@@ -33,6 +33,8 @@ enum class MenuAction
 	VoteVariants,  // a gametype's variants; the row's arg is its id
 	VoteSetting,   // a setting's choices; the row's arg is its kind ("timelimit")
 	VoteFor,       // callvote with the row's arg ("map q2dm3", "gametype hoony", "restart")
+	PagePrev,      // a long choice list's previous page
+	PageNext,      // ... and its next
 	Team,          // a captain's Team page (also Back from a teammate's page)
 	TeamLock,      // lockteam
 	TeamUnlock,    // unlockteam
@@ -180,18 +182,23 @@ MenuPage Core_Menu_About(const MenuView &view);
 // Call a Vote: the allowed kinds; restart is called from here, the others
 // open their choice list.
 MenuPage Core_Menu_CallVote(const MenuView &view);
-// The maps, the current one marked and skipped. A list longer than the page
-// ends in a row saying to use callvote.
-MenuPage Core_Menu_VoteMaps(const MenuView &view);
+// A choice list longer than a page (14 rows) shows kMenuListPage choices a
+// page, as MMREX's map vote does: the title gains "(2/3)", and "< Prev Page"
+// / "> Next Page" sit at the bottom, a blank row above Back, and a blank
+// row at least under the last choice. `list_page` counts from 0 and is clamped to the list.
+constexpr size_t kMenuListPage = 11;
+
+// The maps, the current one marked and skipped.
+MenuPage Core_Menu_VoteMaps(const MenuView &view, int list_page = 0);
 // The gametypes: one with a single ruleset is voted from here (marked and
 // skipped if current); one with variants opens them (marked if current).
-MenuPage Core_Menu_VoteGametypes(const MenuView &view);
+MenuPage Core_Menu_VoteGametypes(const MenuView &view, int list_page = 0);
 // A gametype's variants ("Duel", "HoonyMode"), the current ruleset marked and
 // skipped; Back returns to the gametypes.
-MenuPage Core_Menu_VoteVariants(const MenuView &view, std::string_view gametype);
+MenuPage Core_Menu_VoteVariants(const MenuView &view, std::string_view gametype, int list_page = 0);
 // A setting's choices ("5 minutes" ... "30 minutes"), the value now marked and
 // skipped; Back returns to Call a Vote.
-MenuPage Core_Menu_VoteSetting(const MenuView &view, std::string_view kind);
+MenuPage Core_Menu_VoteSetting(const MenuView &view, std::string_view kind, int list_page = 0);
 
 // A captain's Team page: lock or unlock, ready the team (in ready-up), and
 // their teammates, each opening a teammate's page. Back to the main page.

@@ -3,7 +3,12 @@
 #include "g_local.h"
 
 #include "core/gametype.h"
+#include "core/host_files.h"
 #include "core/rulesets.h"
+
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 
 namespace
 {
@@ -41,6 +46,44 @@ void PrintUnknown(const char *name)
 	gi.Com_PrintFmt("Unknown ruleset \"{}\". `sv rulesets` lists them; your own variants are "
 	                "rulesets/<gametype>_<name>.cfg, listed in g_ruleset_variants.\n",
 	                name);
+}
+// A cfg the engine would exec, read as it would: through Q2RED's file access
+// when the engine offers it, else the plain path <basedir>/<game>/<file>.
+bool ReadCfg(const std::string &file, std::string &text)
+{
+	const size_t slash = file.rfind('/');
+	const std::string dir = slash == std::string::npos ? "" : file.substr(0, slash);
+	const std::string name = slash == std::string::npos ? file : file.substr(slash + 1);
+	if (Core_HostFiles_Available() && Core_HostFiles_Read(Core_GamePath(dir, name), text))
+		return true;
+	const char *basedir = gi.cvar("basedir", "", CVAR_NOFLAGS)->string;
+	const char *game = gi.cvar("game", "", CVAR_NOFLAGS)->string;
+	std::ifstream in(std::filesystem::path(basedir) / (*game ? game : "baseq2") / file, std::ios::binary);
+	if (!in)
+		return false;
+	std::ostringstream data;
+	data << in.rdbuf();
+	text = data.str();
+	return true;
+}
+
+// Applies console text's `set` lines at once, following its `exec`s into
+// their files (a few deep): what a switch's text would set, before the map
+// spawns. The engine runs the text itself only once a player arrives.
+void ApplySets(std::string_view text, int depth)
+{
+	for (const RulesetCfgStep &step : Core_Ruleset_ParseCfg(text))
+	{
+		if (!step.exec)
+		{
+			gi.cvar(step.name.c_str(), step.value.c_str(), CVAR_NOFLAGS);
+			gi.cvar_forceset(step.name.c_str(), step.value.c_str());
+			continue;
+		}
+		std::string file;
+		if (depth < 4 && ReadCfg(step.name, file))
+			ApplySets(file, depth + 1);
+	}
 }
 } // namespace
 
@@ -119,14 +162,13 @@ void Core_Rulesets_PreInit()
 		return;
 	}
 	// sv commands don't exist before the first map, so server.cfg names its
-	// starting mode with `set g_ruleset`. Its built-in settings go in now (the
-	// gametype is latched and read right after this); the queued switch
-	// repeats them in order around the admin's execs.
-	for (const auto &[cvar, value] : Core_Ruleset_Settings(*r))
-	{
-		gi.cvar(cvar.c_str(), value.c_str(), CVAR_NOFLAGS);
-		gi.cvar_forceset(cvar.c_str(), value.c_str());
-	}
-	gi.AddCommandString(Core_Rulesets_Switch(*r).c_str());
+	// starting mode with `set g_ruleset`. Its settings go in now, the admin's
+	// files' `set` lines too (the gametype is latched and read right after
+	// this; items and the like as the map spawns). The engine holds the
+	// queued switch until a player arrives (it defers what's queued while a
+	// map loads; BB, 2026-10-30), then runs it whole.
+	const std::string text = Core_Rulesets_Switch(*r);
+	ApplySets(text, 0);
+	gi.AddCommandString(text.c_str());
 	gi.Com_PrintFmt("Ruleset: starting {} ({})\n", r->name, Title(*r));
 }

@@ -479,6 +479,73 @@ TEST_CASE("the HUD: no timelimit counts up; overtime and sudden death")
 	CHECK(sudden.HudText(At(live3 + 61000, {P(1, true, 3), P(2, true, 3)})) == Hud("SUDDEN DEATH", "0:00"));
 }
 
+TEST_CASE("overtime: periods repeat while tied; match_overtime_max ends a lasting tie in a draw")
+{
+	const std::vector<MatchPlayer> tied = {P(1, true, 3), P(2, true, 3)};
+	MatchConfig o = Enabled();
+	o.overtime = 2;
+	o.overtime_max_ms = 4 * 60000;
+	Match m(o);
+	const int64_t live = ToLive(m);
+	m.Update(At(live + 60000, tied)); // time's up, tied: overtime 1
+	REQUIRE(m.State() == MatchState::Overtime);
+	m.Update(At(live + 180000, tied)); // still tied: overtime 2
+	REQUIRE(m.State() == MatchState::Overtime);
+	const auto out = m.Update(At(live + 300000, tied)); // 4 minutes of overtime, still tied
+	CHECK(m.State() == MatchState::Intermission);
+	CHECK(std::any_of(out.begin(), out.end(),
+	                  [](const MatchAction &a) { return a.kind == MatchActionKind::EndMatch && a.text == "draw"; }));
+
+	o.overtime_max_ms = 0; // never: periods go on
+	Match endless(o);
+	const int64_t live2 = ToLive(endless);
+	for (int period = 0; period < 10; ++period)
+		endless.Update(At(live2 + 60000 + period * 120000, tied));
+	CHECK(endless.State() == MatchState::Overtime);
+	endless.Update(At(live2 + 60000 + 10 * 120000, {P(1, true, 4), P(2, true, 3)}));
+	CHECK(endless.State() == MatchState::Intermission); // a lead at the period's end
+}
+
+TEST_CASE("sudden death: match_overtime_max ends a lasting tie in a draw")
+{
+	const std::vector<MatchPlayer> tied = {P(1, true, 3), P(2, true, 3)};
+	MatchConfig o = Enabled();
+	o.overtime = -1;
+	o.overtime_max_ms = 60000;
+	Match m(o);
+	const int64_t live = ToLive(m);
+	m.Update(At(live + 60000, tied));
+	REQUIRE(m.State() == MatchState::Overtime);
+	m.Update(At(live + 119000, tied));
+	CHECK(m.State() == MatchState::Overtime);
+	m.Update(At(live + 120000, tied));
+	CHECK(m.State() == MatchState::Intermission);
+}
+
+TEST_CASE("the HUD names overtime and sudden death for 10 seconds, and each new overtime period")
+{
+	const std::vector<MatchPlayer> tied = {P(1, true, 3), P(2, true, 3)};
+	MatchConfig o = Enabled();
+	o.overtime = 2;
+	Match timed(o);
+	const int64_t live = ToLive(timed);
+	timed.Update(At(live + 60000, tied));
+	REQUIRE(timed.State() == MatchState::Overtime);
+	CHECK(timed.HudText(At(live + 69900, tied)).status == "OVERTIME");
+	CHECK(timed.HudText(At(live + 70000, tied)) == Hud("", "1:50")); // gone, the clock stays
+	timed.Update(At(live + 180000, tied));                           // still tied: another 2 minutes
+	REQUIRE(timed.State() == MatchState::Overtime);
+	CHECK(timed.HudText(At(live + 185000, tied)).status == "OVERTIME");
+	CHECK(timed.HudText(At(live + 190000, tied)).status.empty());
+
+	o.overtime = -1;
+	Match sudden(o);
+	const int64_t live2 = ToLive(sudden);
+	sudden.Update(At(live2 + 60000, tied));
+	CHECK(sudden.HudText(At(live2 + 65000, tied)).status == "SUDDEN DEATH");
+	CHECK(sudden.HudText(At(live2 + 70000, tied)) == Hud("", "0:00"));
+}
+
 TEST_CASE("the HUD is empty with the match flow off (stock HUD)")
 {
 	Match m;

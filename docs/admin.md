@@ -34,13 +34,30 @@ set timelimit 15
 set fraglimit 100
 ```
 
-It applies every time TDM starts, by vote or by `sv ruleset tdm`.
+It applies every time TDM starts, by vote or by `sv ruleset tdm`, and
+when the server starts in TDM (`set g_ruleset tdm`). Write settings as
+`set name value`: at startup those apply before the first map spawns, and
+anything else in the file runs only once the first player arrives.
 
 A public FFA that starts as soon as two players are in, with no ready-up:
 
 ```
 // rulesets/ffa.cfg
 set match_ready 0
+```
+
+A tie when time runs out: Duel, TDM and CTF play 2-minute overtimes,
+another each time it's still tied when one ends (the deciding score in CTF
+is a capture); FFA goes to sudden death, the next frag wins. To change a
+gametype's, set `match_overtime` in its cfg: `-1` sudden death, `N` N-minute
+overtimes, `0` none (the match ends tied). `match_overtime_max` (minutes;
+30 in every built-in, `0` never) ends a tie that has lasted that long into
+overtime as a draw, so a tie nobody breaks can't hold the server on one map:
+
+```
+// rulesets/duel.cfg
+set match_overtime -1      // sudden death instead of overtimes
+set match_overtime_max 10  // still tied after 10 minutes: a draw
 ```
 
 `match_minplayers` (2) counts bots, so one player and the server's bots
@@ -116,6 +133,46 @@ to split the players into two new random teams (warmup only; players can
 vote one with `callvote shuffle`, decision 0020). For a public
 server, put `set match_lock 0` in `rulesets/tdm.cfg` and `rulesets/ctf.cfg`.
 Details: docs/design/teams.md, docs/decisions/0016.
+
+## Changing a map's items
+
+A map's entities can be replaced without repacking it: put the whole
+entity list in `maps/<map>.ent` and a deathmatch level spawns from it.
+`sv saveents` writes the current map's list there as a starting point (it
+never overwrites one). Each entity can carry keys that choose its modes:
+
+```
+{
+"classname" "item_armor_combat"
+"origin" "-320 -672 2"
+"gametype" "ffa"           // only in FFA; "ffa tdm" for two
+}
+{
+"classname" "item_power_screen"
+"origin" "-320 -672 2"
+"not_gametype" "ffa"       // everywhere but FFA
+}
+```
+
+Also `notteam`, `notfree`, `powerups_on` and `powerups_off` (with the
+powerups vote). MuffMode's maps and `.ent` files use the same keys and
+work as they are. The log names the file it used (`Entities:
+maps/q2dm1.ent`); a broken one is skipped with the reason. `set
+g_entity_override_load 0` turns the files off. Details:
+docs/design/entities.md.
+
+## Jumps and teleporters
+
+Original Quake II let players step and jump a little higher below height
+0, and some maps' jumps need it (mm-mcoil, which is all below 0). The
+rerelease lost it; the mod brings it back in deathmatch, as MuffMode does.
+`set g_classic_jumps 0` plays stock's heights instead, from the next map.
+Single player and coop are always stock. Decision 0024.
+
+Teleporters stop a player dead for a moment, as stock. `set
+g_teleporter_freeze 0` (MuffMode's name and behaviour) sends them out of
+the exit, facing its way, at the speed they went in with: Quake III's feel,
+and what Bloody Blastard ran under MuffMode. Deathmatch only.
 
 ## Voting and maps
 

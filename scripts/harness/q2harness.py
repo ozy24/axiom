@@ -48,6 +48,8 @@ Tiers (plan Phase 1b):
                  the caller's team alone, readyall readying everyone (Q2RED).
  20. human-shuffle  The shuffle vote in a TDM warmup: a new even split, team
                  skins to match, the locks off; refused once live (Q2RED).
+ 22. entities    A .ent override with MuffMode's mode keys, ammo and jump
+                 pad: each mode spawns what its keys say; sv saveents.
 
     q2harness.py test      --stock S --candidate C   # tiers 1-3
     q2harness.py calibrate --stock S --runs 6        # refresh the volatile list
@@ -293,7 +295,10 @@ class Q2RexRig(Rig):
     # connected and shuts down cleanly. Frags are checked on Q2RED.
     expects_frags = False
     # The offline namespace makes the startup sign-in fail; that's intended.
-    benign_re = re.compile(r"Playfab::signin -- Login failed")
+    # Inside it the session's /run/user/<uid> isn't ours, and Wine sometimes
+    # says so (CI, PR #39). Giving the rig its own XDG_RUNTIME_DIR silenced
+    # it but stopped Q2REX writing saves, so it's listed here instead.
+    benign_re = re.compile(r"Playfab::signin -- Login failed|error: XDG_RUNTIME_DIR is invalid or not set")
     ready_re = r"Map: base1 \(checksum|Map: \w+ \(checksum"
     # Retail runtime libraries the Windows server loads from basedir.
     RETAIL_DLLS = ("PartyWin.dll", "PartyWin7.dll", "PlayFabMultiplayerWin.dll", "SDL2.dll",
@@ -544,7 +549,8 @@ MATCH_SEQUENCE = ["Match: warmup", "Match: warmup -> countdown", "Match: countdo
 
 def tier_match_flow(args, results):
     """Warmup on: bots (always ready) run warmup -> countdown -> live, and the
-    timelimit, counted from LIVE, ends it (docs/design/match-flow.md)."""
+    timelimit, counted from LIVE, ends it (docs/design/match-flow.md); going
+    live puts the movers back (q2dm1's plats)."""
     rig = RIGS[args.engine_kind](args, args.candidate, "t5-match")
     startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "match_flow", "1", "+set", "match_allow_no_humans", "1",
                 "+set", "match_countdown", "3", "+set", "timelimit", "0.25"] + rig.bot_args() + ["+map", "q2dm1"])
@@ -558,6 +564,10 @@ def tier_match_flow(args, results):
     want = MATCH_SEQUENCE
     if seen != want:
         detail.append(f"transitions {seen}, expected {want}")
+    # The arena reset at LIVE puts the movers back (q2dm1: its two plats).
+    resets = [int(n) for n in re.findall(r"Movers: (\d+) reset", log)]
+    if not resets or resets[0] < 2:
+        detail.append(f"movers reset at LIVE: {resets}, expected q2dm1's two plats")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     if "==== ShutdownGame ====" not in log:
@@ -1126,7 +1136,8 @@ def tier_human_settings(args, results):
     modes and a time out of range with the usage; a powerups vote reloads the
     map, and the voted time limit is still there after it. The built-in
     ruleset's column scoreboard (decision 0018) shows Bob's suicide as a
-    death, and its frag messages tell both players of each frag. Q2RED only."""
+    death, and its frag messages tell both players of each frag, and the
+    clients are told classic jumps are on. Q2RED only."""
     rig, why = scenario_rig(args, "t16-settings")
     if not rig:
         results.append(("16 human-settings", True, [f"skipped: {why}"]))
@@ -1215,6 +1226,11 @@ at 40 0 cmd vote yes
         detail.append(f"killer messages not in FFA's form: {odd[:3]}")
     if any(len(r.get("args", [])) != 1 for r in victims + killers):
         detail.append("a frag message without the other player's name as its one argument")
+    # Classic jumps (decision 0024) are on in deathmatch by default, and the
+    # clients are told, so their prediction jumps as the server does.
+    classic = [r["text"] for r in tap if r.get("type") == "configstring" and r["index"] == CONFIG_CLASSIC_JUMPS]
+    if not classic or classic[-1] != "1":
+        detail.append(f"classic jumps' configstring {CONFIG_CLASSIC_JUMPS} was {classic}, expected '1'")
     detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
@@ -1228,7 +1244,8 @@ def tier_human_teamlock(args, results):
     first on each team is captain; a player changes team from the Tab menu
     (playtest 2026-10-29: it did nothing); both teams lock as the match goes live; a
     newcomer is refused (told alone), a rostered player who drops gets back
-    in; the captain unlocks for the newcomer, relocks and kicks them, and
+    in; the captain unlocks for the newcomer, relocks and kicks them (with no join menu left open: a jump would
+    select it), and
     they're refused again; the captain leaves and the next teammate takes
     over; a team whose players all leave unlocks itself. Q2RED only."""
     label = "17 human-teamlock"
@@ -1299,6 +1316,18 @@ at 58 3 disconnect
     # Alice, Bob, Carol, Dave; Bob back after his drop; Eve after the unlock.
     if len(joins) != 6:
         detail.append(f"{len(joins)} team joins, expected 6")
+    # The kick leaves Eve no menu: stock's join menu, with its cursor on a
+    # team, took the next jump of a player kicked mid-fight as a join
+    # (playtest 2026-10-30: kicked to the other team). Its open, in the
+    # kick's frame, is closed again in that frame; an open menu redraws.
+    # By frame: the open's layout can be stamped a millisecond after the kick.
+    kicked = [r["frame"] for r in locs if r["base"] == "{} was removed from {}.\n"]
+    menus = [r for r in tap if r.get("type") == "layout" and r["to"] == eve and kicked
+             and kicked[0] < r["frame"] < kicked[0] + 160 and '"Join ' in r["text"]]
+    if not kicked:
+        detail.append("Eve was never kicked")
+    elif menus:
+        detail.append(f"Eve was shown the join menu {len(menus)} times after her kick")
     # A playing client who changes team: Dave to RED from the Tab menu (its
     # first choice for him), then back with `team blue`.
     dave = [r["args"][1] for r in locs if r["base"] == "$g_changed_team" and r["args"][0] == f"##P{humans['Dave']}"]
@@ -1606,10 +1635,137 @@ at 6 1 cmd team blue
         results.append((label, not detail, detail))
 
 
+def bsp_entities(retail, mapname):
+    """The entity string of maps/<mapname>.bsp in retail's pak0."""
+    data = (pathlib.Path(retail) / "baseq2" / "pak0.pak").read_bytes()
+    _, offset, length = struct.unpack("<4sii", data[:12])
+    for i in range(length // 64):
+        name, start, size = struct.unpack("<56sii", data[offset + i * 64:offset + i * 64 + 64])
+        if name.split(b"\0")[0].decode() == f"maps/{mapname}.bsp":
+            bsp = data[start:start + size]
+            ents_at, ents_len = struct.unpack("<ii", bsp[8:16])
+            return bsp[ents_at:ents_at + ents_len].split(b"\0")[0].decode("latin1")
+    raise RuntimeError(f"maps/{mapname}.bsp not in pak0")
+
+
+# MuffMode's map entities (docs/design/entities.md), added to q2dm1's own in
+# an override file: what each mode leaves out, and what it can't spawn.
+# bg_local.h's CONFIG_CLASSIC_JUMPS (pinned by core/movement_register.cpp).
+CONFIG_CLASSIC_JUMPS = 12106
+
+ENTITY_ADDITIONS = """
+{ "classname" "item_quad" "origin" "-80 432 676" "gametype" "duel" }
+{ "classname" "item_health_mega" "origin" "-80 400 676" "gametype" "tournament" }
+{ "classname" "item_armor_combat" "origin" "-80 464 676" "not_gametype" "duel" }
+{ "classname" "item_adrenaline" "origin" "-112 432 676" "powerups_off" "1" }
+{ "classname" "item_health" "origin" "-112 464 676" "notq2" "1" "notarena" "1" }
+{ "classname" "ammo_slugs_small" "origin" "-48 432 676" }
+{ "classname" "target_position" "targetname" "t_apex" "origin" "200 432 900" }
+{ "classname" "trigger_push" "origin" "-48 464 660" "target" "t_apex" }
+{ "classname" "target_remove_powerups" "targetname" "t_strip" "origin" "0 0 0" }
+{ "classname" "trigger_multiple" "origin" "0 0 0" "mins" "-4096 -4096 -4096" "maxs" "4096 4096 4096" "target" "t_strip" }
+{ "classname" "trigger_teleport" "model" "*1" "target" "t_apex" }
+"""
+
+
+def tier_entities(args, results):
+    """A .ent override for q2dm1 with MuffMode's mode keys, ammo, jump pad and
+    targets: it replaces the BSP's entities in deathmatch, each mode leaves
+    out what its keys say (FFA: the Duel-only quad and mega, the
+    no-powerups adrenaline, the not-Quake-II health; Duel: the combat armour
+    in their place), nothing goes unknown, and `sv saveents` writes a
+    starting file for a map without one but never over an existing one.
+    A map-sized trigger fires target_remove_powerups at the bots (it once
+    crashed on its first player: playtest 2026-10-30), and a
+    trigger_teleport's brush is hidden (stock draws it)."""
+    world, rest = bsp_entities(args.retail, "q2dm1").split("}", 1)
+    text = world + '"author" "harness"\n"no_dm_spawnpads" "1"\n}' + rest + ENTITY_ADDITIONS
+    for gametype, left_out in (("ffa", 4), ("duel", 3)):
+        rig = RIGS[args.engine_kind](args, args.candidate, f"t22-{gametype}")
+        game_dir = rig.dir / "baseq2" if args.engine_kind == "q2red" else rig.base / "baseq2"
+        (game_dir / "maps").mkdir(parents=True, exist_ok=True)
+        (game_dir / "maps" / "q2dm1.ent").write_text(text, encoding="latin1")
+        startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", gametype]
+                   + rig.bot_args() + ["+map", "q2dm1"])
+        # Q2REX's bots begin but may not announce it in a bot-only match.
+        joined = ("wait", r"entered the game", 30) if rig.expects_frags else ("sleep", 10)
+        steps = [rig.wait_ready(), joined, ("sleep", 5), ("cmd", "sv saveents"), ("sleep", 1)]
+        if gametype == "ffa":
+            steps += [("cmd", "gamemap q2dm2"), ("wait", rig.ready_re, 60, 2),
+                      ("sleep", 3), ("cmd", "sv saveents"), ("wait", r"Entities written to", 20)]
+        steps += [("sleep", 1), ("cmd", "quit")]
+        log = rig.run(startup, steps, timeout=args.boot_timeout + 120)
+        detail = []
+        if not re.search(r"Entities: \S*maps/q2dm1\.ent\n", log):
+            detail.append("no 'Entities: maps/q2dm1.ent' line: the override wasn't used")
+        want = f"Entities: {left_out} left out of {gametype} by their keys"
+        if want not in log:
+            found = re.findall(r"Entities: \d+ left out.*", log)
+            detail.append(f"expected '{want}', got {found}")
+        if "Entities: 1 jump pads aimed" not in log:
+            detail.append("the jump pad wasn't aimed at its target_position")
+        # Stock draws its brush, trigger texture and all (playtest 2026-10-30).
+        if "Entities: 1 teleport triggers hidden" not in log:
+            detail.append("the trigger_teleport wasn't hidden")
+        for unknown in re.findall(r".* is not a valid field|.*doesn't have a spawn function", log):
+            if any(k in unknown for k in ("gametype", "powerups", "notq2", "notarena", "author", "no_dm_spawnpads",
+                                          "ammo_slugs_small", "target_position", "target_remove_powerups")):
+                detail.append(f"unknown to the module: {unknown.strip()}")
+        if not re.search(r"q2dm1\.ent already exists", log):
+            detail.append("sv saveents didn't refuse the existing q2dm1.ent")
+        if gametype == "ffa":
+            written = [p for p in rig.dir.rglob("q2dm2.ent")]
+            if not written:
+                detail.append("sv saveents wrote no q2dm2.ent")
+            elif not written[0].read_text(errors="replace").lstrip().startswith("{"):
+                detail.append(f"{written[0]} isn't an entity list")
+            if len(re.findall(r"Entities: \S*\.ent\n", log)) != 1:
+                detail.append("an override was used for q2dm2, which has none")
+        if rig.returncode != 0:
+            detail.append(f"server exited with code {rig.returncode}")
+        if "==== ShutdownGame ====" not in log:
+            detail.append("no clean ShutdownGame")
+        detail += error_lines(log, rig)[:20]
+        results.append((f"22 entities {gametype}", not detail, detail))
+
+
+def tier_startup_ruleset(args, results):
+    """server.cfg's starting mode on an empty server: with `set g_ruleset ffa`
+    at startup, rulesets/ffa.cfg's settings (and a file it execs) are in
+    force as the first map spawns, with nobody connecting. The engine holds
+    what's queued while a map loads until a player arrives, and runs no
+    frames before then, so Bloody Blastard came up after every restart with
+    its first map spawned without them (2026-10-30). A spawn-time setting
+    shows it: the file points the .ent overrides at a folder with q2dm1's."""
+    rig = RIGS[args.engine_kind](args, args.candidate, "t23-startup")
+    game_dir = rig.dir / "baseq2" if args.engine_kind == "q2red" else rig.base / "baseq2"
+    (game_dir / "rulesets").mkdir(parents=True, exist_ok=True)
+    (game_dir / "rulesets" / "ffa.cfg").write_text(
+        'set fraglimit 17 // a; comment\nset g_entity_override_dir "t23ents"\nexec rulesets/t23more.cfg\n')
+    (game_dir / "rulesets" / "t23more.cfg").write_text('set g_map_list "q2dm3 q2dm8"\n')
+    (game_dir / "t23ents").mkdir(parents=True, exist_ok=True)
+    (game_dir / "t23ents" / "q2dm1.ent").write_text(bsp_entities(args.retail, "q2dm1"), encoding="latin1")
+    startup = ["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_ruleset", "ffa", "+map", "q2dm1"]
+    log = rig.run(startup, [rig.wait_ready(), ("sleep", 4), ("cmd", "fraglimit"), ("cmd", "g_map_list"),
+                            ("sleep", 1), ("cmd", "quit")], timeout=args.boot_timeout + 60)
+    detail = []
+    if "Ruleset: starting ffa" not in log:
+        detail.append("no 'Ruleset: starting ffa' line")
+    if not re.search(r"Entities: \S*t23ents/q2dm1\.ent\n", log):
+        detail.append("the first map didn't spawn from t23ents/q2dm1.ent: the file's settings came after it")
+    if not re.search(r'"fraglimit" is "17"', log):
+        detail.append(f"fraglimit isn't the file's 17: {re.findall(r'.fraglimit. is .*', log)}")
+    if not re.search(r'"g_map_list" is "q2dm3 q2dm8"', log):
+        detail.append("g_map_list isn't the exec'd file's")
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append(("23 startup-ruleset", not detail, detail))
+
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
          tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
-         tier_human_join, tier_human_readyvote, tier_human_shuffle)
+         tier_human_join, tier_human_readyvote, tier_human_shuffle, tier_entities, tier_startup_ruleset)
 
 
 def run_tier(tier, args):
@@ -1711,7 +1867,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

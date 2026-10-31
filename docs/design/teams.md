@@ -15,7 +15,7 @@ engine side: `core/teams_register.cpp`; harness: tier 17.
 | `captain` | anyone on a team | says who the captain is |
 | `captain <player>` | captain | hands the captaincy to a human teammate |
 | `lockteam` / `unlockteam` | captain | locks or unlocks their own team |
-| `teamkick <player>` | captain | moves a teammate to spectating and off the team's roster |
+| `teamkick <player>` | captain | moves a teammate to spectating (menu closed, so a jump can't join them straight back) and off the team's roster |
 | `readyteam` | captain | readies every teammate (in ready-up) |
 | `sv lockteam red\|blue` / `sv unlockteam red\|blue` | server console | either team |
 | `sv teams` | server console | each team's lock, captain and roster |

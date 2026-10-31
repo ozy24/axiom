@@ -19,6 +19,7 @@ struct pm_config_t
 {
 	int32_t		airaccel = 0;
 	bool		n64_physics = false;
+	bool		classic_jumps = false; // [mod] original Quake II's jumps below height 0 (core/movement.h)
 };
 
 extern pm_config_t pm_config;
@@ -69,6 +70,8 @@ enum
 	CONFIG_HEALTH_BAR_NAME, // active health bar name
 
 	CONFIG_STORY,
+
+	CONFIG_CLASSIC_JUMPS, // [mod] "1": pm_config.classic_jumps (core/movement_hooks.h)
 
 	CONFIG_LAST
 };

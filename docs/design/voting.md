@@ -98,8 +98,12 @@ dropped, so a list can't inject a console command.
   Vote** opens Map / Gametype / Restart Match (and in a team game's warmup with three players, Shuffle Teams); the lists mark the current
   choice. Under Gametype, one with a single ruleset (TDM, CTF) is voted
   from the list; one with variants opens them ("Capture The Flag",
-  "Instagib"). A list longer than the page (14 rows) ends in "More:
-  callvote <kind>".
+  "Instagib"). A list longer than the page (14 rows) is paged as MMREX's
+  map vote is: 11 choices a page, the title with "(2/3)", and "< Prev
+  Page" / "> Next Page" at the bottom, a blank row above Back, whatever
+  the page holds, with a blank row at least under the last choice (Chris,
+  2026-10-30: a 21-map TDM list showed 13 and "More: callvote map"; then
+  the buttons wandered with the list's length).
 
 ## Compared with MMREX
 

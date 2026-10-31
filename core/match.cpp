@@ -30,6 +30,12 @@ bool MatchStateInPlay(MatchState state)
 
 namespace
 {
+// How long the HUD names overtime or sudden death as it begins.
+constexpr int64_t kOvertimeNoticeMs = 10000;
+} // namespace
+
+namespace
+{
 int PlayingCount(const MatchInput &in)
 {
 	return (int)std::count_if(in.players.begin(), in.players.end(), [](const MatchPlayer &p) { return p.playing; });
@@ -210,9 +216,14 @@ MatchHudText Match::HudText(const MatchInput &in) const
 	case MatchState::Live:
 		return {"", clock};
 	case MatchState::Overtime:
+	{
+		// Named for 10 seconds as it begins (and each new overtime period),
+		// then gone: a line that stays is a distraction (Chris, 2026-10-30).
+		const bool notice = in.now_ms - overtime_since_ms_ < kOvertimeNoticeMs;
 		if (config_.overtime < 0)
-			return {"SUDDEN DEATH", "0:00"}; // the next score ends it
-		return {"OVERTIME", clock};
+			return {notice ? "SUDDEN DEATH" : "", "0:00"}; // the next score ends it
+		return {notice ? "OVERTIME" : "", clock};
+	}
 	case MatchState::Intermission:
 		return {"MATCH END", ""};
 	}
@@ -237,6 +248,14 @@ void Match::GoLive(int64_t now_ms, std::vector<MatchAction> &out)
 	out.push_back({MatchActionKind::ResetArena, "", 0});
 	out.push_back({MatchActionKind::Announce, "FIGHT!", 0});
 	out.push_back({MatchActionKind::Sound, "misc/tele_up.wav", 0});
+}
+
+// match_overtime_max: overtime has run that long and it's still tied. The
+// match ends a draw (MMREX's g_dm_tie_max_time).
+void Match::Draw(std::vector<MatchAction> &out)
+{
+	out.push_back({MatchActionKind::Announce, "Still tied: the match is a draw", 0});
+	End("draw", out);
 }
 
 void Match::End(const char *why, std::vector<MatchAction> &out)
@@ -363,7 +382,7 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 			if (tied && config_.overtime != 0)
 			{
 				state_ = MatchState::Overtime;
-				state_since_ms_ = in.now_ms;
+				state_since_ms_ = overtime_since_ms_ = overtime_start_ms_ = in.now_ms;
 				time_end_ms_ = config_.overtime > 0 ? in.now_ms + (int64_t)config_.overtime * 60000 : 0;
 				out.push_back({MatchActionKind::Klaxon, "", 0}); // the HUD names the state (Chris, 2026-10-27)
 			}
@@ -385,18 +404,28 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 		}
 		int top, second, count;
 		TopTwo(in, config_.teams, top, second, count);
+		const bool tie_limit = config_.overtime_max_ms > 0 && in.now_ms - overtime_start_ms_ >= config_.overtime_max_ms;
 		if (config_.overtime < 0)
 		{
 			// Sudden death: the first score that breaks the tie ends it.
 			if (count < 2 || top != second)
 				End("sudden death", out);
+			else if (tie_limit)
+				Draw(out);
 			break;
 		}
 		if (time_end_ms_ && in.now_ms >= time_end_ms_)
 		{
-			if (count >= 2 && top == second)
+			// A period ends: still tied, another (as MMREX's Duel), unless the
+			// tie has lasted match_overtime_max.
+			if (count >= 2 && top == second && tie_limit)
+			{
+				Draw(out);
+			}
+			else if (count >= 2 && top == second)
 			{
 				time_end_ms_ = in.now_ms + (int64_t)config_.overtime * 60000;
+				overtime_since_ms_ = in.now_ms;                  // named again for the new period
 				out.push_back({MatchActionKind::Klaxon, "", 0}); // the HUD names the state (Chris, 2026-10-27)
 			}
 			else

@@ -89,6 +89,8 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     # depend on is unchanged (AGENTS.md hard rule 2).
     "${CMAKE_SOURCE_DIR}/checks/stock_client_contract.cpp"
     # The mod's own code (AGENTS.md: small focused files, not id's).
+    "${CMAKE_SOURCE_DIR}/core/entities.cpp"
+    "${CMAKE_SOURCE_DIR}/core/entities_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/eyecam_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/frag_message.cpp"
     "${CMAKE_SOURCE_DIR}/core/frag_message_register.cpp"
@@ -110,6 +112,9 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/core/menu.cpp"
     "${CMAKE_SOURCE_DIR}/core/miniscore.cpp"
     "${CMAKE_SOURCE_DIR}/core/miniscore_register.cpp"
+    "${CMAKE_SOURCE_DIR}/core/movement.cpp"
+    "${CMAKE_SOURCE_DIR}/core/movement_register.cpp"
+    "${CMAKE_SOURCE_DIR}/core/movers_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/scoreboard.cpp"
     "${CMAKE_SOURCE_DIR}/core/scoreboard_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/warmup_register.cpp"
@@ -213,6 +218,8 @@ if(GAME_BUILD_TESTS)
         tests/test_join.cpp
         tests/test_scoreboard.cpp
         tests/test_frag_message.cpp
+        tests/test_entities.cpp
+        tests/test_movement.cpp
         core/identity.cpp
         core/match_record.cpp
         core/host_files.cpp
@@ -227,6 +234,8 @@ if(GAME_BUILD_TESTS)
         core/join.cpp
         core/scoreboard.cpp
         core/frag_message.cpp
+        core/entities.cpp
+        core/movement.cpp
         tests/test_duel_queue.cpp
         tests/test_duel_board.cpp
         tests/test_eyecam.cpp

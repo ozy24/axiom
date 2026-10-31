@@ -318,21 +318,39 @@ MenuPage Core_Menu_CallVote(const MenuView &v)
 namespace
 {
 // Choice rows from row 2; the bottom row is `back`. A list longer than the
-// page ends in `more`.
-MenuPage ChoicePage(const std::string &title, const std::vector<MenuRow> &rows, const std::string &more, MenuRow back)
+// page is paged: kMenuListPage choices, then Prev / Next.
+MenuPage ChoicePage(const std::string &title, const std::vector<MenuRow> &rows, int list_page, MenuRow back)
 {
-	MenuPage page;
-	Title(page, title, true);
-	Add(page, "");
 	// 14 rows, not the 15 that fit: 15 full-length rows under a full-length
 	// title pass the client's 1024-byte layout (tests/test_menu.cpp).
 	constexpr size_t kRoom = kMenuRows - 4;
-	const bool over = rows.size() > kRoom;
-	const size_t shown = over ? kRoom - 1 : rows.size();
-	for (size_t i = 0; i < shown; ++i)
+	// The title, a gap, the choices, a gap, then Prev and Next at the bottom,
+	// a blank row above Back, however many choices the page has (Chris,
+	// 2026-10-30).
+	static_assert(2 + kMenuListPage + 1 + 2 + 2 <= kMenuRows, "a page's choices, a gap, Prev, Next, a gap and Back");
+	MenuPage page;
+	if (rows.size() <= kRoom)
+	{
+		Title(page, title, true);
+		Add(page, "");
+		page.insert(page.end(), rows.begin(), rows.end());
+		Footer(page, std::move(back));
+		return page;
+	}
+	const int pages = (int)((rows.size() + kMenuListPage - 1) / kMenuListPage);
+	const int at = std::clamp(list_page, 0, pages - 1);
+	Title(page, Core_Menu_Clean(title + " (" + std::to_string(at + 1) + "/" + std::to_string(pages) + ")"), true);
+	Add(page, "");
+	const size_t first = (size_t)at * kMenuListPage;
+	for (size_t i = first; i < std::min(rows.size(), first + kMenuListPage); ++i)
 		page.push_back(rows[i]);
-	if (over)
-		Add(page, Core_Menu_Clean(more));
+	const bool prev = at > 0, next = at + 1 < pages;
+	while ((int)page.size() < kMenuRows - 2 - prev - next)
+		page.push_back({});
+	if (prev)
+		Add(page, "< Prev Page", MenuAction::PagePrev);
+	if (next)
+		Add(page, "> Next Page", MenuAction::PageNext);
 	Footer(page, std::move(back));
 	return page;
 }
@@ -345,16 +363,15 @@ MenuRow ChoiceRow(const std::string &text, MenuAction action, bool current, std:
 }
 } // namespace
 
-MenuPage Core_Menu_VoteMaps(const MenuView &v)
+MenuPage Core_Menu_VoteMaps(const MenuView &v, int list_page)
 {
 	std::vector<MenuRow> rows;
 	for (const std::string &m : v.vote_maps)
 		rows.push_back(ChoiceRow(m, MenuAction::VoteFor, m == v.map_file, "map " + m));
-	return ChoicePage("Vote: Map", rows, "More: callvote map",
-	                  {"Back", MenuAlign::Left, MenuAction::CallVote, false, {}});
+	return ChoicePage("Vote: Map", rows, list_page, {"Back", MenuAlign::Left, MenuAction::CallVote, false, {}});
 }
 
-MenuPage Core_Menu_VoteGametypes(const MenuView &v)
+MenuPage Core_Menu_VoteGametypes(const MenuView &v, int list_page)
 {
 	std::vector<MenuRow> rows;
 	for (const MenuVoteGametype &gt : v.vote_gametypes)
@@ -373,11 +390,10 @@ MenuPage Core_Menu_VoteGametypes(const MenuView &v)
 		row.highlight = gt.id == v.gametype_id;
 		rows.push_back(row);
 	}
-	return ChoicePage("Vote: Gametype", rows, "More: callvote gametype",
-	                  {"Back", MenuAlign::Left, MenuAction::CallVote, false, {}});
+	return ChoicePage("Vote: Gametype", rows, list_page, {"Back", MenuAlign::Left, MenuAction::CallVote, false, {}});
 }
 
-MenuPage Core_Menu_VoteVariants(const MenuView &v, std::string_view gametype)
+MenuPage Core_Menu_VoteVariants(const MenuView &v, std::string_view gametype, int list_page)
 {
 	std::vector<MenuRow> rows;
 	std::string title = "Vote: Gametype";
@@ -390,25 +406,22 @@ MenuPage Core_Menu_VoteVariants(const MenuView &v, std::string_view gametype)
 			rows.push_back(
 			    ChoiceRow(text, MenuAction::VoteFor, gt.id == v.gametype_id && name == v.ruleset, "gametype " + name));
 	}
-	return ChoicePage(title, rows, "More: callvote gametype",
-	                  {"Back", MenuAlign::Left, MenuAction::VoteGametypes, false, {}});
+	return ChoicePage(title, rows, list_page, {"Back", MenuAlign::Left, MenuAction::VoteGametypes, false, {}});
 }
 
-MenuPage Core_Menu_VoteSetting(const MenuView &v, std::string_view kind)
+MenuPage Core_Menu_VoteSetting(const MenuView &v, std::string_view kind, int list_page)
 {
 	std::vector<MenuRow> rows;
 	std::string title = "Call a Vote";
-	std::string more;
 	for (const MenuVoteSetting &s : v.vote_settings)
 	{
 		if (s.kind != kind)
 			continue;
 		title = "Vote: " + s.title;
-		more = "More: callvote " + s.kind;
 		for (const auto &[arg, text] : s.choices)
 			rows.push_back(ChoiceRow(text, MenuAction::VoteFor, arg == s.current, s.kind + " " + arg));
 	}
-	return ChoicePage(title, rows, more, {"Back", MenuAlign::Left, MenuAction::CallVote, false, {}});
+	return ChoicePage(title, rows, list_page, {"Back", MenuAlign::Left, MenuAction::CallVote, false, {}});
 }
 
 MenuPage Core_Menu_Team(const MenuView &v)

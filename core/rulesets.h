@@ -78,6 +78,22 @@ std::vector<Ruleset> Core_Ruleset_All(std::string_view g_ruleset_variants, const
 // is write-protected: Core_Rulesets_Switch sets it.)
 std::string Core_Ruleset_Commands(const Ruleset &ruleset);
 
+// One step of console text, as Core_Ruleset_ParseCfg reads it: a cvar it
+// sets, or a file it execs.
+struct RulesetCfgStep
+{
+	bool exec = false;
+	std::string name;  // the cvar, or the file for an exec
+	std::string value; // a set's value
+};
+
+// The `set` (`seta`, `sets`, `setu`) and `exec` commands in console text,
+// in order, split as the console splits it: on newlines and on semicolons
+// outside quotes (even inside a // comment), then a // comment dropped.
+// Anything else (a bare `fraglimit 30`, other commands) is left out: it runs
+// when the engine runs the text.
+std::vector<RulesetCfgStep> Core_Ruleset_ParseCfg(std::string_view text);
+
 // From the engine (core/rulesets_register.cpp): with this server's
 // g_ruleset_variants and gametypes. The title is what players see: "Duel",
 // "Duel: HoonyMode".
@@ -87,11 +103,6 @@ std::string Core_Rulesets_Title(const Ruleset &ruleset);
 // A switch to `ruleset`: records it as applied (g_ruleset_applied, which the
 // console can't set) and returns Core_Ruleset_Commands' text to queue.
 std::string Core_Rulesets_Switch(const Ruleset &ruleset);
-
-// The cvar values a switch sets itself, in order (the reset, then the
-// built-ins' `set` lines): what the module can apply at once, before the
-// engine gets to the queued text and its execs.
-std::vector<std::pair<std::string, std::string>> Core_Ruleset_Settings(const Ruleset &ruleset);
 
 // `ruleset` / `rulesets` from ServerCommand; true if handled.
 bool Core_Rulesets_ServerCommand(const char *cmd);
