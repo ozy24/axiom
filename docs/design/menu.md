@@ -25,7 +25,7 @@ stock `gamerules` modes keep stock's.
 - The whole layout must fit the client's 1024-byte buffer.
   `Core_Menu_Layout` reproduces stock's `PMenu_Do_Update` byte for byte, and
   tests hold the longest page to the limit. That is why a choice list holds
-  14 rows: 15 came to 1029 bytes. A longer list is paged, 12 choices and
+  14 rows: 15 came to 1029 bytes. A longer list is paged, 11 choices and
   Prev / Next (`kMenuListPage`).
 - The proportional font can't line up columns, so no rows carry counts
   (Chris, 2026-10-27).

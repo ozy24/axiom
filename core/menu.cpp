@@ -325,8 +325,9 @@ MenuPage ChoicePage(const std::string &title, const std::vector<MenuRow> &rows, 
 	// title pass the client's 1024-byte layout (tests/test_menu.cpp).
 	constexpr size_t kRoom = kMenuRows - 4;
 	// The title, a gap, the choices, a gap, then Prev and Next at the bottom,
-	// right above Back, however many choices the page has (Chris, 2026-10-30).
-	static_assert(2 + kMenuListPage + 1 + 2 + 1 <= kMenuRows, "a page's choices, a gap, Prev, Next and Back");
+	// a blank row above Back, however many choices the page has (Chris,
+	// 2026-10-30).
+	static_assert(2 + kMenuListPage + 1 + 2 + 2 <= kMenuRows, "a page's choices, a gap, Prev, Next, a gap and Back");
 	MenuPage page;
 	if (rows.size() <= kRoom)
 	{
@@ -344,7 +345,7 @@ MenuPage ChoicePage(const std::string &title, const std::vector<MenuRow> &rows, 
 	for (size_t i = first; i < std::min(rows.size(), first + kMenuListPage); ++i)
 		page.push_back(rows[i]);
 	const bool prev = at > 0, next = at + 1 < pages;
-	while ((int)page.size() < kMenuRows - 1 - prev - next)
+	while ((int)page.size() < kMenuRows - 2 - prev - next)
 		page.push_back({});
 	if (prev)
 		Add(page, "< Prev Page", MenuAction::PagePrev);

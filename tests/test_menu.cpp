@@ -431,17 +431,18 @@ TEST_CASE("menu: a list longer than the page is paged, as MMREX's map vote")
 	const MenuPage first = Core_Menu_VoteMaps(v);
 	CHECK(first.size() == (size_t)kMenuRows);
 	CHECK(first[0].text == "Vote: Map (1/3)");
-	CHECK(Shows(first, "map12"));
-	CHECK_FALSE(Shows(first, "map13"));
+	CHECK(Shows(first, "map11"));
+	CHECK_FALSE(Shows(first, "map12"));
 	CHECK_FALSE(Row(first, "< Prev Page"));
 	REQUIRE(Row(first, "> Next Page"));
 	CHECK(Row(first, "> Next Page")->action == MenuAction::PageNext);
 
 	const MenuPage middle = Core_Menu_VoteMaps(v, 1);
 	CHECK(middle[0].text == "Vote: Map (2/3)");
-	CHECK(Shows(middle, "map13"));
-	CHECK(Shows(middle, "map24"));
-	CHECK_FALSE(Shows(middle, "map12"));
+	CHECK(Shows(middle, "map12"));
+	CHECK(Shows(middle, "map22"));
+	CHECK_FALSE(Shows(middle, "map11"));
+	CHECK_FALSE(Shows(middle, "map23"));
 	REQUIRE(Row(middle, "< Prev Page"));
 	CHECK(Row(middle, "< Prev Page")->action == MenuAction::PagePrev);
 	CHECK(Row(middle, "> Next Page"));
@@ -453,19 +454,23 @@ TEST_CASE("menu: a list longer than the page is paged, as MMREX's map vote")
 	CHECK_FALSE(Row(last, "> Next Page"));
 	CHECK(last.back().text == "Back");
 
-	// Prev and Next at the bottom, right above Back, however many choices
-	// the page has, with a blank row under the last choice (Chris, 2026-10-30).
-	CHECK(first[kMenuRows - 2].text == "> Next Page");
-	CHECK(first[kMenuRows - 3].text.empty());
-	CHECK(middle[kMenuRows - 2].text == "> Next Page");
-	CHECK(middle[kMenuRows - 3].text == "< Prev Page");
-	CHECK(middle[kMenuRows - 4].text.empty());
-	CHECK(last[kMenuRows - 2].text == "< Prev Page");
-	CHECK(last[kMenuRows - 3].text.empty());
-	CHECK(first[2 + kMenuListPage - 1].text == "map12");
-	CHECK(last[2].text == "map25");
-	CHECK(last[3].text == "map26");
-	CHECK(last[4].text.empty());
+	// Prev and Next at the bottom, a blank row above Back, however many
+	// choices the page has, with a blank row under the last choice (Chris,
+	// 2026-10-30).
+	for (const MenuPage *page : {&first, &middle, &last})
+		CHECK((*page)[kMenuRows - 2].text.empty());
+	CHECK(first[kMenuRows - 3].text == "> Next Page");
+	CHECK(first[kMenuRows - 4].text.empty());
+	CHECK(middle[kMenuRows - 3].text == "> Next Page");
+	CHECK(middle[kMenuRows - 4].text == "< Prev Page");
+	CHECK(middle[kMenuRows - 5].text.empty());
+	CHECK(middle[kMenuRows - 6].text == "map22");
+	CHECK(last[kMenuRows - 3].text == "< Prev Page");
+	CHECK(last[kMenuRows - 4].text.empty());
+	CHECK(first[2 + kMenuListPage - 1].text == "map11");
+	CHECK(last[2].text == "map23");
+	CHECK(last[5].text == "map26");
+	CHECK(last[6].text.empty());
 	CHECK(Core_Menu_VoteMaps(v, 9)[0].text == "Vote: Map (3/3)"); // clamped
 	CHECK(Core_Menu_VoteMaps(v, -1)[0].text == "Vote: Map (1/3)");
 

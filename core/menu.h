@@ -184,9 +184,9 @@ MenuPage Core_Menu_About(const MenuView &view);
 MenuPage Core_Menu_CallVote(const MenuView &view);
 // A choice list longer than a page (14 rows) shows kMenuListPage choices a
 // page, as MMREX's map vote does: the title gains "(2/3)", and "< Prev Page"
-// / "> Next Page" sit at the bottom, right above Back, a blank row at least
-// under the last choice. `list_page` counts from 0 and is clamped to the list.
-constexpr size_t kMenuListPage = 12;
+// / "> Next Page" sit at the bottom, a blank row above Back, and a blank
+// row at least under the last choice. `list_page` counts from 0 and is clamped to the list.
+constexpr size_t kMenuListPage = 11;
 
 // The maps, the current one marked and skipped.
 MenuPage Core_Menu_VoteMaps(const MenuView &view, int list_page = 0);
