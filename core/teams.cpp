@@ -213,9 +213,17 @@ TeamsResult Teams::Kick(const std::string &by, const std::string &target)
 	const Member *m = Find(target);
 	if (!m || m->team != team)
 		return TeamsResult::NotTeammate;
+	return Remove(target);
+}
+
+TeamsResult Teams::Remove(const std::string &target)
+{
+	const Member *m = Find(target);
+	if (!m)
+		return TeamsResult::NoTeam;
 	if (m->bot)
 		return TeamsResult::Bot;
-	std::vector<std::string> &roster = sides_[team].roster;
+	std::vector<std::string> &roster = sides_[m->team].roster;
 	roster.erase(std::remove(roster.begin(), roster.end(), target), roster.end());
 	return TeamsResult::Ok;
 }

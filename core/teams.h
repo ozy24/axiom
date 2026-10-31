@@ -86,6 +86,9 @@ class Teams
 	TeamsResult Transfer(const std::string &by, const std::string &target);
 	TeamsResult Kick(const std::string &by, const std::string &target);
 	TeamsResult ReadyTeam(const std::string &by, std::vector<std::string> &keys) const;
+	// The server's own (`sv spectate`): `target` off their team's roster, as a
+	// captain's kick, from either team. NoTeam if they're on none; never a bot.
+	TeamsResult Remove(const std::string &target);
 
 	bool Locked(int team) const;
 	bool OnRoster(int team, const std::string &key) const;

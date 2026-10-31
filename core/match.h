@@ -164,6 +164,11 @@ class Match
 	// next update, as stock's CheckDMRules would. Overtime keeps its own end.
 	void ChangeLimits(int64_t timelimit_ms, int fraglimit, int64_t now_ms);
 
+	// An admin took a duellist out of a match under way (`sv spectate`): back
+	// to warmup, as when every human leaves, the arena reset and scores zeroed.
+	// Nothing outside play (warmup, the countdown, the intermission).
+	std::vector<MatchAction> BackToWarmup(int64_t now_ms);
+
 	// When the HUD clock reaches zero (level ms), or 0 for no clock: none in
 	// warmup, the countdown or sudden death; the timelimit from LIVE, then
 	// timed overtime. Only meaningful when OwnsRules().
@@ -178,6 +183,7 @@ class Match
 	void End(const char *why, std::vector<MatchAction> &out);
 	void Draw(std::vector<MatchAction> &out);
 	void TimeWarning(int64_t now_ms, std::vector<MatchAction> &out);
+	void ToWarmup(int64_t now_ms, std::vector<MatchAction> &out);
 
 	MatchConfig config_;
 	MatchState state_ = MatchState::Live;

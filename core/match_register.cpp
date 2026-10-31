@@ -468,8 +468,42 @@ bool Core_Match_OwnsRules()
 	return begun && match.OwnsRules();
 }
 
+// `sv readyall`, `sv readyteam red|blue`: what a passed vote does, from the console.
+bool ReadyCommand(const char *cmd)
+{
+	const bool all = !Q_strcasecmp(cmd, "readyall");
+	if (!all && Q_strcasecmp(cmd, "readyteam"))
+		return false;
+	const char *word = gi.argv(2);
+	const int team = !Q_strcasecmp(word, "red") ? CTF_TEAM1 : !Q_strcasecmp(word, "blue") ? CTF_TEAM2 : CTF_NOTEAM;
+	if (!all && (!G_TeamplayEnabled() || team == CTF_NOTEAM))
+	{
+		gi.Com_Print("Usage: sv readyteam red|blue (team games only)\n");
+		return true;
+	}
+	if (!Core_Match_ReadyUp())
+	{
+		gi.Com_Print("There is no ready-up now.\n");
+		return true;
+	}
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *ent = ClientEdict(i);
+		if (Playing(ent) && (all || ent->client->resp.ctf_team == team))
+			Core_Match_SetReady(ent, true, false);
+	}
+	if (all)
+		gi.LocBroadcast_Print(PRINT_HIGH, "Everyone is ready.\n");
+	else
+		gi.LocBroadcast_Print(PRINT_HIGH, "{} is ready.\n", CTFTeamName(team));
+	gi.Com_PrintFmt("Match: {} readied by the server\n", all ? "everyone" : CTFTeamName(team));
+	return true;
+}
+
 bool Core_Match_ServerCommand(const char *cmd)
 {
+	if (ReadyCommand(cmd))
+		return true;
 	if (Q_strcasecmp(cmd, "match"))
 		return false;
 	gi.Com_PrintFmt("Match: {}\n", Core_Match_OwnsRules() ? MatchStateName(match.State()) : "off (stock rules)");
@@ -616,6 +650,17 @@ bool Core_Match_InPlay()
 	if (level.intermissiontime)
 		return false;
 	return !Core_Match_OwnsRules() || MatchStateInPlay(match.State());
+}
+
+void Core_Match_BackToWarmup()
+{
+	if (!begun)
+		return;
+	const std::vector<MatchAction> actions = match.BackToWarmup(level.time.milliseconds());
+	if (actions.empty())
+		return;
+	Act(actions);
+	gi.Com_Print("Match: back to warmup (a player removed)\n");
 }
 
 bool Core_Match_IsReady(const edict_t *ent)

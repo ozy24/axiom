@@ -1,6 +1,6 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-10-31 (playtest batch merged, #39)._
+_Updated at the end of every session. Last update: 2026-10-31 (console admin commands)._
 
 ## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
@@ -315,6 +315,15 @@ before adding surface**. Removed on branch `remove-rounds`:
   mod can start from there.
 - Kept from the CA playtest: the frag/capture limit in big digits under the
   scores (`yb -56 xr -56` teams, `yb -46 xr -60` FFA/Duel).
+
+**Console admin commands (2026-10-31, branch `admin/console-commands`):**
+`sv readyall`, `sv readyteam red|blue`, `sv spectate <player>` (any mode;
+on a team it's a teamkick, roster and all; a duellist in a live Duel sends
+the match back to warmup and the next in line steps up, no forfeit: Chris),
+and `sv lockteam` / `sv unlockteam` with no team = both. A full kick stays
+the engine's `kick` until in-game admin, which will run these same
+commands. Harness tier 24; checked against a broken build (the Duel match
+played on with Carol in Alice's place).
 
 **Next:** timeouts/pauses and in-game admin; the M4 checklist. (The FFA/Duel
 miniscore stays as built: the top two, no highlight. Chris, 2026-10-31.)

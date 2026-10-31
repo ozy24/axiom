@@ -16,3 +16,8 @@ std::string Core_PlayerName(const edict_t *ent);
 // survives a reconnect into another slot ("id:<social id>"), or the slot for
 // a bot or a human without one ("slot:<n>"). Duel's queue and team rosters.
 std::string Core_PlayerKey(const edict_t *ent);
+
+// The client a command's argument names: a name (as typed, any case) or a
+// client number. Null if none or more than one. Pass the whole argument
+// (gi.args()): a lobby name token decodes only as one.
+edict_t *Core_PlayerNamed(const char *arg);
