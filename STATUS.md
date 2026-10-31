@@ -285,7 +285,8 @@ MuffMode's maps now play as in MuffMode, and `.ent` overrides work
   teleporter (tier 22); classic jumps below height 0 for mm-mcoil
   (`g_classic_jumps`, decision 0024, the one exception to hard rule 2;
   tier 16 checks the configstring, unit tests the numbers; not yet a
-  player measuring a jump). BB still runs 589a095.
+  player measuring a jump). BB runs a61e783 (2026-10-31), with
+  `g_teleporter_freeze 0` in its rulesets.
 - Teleporters stopped you dead (stock zeroes your speed and holds you
   160 ms): `g_teleporter_freeze` (MuffMode's name; default 1, stock) at 0
   sends you out of the exit at the speed you went in, for both stock
