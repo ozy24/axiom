@@ -295,7 +295,10 @@ class Q2RexRig(Rig):
     # connected and shuts down cleanly. Frags are checked on Q2RED.
     expects_frags = False
     # The offline namespace makes the startup sign-in fail; that's intended.
-    benign_re = re.compile(r"Playfab::signin -- Login failed")
+    # Inside it the session's /run/user/<uid> isn't ours, and Wine sometimes
+    # says so (CI, PR #39). Giving the rig its own XDG_RUNTIME_DIR silenced
+    # it but stopped Q2REX writing saves, so it's listed here instead.
+    benign_re = re.compile(r"Playfab::signin -- Login failed|error: XDG_RUNTIME_DIR is invalid or not set")
     ready_re = r"Map: base1 \(checksum|Map: \w+ \(checksum"
     # Retail runtime libraries the Windows server loads from basedir.
     RETAIL_DLLS = ("PartyWin.dll", "PartyWin7.dll", "PlayFabMultiplayerWin.dll", "SDL2.dll",
@@ -333,14 +336,9 @@ class Q2RexRig(Rig):
                "-userpath", self.winpath(self.home),
                "+set", "basedir", self.winpath(self.base), "+set", "game", "baseq2",
                "+set", "dedicated", "1", "+set", "ip_hostport", str(a.port)] + startup
-        # A runtime dir of the rig's own: inside `unshare -rn` the session's
-        # /run/user/<uid> isn't ours, and Wine's "error: XDG_RUNTIME_DIR is
-        # invalid or not set" then lands in the log (CI, PR #39: tiers 22, 23).
-        runtime = self.dir / "xdg-runtime"
-        runtime.mkdir(mode=0o700, exist_ok=True)
         env = dict(os.environ, WINEPREFIX=a.wineprefix, WINEARCH="win64", WINEDEBUG="-all",
                    WINEDLLOVERRIDES="winemenubuilder.exe=d", COMPUTERNAME="q2harness",
-                   USERNAME="q2harness", XDG_RUNTIME_DIR=str(runtime))
+                   USERNAME="q2harness")
         return cmd, env, self.server
 
     def bot_args(self):
