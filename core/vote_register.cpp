@@ -10,6 +10,7 @@
 #include "core/teams_hooks.h"
 #include "core/vote.h"
 #include "core/vote_hooks.h"
+#include "core/timeout_hooks.h"
 
 #include <cstring>
 
@@ -300,6 +301,11 @@ void Call(edict_t *ent, std::string_view kind_name, std::string_view arg)
 	if (level.intermissiontime)
 	{
 		reply("Wait for the next map.");
+		return;
+	}
+	if (Core_Timeout_Paused()) // nothing is decided while the world stands still
+	{
+		reply("Wait for the timeout to end.");
 		return;
 	}
 	VoteProposal p{*kind, std::string(arg), ""};

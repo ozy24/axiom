@@ -138,9 +138,13 @@ bool Match::CanStart(const MatchInput &in) const
 
 namespace
 {
-// "M:SS" for a whole number of seconds, rounded up (a clock showing 0:00
-// has run out).
 std::string Clock(int64_t ms)
+{
+	return Core_Match_Clock(ms);
+}
+} // namespace
+
+std::string Core_Match_Clock(int64_t ms)
 {
 	const int64_t s = ms <= 0 ? 0 : (ms + 999) / 1000;
 	char buf[24];
@@ -148,16 +152,17 @@ std::string Clock(int64_t ms)
 	return buf;
 }
 
+namespace
+{
 int SecondsLeft(int64_t total_ms, int64_t elapsed_ms)
 {
 	const int64_t left = total_ms - elapsed_ms;
 	return left <= 0 ? 0 : (int)((left + 999) / 1000);
 }
 
-// The stock voice for a number of seconds left, as MuffMode plays it:
-// world/1.wav to world/10.wav, then world/20sec, 30sec and 40sec (the ones
-// retail ships). Empty for any other number.
-std::string SpokenSeconds(int s)
+} // namespace
+
+std::string Core_Match_SpokenSeconds(int s)
 {
 	if (s >= 1 && s <= 10)
 		return "world/" + std::to_string(s) + ".wav";
@@ -166,9 +171,11 @@ std::string SpokenSeconds(int s)
 	return "";
 }
 
+namespace
+{
 void Speak(int s, std::vector<MatchAction> &out)
 {
-	const std::string sound = SpokenSeconds(s);
+	const std::string sound = Core_Match_SpokenSeconds(s);
 	if (!sound.empty())
 		out.push_back({MatchActionKind::Sound, sound, 0});
 }

@@ -1866,11 +1866,114 @@ client 2 name=Carol social=sim-carol join=2 puppet
         results.append((label, not detail, detail))
 
 
+def tier_human_timeout(args, results):
+    """Match timeouts (decision 0025). Duel, two simulated players in a match
+    under way: Alice's `time-out` stops the world - the scores and the HUD
+    clock stand still, the status line counts the timeout down - while
+    Bob's own call, his `time-in`, `kill` and `callvote` are refused; it
+    runs out into the resume countdown and play goes on. Alice's second
+    call is refused (one a match); Bob calls his and ends it early with
+    `time-in`. Q2RED only."""
+    label = "25 human-timeout duel"
+    script = """seconds 72
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob join=1 puppet
+at 34 0 cmd time-out
+at 35 1 cmd time-out
+at 36 1 cmd time-in
+at 37 1 cmd kill
+at 38 1 cmd callvote timelimit 15
+at 56 0 cmd time-out
+at 58 1 cmd time-out
+at 60 1 cmd time-in
+"""
+    cfg = ("set match_ready 0\nset match_countdown 3\nset timelimit 5\nset g_auto_join 1\n"
+           "set match_timeout 8\nset match_timeout_resume 3\n")
+    rig, why = scenario_rig(args, "t25")
+    if not rig:
+        results.append((label, True, [f"skipped: {why}"]))
+        return
+    rulesets = rig.dir / "baseq2" / "rulesets"
+    rulesets.mkdir(parents=True, exist_ok=True)
+    (rulesets / "duel.cfg").write_text(cfg)
+    during = [("wait", r"Timeout: called by Alice", 60), ("cmd", "sv match"), ("sleep", 4), ("cmd", "sv match"),
+              ("wait", r"Timeout: over, play resumes", 30)]
+    startup = scenario_startup(rig, ["+set", "g_ruleset", "duel", "+map", "q2dm1"])
+    log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 150)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    if not {"Alice", "Bob"} <= set(humans):
+        results.append((label, False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
+        return
+    alice, bob = humans["Alice"], humans["Bob"]
+    locs = [r for r in tap if r.get("type") == "locprint"]
+    told = lambda slot, text: any(r["to"] == slot and r["args"] == [text] for r in locs)
+    for line in ("Timeout: called by Alice, 8 s", "Timeout: over, play resumes", "Timeout: called by Bob, 8 s",
+                 "Timeout: ended early by Bob"):
+        if line not in log:
+            detail.append(f"no '{line}'")
+    if log.count("Timeout: called by") != 2:
+        detail.append(f"{log.count('Timeout: called by')} timeouts called, expected 2 (Alice's second refused)")
+    for slot, who, text in ((bob, "Bob", "A timeout is already under way."),
+                            (bob, "Bob", "Only the side that called the timeout can end it."),
+                            (bob, "Bob", "Wait for the timeout to end."),
+                            (alice, "Alice", "Your timeout for this match has been used.")):
+        if not told(slot, text):
+            detail.append(f"{who} wasn't told {text!r}")
+    if not any(r["to"] == bob and r["base"] == "Not during a timeout.\n" for r in locs):
+        detail.append("Bob's `kill` in the timeout wasn't refused")
+    # The world stood still: the two `sv match` four seconds apart in the
+    # timeout show the same scores, and the timeout under way.
+    dumps = [m.group(1) for m in re.finditer(r"^(?:<\d+>)?Match: live\n((?:(?:<\d+>)?  .*\n)*)", log, re.M)]
+    if len(dumps) < 2:
+        detail.append(f"{len(dumps)} `sv match` while live, expected 2")
+    else:
+        scores = [re.findall(r"^(?:<\d+>)?\s+(-?\d+) (Alice|Bob)", d, re.M) for d in dumps[:2]]
+        if scores[0] != scores[1]:
+            detail.append(f"the scores moved in the timeout: {scores[0]} -> {scores[1]}")
+        if not all("timeout: TIMEOUT " in d for d in dumps[:2]):
+            detail.append(f"`sv match` didn't show the timeout: {dumps[:2]}")
+        # ... and nobody moved (a broken build that let them: 2026-11-01).
+        spots = [re.findall(r"^(?:<\d+>)?\s+(Alice|Bob) at (-?\d+ -?\d+ -?\d+)$", d, re.M) for d in dumps[:2]]
+        if len(spots[0]) != 2 or spots[0] != spots[1]:
+            detail.append(f"players moved in the timeout: {spots[0]} -> {spots[1]}")
+    drawn, texts = state_line(tap)
+    for want in ("TIMEOUT 0:08", "TIMEOUT 0:01", "RESUMING"):
+        if want not in texts:
+            detail.append(f"the status line never read {want!r}")
+    # The clock stands still from the call to the end of the resume countdown.
+    cs = [r for r in tap if r.get("type") == "configstring"]
+    status = next((r["index"] for r in cs if r["text"].startswith(("WARMUP", "READY UP ", "WAITING FOR "))), None)
+    if status is not None:
+        # Alice's: from TIMEOUT 0:08 until the status line clears again.
+        seq = [(r["index"], r["text"]) for r in cs if r["index"] in (status, status + 1)]
+        start = next((i for i, (_, t) in enumerate(seq) if t == "TIMEOUT 0:08"), None)
+        if start is None:
+            detail.append("no TIMEOUT 0:08 on the status line")
+        else:
+            ticking = []
+            for index, text in seq[start + 1:]:
+                if index == status and not text.startswith(("TIMEOUT ", "RESUMING")):
+                    break
+                if index == status + 1:
+                    ticking.append(text)
+            if ticking:
+                detail.append(f"the clock moved in the timeout: {ticking[:5]}")
+    centre = [r["args"][0] for r in locs if r["base"] == "{}" and r["to"] == alice and r["args"]]
+    if "Match resumes" not in centre or centre.count("FIGHT!") < 2:
+        detail.append(f"Alice's centre prints: {centre[-8:]}, expected 'Match resumes' and FIGHT! again")
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append((label, not detail, detail))
+
+
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
          tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
          tier_human_join, tier_human_readyvote, tier_human_shuffle, tier_entities, tier_startup_ruleset,
-         tier_admin_commands)
+         tier_admin_commands, tier_human_timeout)
 
 
 def run_tier(tier, args):
@@ -1972,7 +2075,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset", "admin_commands"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset", "admin_commands", "human_timeout"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

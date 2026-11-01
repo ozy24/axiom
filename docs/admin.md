@@ -60,6 +60,18 @@ set match_overtime -1      // sudden death instead of overtimes
 set match_overtime_max 10  // still tied after 10 minutes: a draw
 ```
 
+Timeouts: in Duel, TDM and CTF each side (a player, or a team) may stop a
+match under way once, with `time-out` or the Tab menu: everything stands
+still for 2 minutes, then a 10-second countdown back to play. The side that
+called it can end it early with `time-in`. FFA has none: one player
+shouldn't freeze a public server. To change them:
+
+```
+// rulesets/tdm.cfg
+set match_timeout 60         // seconds; 0 turns timeouts off
+set match_timeout_resume 5   // the countdown back to play
+```
+
 `match_minplayers` (2) counts bots, so one player and the server's bots
 (`bot_minPlayers`) can start a match; a match always needs a human, so
 bots alone stay in warmup, and a match whose last human leaves goes back
@@ -115,7 +127,9 @@ Set it in `server.cfg`. Details: docs/design/joining.md.
 | `sv readyteam red\|blue` | the same for one team |
 | `sv spectate <player>` | out of play, in any mode: a name as shown (any case, spaces and all) or a client number. On a team: off it and its roster, so a locked team keeps them out (a captain's `teamkick`). In Duel, a duellist in a match under way sends it back to warmup and the next in line steps up: no forfeit |
 | `kick <player>` | the engine's own: off the server |
-| `sv match` | the state, and everyone's score |
+| `sv timeout` | stop the match under way now (two minutes, or `match_timeout`); needs no player's allowance |
+| `sv timein` | end any timeout: the countdown back to play starts |
+| `sv match` | the state, and everyone's score (and a timeout under way) |
 
 Bots aren't moved: use `bot_count`.
 

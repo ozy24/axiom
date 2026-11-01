@@ -18,6 +18,7 @@
 #include "core/teams_hooks.h"
 #include "core/join_hooks.h"
 #include "core/vote_hooks.h"
+#include "core/timeout_hooks.h"
 
 #include <array>
 #include <optional>
@@ -270,6 +271,9 @@ void PublishHud()
 	// An open vote takes the status's place; the clock stays (core/vote_register.cpp).
 	if (std::string vote = Core_Vote_HudText(); !vote.empty())
 		hud.status = std::move(vote);
+	// A timeout's, over all: no vote is decided while the world stands still.
+	if (const char *timeout = Core_Timeout_Status(); *timeout)
+		hud.status = timeout;
 	Publish(kStatusConfigstring, status_text, hud.status);
 	Publish(kClockConfigstring, clock_text, hud.clock);
 }
@@ -385,6 +389,7 @@ void Act(const std::vector<MatchAction> &actions)
 		case MatchActionKind::Countdown:
 			break; // shown by the HUD's big digits (Core_Match_SetStats)
 		case MatchActionKind::ResetArena:
+			Core_Timeout_NewMatch(); // every side has its timeout again
 			ResetArena();
 			break;
 		case MatchActionKind::EndMatch:
@@ -463,6 +468,26 @@ void Core_Match_Frame()
 	PublishHud();
 }
 
+void Core_Match_PausedFrame()
+{
+	PublishHud();
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *ent = ClientEdict(i);
+		if (!ent->inuse || !ent->client)
+			continue;
+		Core_Match_SetStats(ent);
+		// ClientEndServerFrame's menu redraw doesn't run, and level time
+		// stands still: a menu changed by a press is sent now.
+		if (ent->client->menudirty && ent->client->menu)
+		{
+			PMenu_Do_Update(ent);
+			gi.unicast(ent, true);
+		}
+		ent->client->menudirty = false;
+	}
+}
+
 bool Core_Match_OwnsRules()
 {
 	return begun && match.OwnsRules();
@@ -502,7 +527,7 @@ bool ReadyCommand(const char *cmd)
 
 bool Core_Match_ServerCommand(const char *cmd)
 {
-	if (ReadyCommand(cmd))
+	if (ReadyCommand(cmd) || Core_Timeout_ServerCommand(cmd))
 		return true;
 	if (Q_strcasecmp(cmd, "match"))
 		return false;
@@ -512,6 +537,7 @@ bool Core_Match_ServerCommand(const char *cmd)
 		const std::array<int, 2> scores = ctf->integer ? G_TeamCaptures() : G_TeamFrags();
 		gi.Com_PrintFmt("  teams: red {}, blue {}\n", scores[0], scores[1]);
 	}
+	Core_Timeout_PrintStatus();
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		const edict_t *ent = ClientEdict(i);
@@ -573,8 +599,10 @@ void Core_Match_SetStats(edict_t *ent)
 	if (ClockStat())
 		ent->client->ps.stats[ClockStat()] = clock_text.empty() ? 0 : kClockConfigstring;
 	if (CountdownStat())
-		ent->client->ps.stats[CountdownStat()] =
-		    Core_Match_OwnsRules() ? match.CountdownSeconds(level.time.milliseconds()) : 0;
+		ent->client->ps.stats[CountdownStat()] = Core_Timeout_CountdownSeconds() ? Core_Timeout_CountdownSeconds()
+		                                         : Core_Match_OwnsRules()
+		                                             ? match.CountdownSeconds(level.time.milliseconds())
+		                                             : 0;
 	if (LimitStat())
 	{
 		const int limit = ctf->integer ? capturelimit->integer : fraglimit->integer;
@@ -604,6 +632,8 @@ bool Core_Match_ClockEnd(gtime_t &end)
 
 bool Core_Match_ClientCommand(edict_t *ent, const char *cmd)
 {
+	if (Core_Timeout_ClientCommand(ent, cmd)) // time-out, time-in; no kill while paused
+		return true;
 	// The active gametype's own commands first (Duel's `queue`).
 	if (const GametypeDef *gt = deathmatch->integer ? Core_Gametype_Active() : nullptr)
 	{

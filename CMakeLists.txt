@@ -128,6 +128,8 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/core/stat_slots_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/teams.cpp"
     "${CMAKE_SOURCE_DIR}/core/teams_register.cpp"
+    "${CMAKE_SOURCE_DIR}/core/timeout.cpp"
+    "${CMAKE_SOURCE_DIR}/core/timeout_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/join.cpp"
     "${CMAKE_SOURCE_DIR}/core/join_register.cpp")
 
@@ -220,6 +222,7 @@ if(GAME_BUILD_TESTS)
         tests/test_frag_message.cpp
         tests/test_entities.cpp
         tests/test_movement.cpp
+        tests/test_timeout.cpp
         core/identity.cpp
         core/match_record.cpp
         core/host_files.cpp
@@ -236,6 +239,7 @@ if(GAME_BUILD_TESTS)
         core/frag_message.cpp
         core/entities.cpp
         core/movement.cpp
+        core/timeout.cpp
         tests/test_duel_queue.cpp
         tests/test_duel_board.cpp
         tests/test_eyecam.cpp

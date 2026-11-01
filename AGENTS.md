@@ -212,6 +212,12 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   off RED and the lock keeps him out. Duel: `sv spectate` on a duellist
   while live goes back to warmup (no forfeit) and the queued player steps
   up (Q2RED only).
+- **Tier 25 human-timeout:** Duel with two simulated players in a live
+  match: Alice's `time-out` stops the world (`sv match` four seconds apart:
+  the same scores, nobody moved; the clock stands still, the status line
+  counts down to RESUMING); Bob's own call, his `time-in`, `kill` and
+  `callvote` are refused; Alice's second call is refused (one a match); Bob
+  calls his and ends it early with `time-in` (Q2RED only).
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

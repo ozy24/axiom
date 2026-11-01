@@ -42,6 +42,8 @@ enum class MenuAction
 	TeamMate,      // a teammate's page; the row's arg is their client number
 	TeamKick,      // teamkick the row's arg (a client number)
 	TeamCaptain,   // captain the row's arg (a client number)
+	Timeout,       // time-out: a match timeout (core/timeout.h)
+	TimeIn,        // time-in: end it early
 };
 
 enum class MenuAlign
@@ -138,9 +140,12 @@ struct MenuView
 	int timelimit_min = 0;
 	int fraglimit = 0;
 	int capturelimit = 0;
-	int overtime = 0;        // match_overtime: minutes, -1 sudden death, 0 none
-	bool match_flow = false; // match_flow: warmup, countdown and the HUD
-	bool warmup = false;     // the match flow, before LIVE (warmup or the countdown)
+	int overtime = 0;              // match_overtime: minutes, -1 sudden death, 0 none
+	bool match_flow = false;       // match_flow: warmup, countdown and the HUD
+	bool warmup = false;           // the match flow, before LIVE (warmup or the countdown)
+	int timeout_s = 0;             // match_timeout: seconds, 0 off
+	bool timeout_can_call = false; // this player's side may call one now
+	bool timeout_can_end = false;  // ... or end the one it called
 
 	// Voting (core/vote.h).
 	bool voter = false;                  // counts in a vote now

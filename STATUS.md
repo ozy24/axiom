@@ -1,6 +1,6 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-10-31 (console admin commands)._
+_Updated at the end of every session. Last update: 2026-11-01 (match timeouts)._
 
 ## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
@@ -334,7 +334,19 @@ removed everywhere. Chris (2026-10-31): only the q2dm8 Power Shield
 mattered (taken out in BB's `.ent`); spawn selection is the one to watch in
 play. Nothing else to build.
 
-**Next:** timeouts/pauses and in-game admin; the M4 checklist. (The FFA/Duel
+**Match timeouts (2026-11-01, decision 0025, branch `match/timeout`):**
+`time-out` / `time-in` (and the Tab menu's Call / End Timeout), one per
+side per match (a team, or a player by social ID), only while LIVE or in
+overtime; `sv timeout` / `sv timein` for the console. The game frame
+stops before level time moves (MMREX's way), so everything pauses with no
+code of its own; players get `PM_FREEZE`; no `kill` or `callvote` in one.
+`match_timeout` (compiled 0 = off; duel, tdm, ctf 120; ffa 0) and
+`match_timeout_resume` (10). No anti-escape rule (Chris). Players can't
+type `timeout`: retail's client has a cvar of that name. Harness tier 25,
+checked against two broken builds (the world not stopped; players not
+frozen). Not yet tried on Q2REX by hand: PM_FREEZE's look on a stock client.
+
+**Next:** in-game admin; the M4 checklist. (The FFA/Duel
 miniscore stays as built: the top two, no highlight. Chris, 2026-10-31.)
 
 **The playtest rig** (`~/q2playtest`, `./run.sh`, `./cmd.sh "<console>"`).
@@ -349,7 +361,7 @@ default doesn't apply until the server restarts).
 `repos/Q2REX/mmrex/src/sgame` (183k lines):
 - **What MMREX has that we lack, roughly by value:**
   1. Timeouts and pauses (`timeout`/`timein`, one per player, a resume
-     countdown).
+     countdown). Done 2026-11-01, one per side (decision 0025).
   2. In-game admin (`admin <password>`, `startmatch`, `endmatch`,
      `resetmatch`, `setteam`, `boot`, `forcevote`, an admin menu).
   3. Team balance and shuffle.
