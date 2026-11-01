@@ -195,6 +195,10 @@ MenuPage Core_Menu_Main(const MenuView &v)
 		Add(page, v.chasing ? "Stop Chasing" : "Chase Camera", v.chasing ? MenuAction::StopChase : MenuAction::Chase);
 	if (v.ready_up && v.playing)
 		Add(page, v.ready ? "Not Ready" : "Ready", v.ready ? MenuAction::NotReady : MenuAction::Ready);
+	if (v.timeout_can_end && v.playing)
+		Add(page, "End Timeout", MenuAction::TimeIn);
+	else if (v.timeout_can_call && v.playing)
+		Add(page, "Call Timeout", MenuAction::Timeout);
 	if (v.captain)
 		Add(page, "Team (captain)", MenuAction::Team);
 
@@ -267,6 +271,9 @@ MenuPage Core_Menu_MatchInfo(const MenuView &v)
 	{
 		Add(page, "Overtime: " + (v.overtime < 0 ? std::string("sudden death") : Minutes(v.overtime)));
 		Add(page, std::string("Ready-up: ") + (v.ready_required ? "on" : "off"));
+		if (v.timeout_s > 0)
+			Add(page, "Timeout: " + std::to_string(v.timeout_s / 60) + ":" + (v.timeout_s % 60 < 10 ? "0" : "") +
+			              std::to_string(v.timeout_s % 60) + (v.teams ? ", one a team" : ", one each"));
 	}
 	else
 	{

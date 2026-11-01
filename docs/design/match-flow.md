@@ -115,6 +115,35 @@ Implemented in `core/match_register.cpp` (`ResetArena`). Bots count as always
 ready; a client counts as playing only once it has begun (`pers.spawned`) and
 isn't a spectator. Every transition prints a `Match:` console line.
 
+## Timeouts
+
+Decision 0025. While LIVE or in OVERTIME, a side may stop the match once:
+`time-out` (or the Tab menu's Call Timeout). A side is a team in TDM and
+CTF, a player (by social ID) in Duel and FFA; every side has its timeout
+again when the next match goes live. The world stands still for
+`match_timeout` seconds - the game frame stops before level time moves, so
+items, projectiles, powerups and the match clock all wait, and players get
+`PM_FREEZE` (no moving, firing or `kill`; an open menu works) - then a
+`match_timeout_resume` countdown (the big digits, spoken), then FIGHT!.
+
+- The calling side may end it early with `time-in` (End Timeout): the
+  countdown starts. The other side may not.
+- `sv timeout` / `sv timein`: the server's own, outside the allowance (two
+  minutes, or `match_timeout`), and the server ends any timeout.
+- The HUD's status line reads `TIMEOUT 1:45`, then `RESUMING`; the clock
+  stands still. No vote can be called in one; an open vote waits.
+- A timeout is dropped when the match restarts (the arena reset), on a new
+  level, or when no human is left playing.
+- `sv match` shows it, and where each player stands (tier 25's check that
+  nobody moves). Console lines: `Timeout: called by ...`, `Timeout: ended
+  early by ...`, `Timeout: over, play resumes`, `Timeout: dropped (...)`.
+- Players type `time-out`, not `timeout`: retail's engine has a `timeout`
+  cvar, which catches the word in the client's console.
+
+Implemented in `core/timeout.{h,cpp}` (pure, tests/test_timeout.cpp) and
+`core/timeout_register.cpp`; the marked hooks are in G_RunFrame_ and
+ClientThink.
+
 ## Cvars (neutral names, decision 0004)
 
 | Cvar | Default | Meaning |
@@ -129,6 +158,8 @@ isn't a spectator. Every transition prints a `Match:` console line.
 | `match_overtime_max` | `0` | M > 0: still tied M minutes into overtime, the match is a draw; 0 never (built-ins: 30) |
 | `match_warmup_weapons` | `1` | warmup: every weapon the map places, full ammo, no drops on death |
 | `match_lock` | `0` | 1: both teams lock as the match goes live (team modes; docs/design/teams.md) |
+| `match_timeout` | `0` | seconds a timeout lasts, 0 = off (built-ins: duel, tdm, ctf 120; ffa 0). See "Timeouts" |
+| `match_timeout_resume` | `10` | seconds of countdown back to play after a timeout, 0 = at once |
 
 Rulesets set these (decisions 0003 and 0013, `core/rulesets.h`, the admin's
 view in docs/admin.md). The compiled defaults are stock; each gametype's

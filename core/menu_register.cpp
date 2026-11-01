@@ -14,6 +14,7 @@
 #include "core/menu_hooks.h"
 #include "core/teams_hooks.h"
 #include "core/vote_hooks.h"
+#include "core/timeout_hooks.h"
 
 #include <cstring>
 
@@ -101,6 +102,8 @@ MenuView View(const edict_t *ent)
 	v.overtime = CvarInt("match_overtime");
 	v.match_flow = Core_Match_OwnsRules();
 	v.warmup = v.match_flow && !Core_Match_InPlay();
+	v.timeout_s = std::max(0, CvarInt("match_timeout"));
+	Core_Timeout_MenuInfo(ent, v.timeout_can_call, v.timeout_can_end);
 
 	const VoteMenuInfo vote = Core_Vote_MenuInfo(ent);
 	v.voter = vote.voter;
@@ -262,6 +265,14 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 		Core_Match_SetReady(ent, state->actions[hnd->cur] == MenuAction::Ready);
 		PMenu_Update(ent); // the row flips
 		break;
+	case MenuAction::Timeout:
+	case MenuAction::TimeIn:
+	{
+		const bool call = state->actions[hnd->cur] == MenuAction::Timeout; // before the close frees the state
+		PMenu_Close(ent); // the timeout's own messages say what happened
+		Core_Timeout_ClientCommand(ent, call ? "time-out" : "time-in");
+		break;
+	}
 	case MenuAction::MatchInfo:
 		Open(ent, Page::MatchInfo);
 		break;

@@ -8,6 +8,11 @@ struct statusbar_t;
 // Every server frame, from G_RunFrame, before the rules check.
 void Core_Match_Frame();
 
+// A timeout holds the world still (core/timeout_hooks.h): the game frame stops
+// before level time moves, so this keeps the HUD, stats and open menus up
+// to date in its place.
+void Core_Match_PausedFrame();
+
 // Whether the match flow, not stock CheckDMRules, decides when the level ends.
 bool Core_Match_OwnsRules();
 

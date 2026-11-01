@@ -20,6 +20,8 @@ const RulesetDef core_rulesets[] = {
      "set match_overtime_max 30\n"
      "set match_lock 0\n"
      "set match_warmup_weapons 1\n"
+     "set match_timeout 0\n"
+     "set match_timeout_resume 10\n"
      "set timelimit 10\n"
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
@@ -39,6 +41,8 @@ const RulesetDef core_rulesets[] = {
      "set match_overtime_max 30\n"
      "set match_lock 0\n"
      "set match_warmup_weapons 1\n"
+     "set match_timeout 120\n"
+     "set match_timeout_resume 10\n"
      "set timelimit 10\n"
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
@@ -58,6 +62,8 @@ const RulesetDef core_rulesets[] = {
      "set match_overtime_max 30\n"
      "set match_lock 1\n"
      "set match_warmup_weapons 1\n"
+     "set match_timeout 120\n"
+     "set match_timeout_resume 10\n"
      "set timelimit 20\n"
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
@@ -77,6 +83,8 @@ const RulesetDef core_rulesets[] = {
      "set match_overtime_max 30\n"
      "set match_lock 1\n"
      "set match_warmup_weapons 1\n"
+     "set match_timeout 120\n"
+     "set match_timeout_resume 10\n"
      "set timelimit 20\n"
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
@@ -89,7 +97,7 @@ const RulesetDef core_rulesets[] = {
 const size_t core_ruleset_count = sizeof(core_rulesets) / sizeof(core_rulesets[0]);
 
 // The defaults their modules register: g_gametype (core/gametype_register.cpp),
-// match_* (core/match_register.cpp), the limits (rerelease/g_main.cpp),
+// match_* (core/match_register.cpp, core/timeout_register.cpp), the limits (rerelease/g_main.cpp),
 // g_map_list, g_map_list_shuffle, g_no_items and g_friendly_fire
 // (rerelease/g_main.cpp).
 const GameplayCvar core_gameplay_cvars[] = {
@@ -106,6 +114,8 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"match_overtime_max", "0"},
     {"match_lock", "0"},
     {"match_warmup_weapons", "1"},
+    {"match_timeout", "0"}, // timeouts (core/timeout_register.cpp): off
+    {"match_timeout_resume", "10"},
     {"timelimit", "0"},
     {"fraglimit", "0"},
     {"capturelimit", "0"},

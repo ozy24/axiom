@@ -74,6 +74,15 @@ struct MatchInput
 	std::array<int, 2> team_scores{}; // with MatchConfig::teams: team 1, team 2 (frags or captures)
 };
 
+// "M:SS" for a time left, whole seconds rounded up (a clock showing 0:00 has
+// run out).
+std::string Core_Match_Clock(int64_t ms);
+
+// The stock voice for a number of seconds left, as MuffMode plays it:
+// world/1.wav to world/10.wav, then world/20sec, 30sec and 40sec (the ones
+// retail ships). Empty for any other number.
+std::string Core_Match_SpokenSeconds(int s);
+
 struct MatchHudText
 {
 	std::string status;

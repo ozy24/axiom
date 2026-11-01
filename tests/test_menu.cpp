@@ -60,6 +60,7 @@ MenuView Longest()
 	v.overtime = -1;
 	v.capturelimit = v.fraglimit = 999;
 	v.timelimit_min = 999;
+	v.timeout_s = 3600; // Match Info's longest timeout line
 	v.voter = true;
 	v.vote_proposal = std::string(60, 'W');
 	v.vote_kinds = {"map", "gametype", "restart", "readyall", "readyteam"};
@@ -135,11 +136,14 @@ TEST_CASE("menu layout: stock's PMenu_Do_Update format")
 TEST_CASE("menu pages fit stock's 18 rows and the client's 1024-byte layout")
 {
 	MenuView v = Longest();
-	for (int state = 0; state < 8; ++state)
+	for (int state = 0; state < 16; ++state)
 	{
 		v.playing = state & 1;
 		v.vote_open = state & 2;
 		v.team = state & 4 ? 1 : 0; // on a team: Spectate shows too (with a vote and Ready, the longest)
+		// In play: Call Timeout where Ready was (never both: ready-up is warmup's).
+		v.ready_up = v.warmup = !(state & 8);
+		v.timeout_can_call = state & 8;
 		v.vote_can_call = !v.vote_open;
 		// Page 1 of the long lists has Prev and Next both: the longest.
 		for (const MenuPage &page :
@@ -233,6 +237,35 @@ TEST_CASE("menu: ready-up only for a player, only while it's on")
 	CHECK(RowOf(Core_Menu_Main(v), MenuAction::NotReady) >= 0);
 	v.playing = false;
 	CHECK(RowOf(Core_Menu_Main(v), MenuAction::NotReady) < 0);
+}
+
+TEST_CASE("menu: Call Timeout while the side may, End Timeout for the side that called it")
+{
+	MenuView v = Ffa();
+	v.playing = true;
+	CHECK(RowOf(Core_Menu_Main(v), MenuAction::Timeout) < 0);
+	CHECK(RowOf(Core_Menu_Main(v), MenuAction::TimeIn) < 0);
+	v.timeout_can_call = true;
+	CHECK(RowOf(Core_Menu_Main(v), MenuAction::Timeout) >= 0);
+	v.timeout_can_call = false;
+	v.timeout_can_end = true;
+	CHECK(RowOf(Core_Menu_Main(v), MenuAction::TimeIn) >= 0);
+	CHECK(RowOf(Core_Menu_Main(v), MenuAction::Timeout) < 0);
+}
+
+TEST_CASE("menu: Match Info gives the timeout's length, when there is one")
+{
+	MenuView v = Teams();
+	v.match_flow = true;
+	const auto has = [](const MenuPage &page, const std::string &text)
+	{ return std::any_of(page.begin(), page.end(), [&](const MenuRow &r) { return r.text == text; }); };
+	CHECK_FALSE(has(Core_Menu_MatchInfo(v), "Timeout: 2:00, one a team"));
+	v.timeout_s = 120;
+	CHECK(has(Core_Menu_MatchInfo(v), "Timeout: 2:00, one a team"));
+	v = Ffa();
+	v.match_flow = true;
+	v.timeout_s = 90;
+	CHECK(has(Core_Menu_MatchInfo(v), "Timeout: 1:30, one each"));
 }
 
 TEST_CASE("menu: teams list both sides; the cursor starts on the smaller team")

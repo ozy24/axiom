@@ -7,6 +7,7 @@
 #include "core/gametype.h" // [mod]
 #include "core/match_hooks.h" // [mod]
 #include "core/maps_hooks.h" // [mod]
+#include "core/timeout_hooks.h" // [mod]
 
 CHECK_GCLIENT_INTEGRITY;
 CHECK_EDICT_INTEGRITY;
@@ -834,6 +835,12 @@ inline void G_RunFrame_(bool main_loop)
 	G_CheckCvars();
 
 	Bot_UpdateDebug();
+
+	if (Core_Timeout_Frame()) // [mod] a match timeout: the world stands still, level time too
+	{ // [mod]
+		level.in_frame = false; // [mod]
+		return; // [mod]
+	} // [mod]
 
 	level.time += FRAME_TIME_MS;
 

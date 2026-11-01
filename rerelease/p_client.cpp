@@ -8,6 +8,7 @@
 #include "core/scoreboard_hooks.h" // [mod]
 #include "core/warmup_hooks.h" // [mod]
 #include "core/frag_message_hooks.h" // [mod]
+#include "core/timeout_hooks.h" // [mod]
 #include "m_player.h"
 #include "bots/bot_includes.h"
 
@@ -3215,6 +3216,9 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 		ent->movetype = MOVETYPE_NOCLIP;
 		return;
 	}
+
+	if (Core_Timeout_Think(ent, ucmd)) // [mod] a match timeout: nobody moves or fires
+		return; // [mod]
 
 	if (Core_Match_HoldFire(ent)) // [mod] the match countdown: move, but no firing
 	{
