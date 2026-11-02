@@ -1,6 +1,6 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-11-01 (match timeouts)._
+_Updated at the end of every session. Last update: 2026-11-02 (timeouts played on the rig)._
 
 ## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
@@ -334,7 +334,7 @@ removed everywhere. Chris (2026-10-31): only the q2dm8 Power Shield
 mattered (taken out in BB's `.ent`); spawn selection is the one to watch in
 play. Nothing else to build.
 
-**Match timeouts (2026-11-01, decision 0025, branch `match/timeout`):**
+**Match timeouts (2026-11-01, decision 0025, PR #45):**
 `time-out` / `time-in` (and the Tab menu's Call / End Timeout), one per
 side per match (a team, or a player by social ID), only while LIVE or in
 overtime; `sv timeout` / `sv timein` for the console. The game frame
@@ -344,7 +344,8 @@ code of its own; players get `PM_FREEZE`; no `kill` or `callvote` in one.
 `match_timeout_resume` (10). No anti-escape rule (Chris). Players can't
 type `timeout`: retail's client has a cvar of that name. Harness tier 25,
 checked against two broken builds (the world not stopped; players not
-frozen). Not yet tried on Q2REX by hand: PM_FREEZE's look on a stock client.
+frozen). Played on the rig with a retail client (2026-11-02, Chris: "worked
+ok"): the freeze, `time-in` and the resume countdown.
 
 **Next:** in-game admin; the M4 checklist. (The FFA/Duel
 miniscore stays as built: the top two, no highlight. Chris, 2026-10-31.)
