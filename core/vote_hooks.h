@@ -51,5 +51,6 @@ void Core_Vote_Cast(edict_t *ent, bool yes);
 
 // `sv callvote <kind> [choice]`: the admin asks the players (no answer of
 // its own; the player limits and g_vote_allow don't apply). Also `sv
-// votemap`, a passed gametype vote's last step. True if handled.
+// votemap`, a passed gametype vote's last step; `sv passvote` / `sv
+// cancelvote` decide the open vote. True if handled.
 bool Core_Vote_ServerCommand(const char *cmd);

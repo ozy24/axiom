@@ -806,3 +806,21 @@ TEST_CASE("an admin's BackToWarmup: a match under way back to warmup, the arena 
 	CHECK(stock.BackToWarmup(1000).empty());
 	CHECK(stock.State() == MatchState::Live);
 }
+
+TEST_CASE("an admin's EndNow: the intermission with the scores as they stand; nothing outside play")
+{
+	Match m(Enabled());
+	m.Begin(0);
+	CHECK(m.EndNow("stopped").empty()); // warmup
+	const int64_t live = ToLive(m);
+	const auto out = m.EndNow("stopped by the server");
+	CHECK(m.State() == MatchState::Intermission);
+	CHECK(std::any_of(out.begin(), out.end(), [](const MatchAction &a)
+	                  { return a.kind == MatchActionKind::EndMatch && a.text == "stopped by the server"; }));
+	CHECK(m.EndNow("again").empty());
+	(void)live;
+
+	Match stock;
+	stock.Begin(0);
+	CHECK(stock.EndNow("stopped").empty());
+}

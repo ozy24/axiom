@@ -497,6 +497,24 @@ VoteEvent Vote::Update(const std::vector<int> &voters, int64_t now_ms)
 	return VoteEvent::None;
 }
 
+bool Vote::ForcePass(int64_t now_ms)
+{
+	if (state_ != State::Open)
+		return false;
+	state_ = State::Passed;
+	since_ms_ = now_ms;
+	return true;
+}
+
+bool Vote::Cancel()
+{
+	if (state_ != State::Open)
+		return false;
+	state_ = State::Idle;
+	answers_.clear();
+	return true;
+}
+
 std::optional<bool> Vote::Answer(int id) const
 {
 	if (state_ != State::Open)

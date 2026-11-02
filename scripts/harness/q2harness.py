@@ -1969,11 +1969,131 @@ at 60 1 cmd time-in
     results.append((label, not detail, detail))
 
 
+def tier_human_admin(args, results):
+    """In-game admin (decision 0026). TDM, four simulated players in a
+    ready-up warmup, admin_password set: Carol's `admin readyall` isn't a
+    guess; three wrong passwords lock her out, and then even the right one
+    is refused. Alice logs in (everyone is told) and runs the console's match
+    commands through `admin`, with their replies sent to her: setteam,
+    cancelvote and passvote on Bob's votes, lockteam, a setteam refused by
+    the lock, readyall, timeout and timein, match, a map off the list
+    refused, endmatch, then a map change, which reloads the module: still an
+    admin, she kicks Dave. A `set` is never an admin command. A new password
+    logs her out. (The kick comes last: the sim client doesn't come back
+    from a map change with a kicked client.)
+    Q2RED only."""
+    label = "26 human-admin tdm"
+    script = """seconds 74
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Carol social=sim-carol puppet
+client 3 name=Dave social=sim-dave puppet
+at 6 0 cmd team red
+at 6 1 cmd team red
+at 6 2 cmd team blue
+at 6 3 cmd team blue
+at 8 2 cmd admin readyall
+at 9 2 cmd admin guess1
+at 10 2 cmd admin guess2
+at 11 2 cmd admin guess3
+at 12 2 cmd admin letmein
+at 13 0 cmd admin letmein
+at 14 0 cmd admin
+at 15 0 cmd admin set g_gravity 100
+at 16 0 cmd admin setteam Bob blue
+at 17 1 cmd callvote timelimit 10
+at 18 0 cmd admin cancelvote
+at 19 1 cmd callvote timelimit 10
+at 20 0 cmd admin passvote
+at 23 0 cmd admin lockteam red
+at 24 0 cmd admin setteam Carol red
+at 25 0 cmd admin readyall
+at 31 0 cmd admin timeout
+at 33 0 cmd admin timein
+at 38 0 cmd admin match
+at 41 0 cmd admin map nosuchmap
+at 42 0 cmd admin endmatch
+at 46 0 cmd admin map q2dm3
+at 62 0 cmd admin match
+at 63 0 cmd admin kick Dave
+at 64 0 cmd admin teams
+at 68 0 cmd admin match
+"""
+    cfg = ("set match_ready 1\nset match_countdown 3\nset match_lock 0\nset timelimit 5\n"
+           "set match_timeout 8\nset match_timeout_resume 3\nset g_vote 1\n"
+           "set g_map_list \"q2dm1 q2dm3\"\nset admin_password letmein\n")
+    rig, why = scenario_rig(args, "t26")
+    if not rig:
+        results.append((label, True, [f"skipped: {why}"]))
+        return
+    rulesets = rig.dir / "baseq2" / "rulesets"
+    rulesets.mkdir(parents=True, exist_ok=True)
+    (rulesets / "tdm.cfg").write_text(cfg)
+    during = [("wait", r"Admin: Alice: teams", 100), ("cmd", "set admin_password other")]
+    startup = scenario_startup(rig, ["+set", "g_ruleset", "tdm", "+map", "q2dm1"])
+    log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 170)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    if not {"Alice", "Bob", "Carol", "Dave"} <= set(humans):
+        results.append((label, False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
+        return
+    alice, bob, carol = humans["Alice"], humans["Bob"], humans["Carol"]
+    locs = [r for r in tap if r.get("type") == "locprint"]
+    # What a player was told: Tell's "{}\n" and the console replies' "{}".
+    said = lambda slot: [r["args"][0].rstrip("\n") for r in locs
+                         if r["to"] == slot and r["base"] in ("{}\n", "{}") and r["args"]]
+    to_alice, to_carol = said(alice), said(carol)
+    for text in ("You aren't an admin: log in first with `admin <password>`.", "Wrong password (2 tries left).",
+                 "Wrong password (1 try left).", "Wrong password. Locked out for 10 minutes.",
+                 "Too many wrong passwords: try again in 10 minutes."):
+        if text not in to_carol:
+            detail.append(f"Carol wasn't told {text!r}")
+    if log.count("Admin: wrong password from Carol") != 3 or "; locked out" not in log:
+        detail.append(f"{log.count('Admin: wrong password from Carol')} wrong-password lines for Carol, expected 3")
+    if "Admin: Carol" in log and "logged in" in log.split("Admin: Carol", 1)[1].split("\n", 1)[0]:
+        detail.append("Carol logged in while locked out")
+    if not re.search(r"Admin: Alice \(id:sim-alice, .*\) logged in", log):
+        detail.append("no 'Admin: Alice (...) logged in'")
+    if not any(r["to"] in (bob, -1) and r["base"] == "{} is now an admin.\n" for r in locs):
+        detail.append("Bob wasn't told Alice is now an admin")
+    for text in ("Admin commands (admin <command>):", "Not an admin command. `admin` lists them.",
+                 "RED is locked: unlock it first (unlockteam red).", "Match: live",
+                 "Not on this server's map list. Maps: q2dm1 q2dm3"):
+        if text not in to_alice:
+            detail.append(f"Alice wasn't told {text!r}")
+    for line in ("Join: Bob put on BLUE by the server", "cancelled by the server", "passed by the server",
+                 "Vote: setting", "Teams: RED locked by the server", "Match: everyone readied by the server",
+                 "Match: countdown -> live", "Timeout: called by the server", "Timeout: ended early by the server",
+                 "Admin: Alice kicked Dave", "was kicked", "Match: ended (stopped by the server)",
+                 "Admin: Alice changed the map to q2dm3", "Admin: the password changed; every admin logged out"):
+        if line not in log:
+            detail.append(f"no '{line}'")
+    if "Join: Carol put on RED" in log:
+        detail.append("Carol was put on a locked RED")
+    if "Admin: Alice: set g_gravity" in log:
+        detail.append("`admin set` ran")
+    if not any(r["to"] in (bob, -1) and r["base"] == "{} (admin): {}\n" and r["args"][1:] == ["endmatch"]
+               for r in locs):
+        detail.append("Bob wasn't told of Alice's endmatch")
+    # The map change reloaded the module: Alice was still an admin on q2dm3,
+    # and the new password then logged her out.
+    after = log.split("Admin: Alice changed the map to q2dm3", 1)[-1]
+    if "Admin: Alice: match" not in after or "Admin: Alice: teams" not in after:
+        detail.append("Alice wasn't an admin after the map change")
+    if not to_alice or to_alice[-1] != "You aren't an admin: log in first with `admin <password>`.":
+        detail.append(f"after the new password Alice was told {to_alice[-1:]}, expected she isn't an admin")
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append((label, not detail, detail))
+
+
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
          tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
          tier_human_join, tier_human_readyvote, tier_human_shuffle, tier_entities, tier_startup_ruleset,
-         tier_admin_commands, tier_human_timeout)
+         tier_admin_commands, tier_human_timeout, tier_human_admin)
 
 
 def run_tier(tier, args):
@@ -2075,7 +2195,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset", "admin_commands", "human_timeout"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset", "admin_commands", "human_timeout", "human_admin"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

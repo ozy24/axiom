@@ -268,8 +268,65 @@ bool Core_Join_ClientCommand(edict_t *ent, const char *cmd)
 	return true;
 }
 
+// `sv setteam <player> red|blue`: the server puts a player on a team, as if
+// they had joined it themselves: not past a lock.
+static bool SetTeamCommand()
+{
+	const char *usage = "Usage: sv setteam <player> red|blue (name or client number; team games only)\n";
+	const char *word = gi.argc() >= 4 ? gi.argv(gi.argc() - 1) : "";
+	const int team = !Q_strcasecmp(word, "red") ? CTF_TEAM1 : !Q_strcasecmp(word, "blue") ? CTF_TEAM2 : CTF_NOTEAM;
+	if (!deathmatch->integer || !G_TeamplayEnabled() || team == CTF_NOTEAM)
+	{
+		gi.Com_Print(usage);
+		return true;
+	}
+	// The words between the command and the team: a name may have spaces.
+	std::string arg = gi.argv(2);
+	if (gi.argc() > 4)
+	{
+		std::string rest = gi.args() + strlen(gi.argv(1));
+		rest.erase(0, rest.find_first_not_of(' '));
+		rest.erase(rest.find_last_not_of(' ') + 1);
+		arg = rest.substr(0, rest.size() - strlen(word));
+		arg.erase(arg.find_last_not_of(' ') + 1);
+	}
+	edict_t *ent = Core_PlayerNamed(arg.c_str());
+	if (!ent)
+	{
+		gi.Com_PrintFmt("No one player called '{}'.\n", arg);
+		return true;
+	}
+	if (ent->svflags & SVF_BOT)
+	{
+		gi.Com_Print("Bots are the server's to place: use bot_count.\n");
+		return true;
+	}
+	const std::string name = Core_PlayerName(ent);
+	if (ent->client->resp.ctf_team == team)
+	{
+		gi.Com_PrintFmt("{} is already on {}.\n", name, CTFTeamName(team));
+		return true;
+	}
+	if (!Core_Teams_MayJoin(ent, team, false))
+	{
+		gi.Com_PrintFmt("{} is locked: unlock it first (unlockteam {}).\n", CTFTeamName(team), word);
+		return true;
+	}
+	CTFJoinTeam(ent, (ctfteam_t)team);
+	if (ent->client->resp.ctf_team != team)
+	{
+		gi.Com_PrintFmt("{} couldn't be put on {}.\n", name, CTFTeamName(team));
+		return true;
+	}
+	gi.LocCenter_Print(ent, "The server put you on {}.", CTFTeamName(team));
+	gi.Com_PrintFmt("Join: {} put on {} by the server\n", name, CTFTeamName(team));
+	return true;
+}
+
 bool Core_Join_ServerCommand(const char *cmd)
 {
+	if (!Q_strcasecmp(cmd, "setteam"))
+		return SetTeamCommand();
 	if (Q_strcasecmp(cmd, "spectate"))
 		return false;
 	if (!deathmatch->integer || !Core_Gametype_Active() || gi.argc() < 3)
@@ -320,7 +377,7 @@ bool Core_Join_ServerCommand(const char *cmd)
 		// forfeit; the match goes back to warmup and the next in line steps up
 		// (Chris, 2026-10-31).
 		if (queued && Core_Match_Playing(ent) && Core_Match_InPlay())
-			Core_Match_BackToWarmup();
+			Core_Match_BackToWarmup("a player removed");
 		Core_Join_Run(ent, false);
 		if (Core_Match_Playing(ent))
 		{

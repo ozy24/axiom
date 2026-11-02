@@ -468,6 +468,22 @@ void VoteMap(const char *gametype)
 
 bool Core_Vote_ServerCommand(const char *cmd)
 {
+	const bool pass = !Q_strcasecmp(cmd, "passvote");
+	if (pass || !Q_strcasecmp(cmd, "cancelvote"))
+	{
+		const std::string what = Core_Vote_Describe(vote.Proposal());
+		if (!Active() || !(pass ? vote.ForcePass(level.time.milliseconds()) : vote.Cancel()))
+		{
+			gi.Com_Print("No vote is open.\n");
+			return true;
+		}
+		gi.LocBroadcast_Print(PRINT_HIGH,
+		                      pass ? "The server passed the vote: {}.\n" : "The server cancelled the vote: {}.\n",
+		                      what.c_str());
+		gi.Com_PrintFmt("Vote: {} {} by the server\n", what, pass ? "passed" : "cancelled");
+		DirtyMenus();
+		return true;
+	}
 	if (!Q_strcasecmp(cmd, "votemap"))
 	{
 		RegisterCvars();

@@ -302,6 +302,14 @@ std::vector<MatchAction> Match::BackToWarmup(int64_t now_ms)
 	return out;
 }
 
+std::vector<MatchAction> Match::EndNow(const char *why)
+{
+	std::vector<MatchAction> out;
+	if (config_.enabled && MatchStateInPlay(state_))
+		End(why, out);
+	return out;
+}
+
 void Match::TimeWarning(int64_t now_ms, std::vector<MatchAction> &out)
 {
 	if (!time_end_ms_)
