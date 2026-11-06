@@ -6,6 +6,7 @@
 #include "core/id_view_hooks.h" // [mod]
 #include "core/miniscore_hooks.h" // [mod]
 #include "core/entities_hooks.h" // [mod]
+#include "core/loc_hooks.h" // [mod]
 #include "core/movement_hooks.h" // [mod]
 
 struct spawn_t
@@ -1264,6 +1265,7 @@ void SpawnEntities(const char *mapname, const char *entities, const char *spawnp
 	G_FindTeams();
 
 	Core_Entities_Spawned(); // [mod] aims the jump pads
+	Core_Loc_LevelStart(); // [mod] the level's .loc file (deathmatch)
 
 	// ZOID
 	CTFSpawn();

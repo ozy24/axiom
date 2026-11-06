@@ -11,7 +11,6 @@
 
 #include <filesystem>
 #include <fstream>
-#include <sstream>
 
 namespace
 {
@@ -33,8 +32,9 @@ std::string FileName()
 	return std::string(level.mapname) + ".ent";
 }
 
-// Without the engine's file access, a plain path: <basedir>/<game>/<dir>/<map>.ent,
-// from the server's working directory when basedir is unset (MuffMode's).
+// The plain path `sv saveents` writes: <basedir>/<game>/<dir>/<map>.ent, from
+// the server's working directory when basedir is unset (MuffMode's). Reading
+// tries the engine's search path first (Core_ReadGameFile).
 std::filesystem::path PlainPath()
 {
 	const char *basedir = gi.cvar("basedir", "", CVAR_NOFLAGS)->string;
@@ -42,28 +42,10 @@ std::filesystem::path PlainPath()
 	return std::filesystem::path(basedir) / (*game ? game : "baseq2") / OverrideDir()->string / FileName();
 }
 
-std::string GamePath()
-{
-	return Core_GamePath(OverrideDir()->string, FileName());
-}
-
 // The override file's text and where it was found, or false.
 bool ReadOverride(std::string &text, std::string &where)
 {
-	if (Core_HostFiles_Available() && Core_HostFiles_Read(GamePath(), text))
-	{
-		where = GamePath();
-		return true;
-	}
-	const std::filesystem::path path = PlainPath();
-	std::ifstream in(path, std::ios::binary);
-	if (!in)
-		return false;
-	std::ostringstream data;
-	data << in.rdbuf();
-	text = data.str();
-	where = path.generic_string();
-	return true;
+	return Core_ReadGameFile(OverrideDir()->string, FileName(), text, where);
 }
 
 EntitySpawnMode Mode()
