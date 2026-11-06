@@ -296,9 +296,15 @@ MuffMode's maps now play as in MuffMode, and `.ent` overrides work
 - Merged with `match/overtime` (overtime + the mover reset) as PR #39
   (6170da0, 2026-10-31), with the startup ruleset fix (tier 23: the files'
   `set` lines apply as the game loads, before the first map spawns).
-- **BB runs 77e251c** (main after #45, timeouts; deployed 2026-11-02 when
-  empty, backup `game_x64.so.bak-6170da0`; its ruleset files set no
-  `match_timeout`, so the built-ins apply: duel, tdm, ctf 120, ffa off).
+- **BB runs 3cd6faf** (main after #49, location callouts; deployed
+  2026-11-06 15:36 UTC when empty, backup `game_x64.so.bak-77e251c`).
+  Its four ruleset files gained `set g_loc 2` (backup
+  `rulesets.bak-20261106-pre-loc/`). The only `.loc` file is MuffMode's
+  `baseq2/locs/q2dm1.loc` (136 places, read through Q2RED's search
+  path); other maps use the nearest item. Not yet tried by a player.
+  BB ran 77e251c (main after #45, timeouts; deployed 2026-11-02 when
+  empty; its ruleset files set no `match_timeout`, so the built-ins
+  apply: duel, tdm, ctf 120, ffa off).
   BB ran 6170da0 (main after #39, deployed 2026-10-31 when it emptied):
   after a restart its FFA ruleset applied by itself, with no hand steps.
 
@@ -423,8 +429,7 @@ default doesn't apply until the server restarts).
   (`sim_client.cpp:1222`, meant for the spawn's stuffed commands), so a
   message that quotes a bind with `cmd` in it gets executed. The `loc`
   usage text leaves the bind example out for that reason.
-- **Not yet:** played with a retail client; BB still needs `set g_loc 2`
-  (or a built-in ruleset) and its MuffMode `baseq2/locs/` folder kept.
+- **Not yet:** played with a retail client. BB runs it (below).
   PR #48 (in-game admin, decision 0026) was still open when this branched
   from main, so AGENTS.md's tier list and STATUS will need a trivial merge.
 
