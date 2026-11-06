@@ -1968,12 +1968,135 @@ at 60 1 cmd time-in
     detail += error_lines(log, rig)[:20]
     results.append((label, not detail, detail))
 
+def tier_human_loc(args, results):
+    """Location callouts (`loc`, decision 0027). TDM with a q2dm1 .loc file
+    of one place and five simulated players: a callout reaches the caller's
+    team only, as team chat, the name a whole argument; MuffMode's status
+    bind expands; text with no token is refused; a spectator's reaches the
+    spectators; a sixth callout in a second is flooded. Then FFA with no
+    file: `g_loc 2` names the nearest item to everyone, and `g_loc 0` turns
+    it off. Q2RED only."""
+    place = "Harness Hall"
+    loc_file = f"// tier 27\n0 0 0 {place}\n"
+    # TDM: Alice and Bob red, Carol and Dave blue, Eve watching.
+    label = "27 human-loc tdm"
+    rig, why = scenario_rig(args, "t27-tdm")
+    if not rig:
+        results.append((label, True, [f"skipped: {why}"]))
+        results.append(("27 human-loc ffa", True, [f"skipped: {why}"]))
+        return
+    locs_dir = rig.dir / "baseq2" / "locs"
+    locs_dir.mkdir(parents=True, exist_ok=True)
+    (locs_dir / "q2dm1.loc").write_text(loc_file)
+    script = """seconds 40
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Carol social=sim-carol puppet
+client 3 name=Dave social=sim-dave puppet
+client 4 name=Eve social=sim-eve puppet
+at 6 0 cmd team red
+at 6 1 cmd team red
+at 6 2 cmd team blue
+at 6 3 cmd team blue
+at 12 0 cmd loc ENEMY - %l
+at 14 1 cmd loc STATUS %h %a %w %l
+at 16 0 cmd loc hello
+at 18 4 cmd loc SPEC %l
+at 22 2 cmd loc F1 %l
+at 22.1 2 cmd loc F2 %l
+at 22.2 2 cmd loc F3 %l
+at 22.3 2 cmd loc F4 %l
+at 22.4 2 cmd loc F5 %l
+at 22.5 2 cmd loc F6 %l
+"""
+    startup = scenario_startup(rig, ["+set", "g_gametype", "tdm", "+set", "g_loc", "1", "+map", "q2dm1"])
+    log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 120)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    if not {"Alice", "Bob", "Carol", "Dave", "Eve"} <= set(humans):
+        results.append((label, False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
+    else:
+        if not re.search(r"Loc: 1 places from \S*locs/q2dm1\.loc\n", log):
+            detail.append("no 'Loc: 1 places from locs/q2dm1.loc': the file wasn't read")
+        locs = [r for r in tap if r.get("type") == "locprint"]
+        team = [r for r in locs if r["base"] == "({}): {}\n"]
+        heard = lambda who, text: sorted(n for n, s in humans.items()
+                                         if any(r["to"] == s and r["args"] == [f"##P{humans[who]}", text] for r in team))
+        for who, text, want in (("Alice", f"ENEMY - [{place}]", ["Alice", "Bob"]),
+                                ("Eve", f"SPEC [{place}]", ["Eve"])):
+            if heard(who, text) != want:
+                detail.append(f"{who}'s {text!r} reached {heard(who, text)}, expected {want}")
+        status = [r["args"][1] for r in team if r["args"][0] == f"##P{humans['Bob']}" and r["to"] == humans["Alice"]]
+        # %w is a short name ("GRENADES:15"), never a $loc key inside the text.
+        if not any(re.fullmatch(rf"STATUS H:\d+ A:\d+ [A-Z0-9]+(:\d+)? \[{place}\]", t) for t in status):
+            detail.append(f"Bob's status callout: {status}")
+        if not any(r["to"] == humans["Alice"] and r["base"].startswith("Usage: loc") for r in locs):
+            detail.append("Alice's `loc hello` wasn't refused")
+        if any(r["args"][1] == "hello" for r in team if len(r.get("args", [])) > 1):
+            detail.append("`loc hello` was sent")
+        # Two callouts from Alice (ENEMY) and none more: the sim client runs any
+        # "cmd ..." it is printed, so the refusal must not print one.
+        alice = [r for r in team if r["args"][0] == f"##P{humans['Alice']}"]
+        if len(alice) != 2:
+            detail.append(f"Alice's callouts delivered {len(alice)} times, expected 2: {[r['args'][1] for r in alice]}")
+        flood = [r["args"][1] for r in team if r["to"] == humans["Dave"] and r["args"][0] == f"##P{humans['Carol']}"]
+        if [t.split()[0] for t in flood] != ["F1", "F2", "F3", "F4"]:
+            detail.append(f"Dave heard Carol's {flood}, expected F1-F4 (flood_msgs 4)")
+        if not any(r["to"] == humans["Carol"] and r["base"] == "$g_flood_cant_talk" for r in locs):
+            detail.append("Carol wasn't told she was flooding")
+        if f"Loc: (Alice): ENEMY - [{place}]" not in log:
+            detail.append("no console line for Alice's callout")
+        detail += [f"name token inside an argument: {b}" for b in embedded_tokens(tap)[:5]]
+        if rig.returncode != 0:
+            detail.append(f"server exited with code {rig.returncode}")
+        detail += error_lines(log, rig)[:20]
+        results.append((label, not detail, detail))
+
+    # FFA, no .loc file: the nearest item, to everyone; then switched off.
+    label = "27 human-loc ffa"
+    rig = RIGS["q2red"](args, args.candidate, "t27-ffa")
+    script = """seconds 30
+client 0 name=Alice social=sim-alice puppet
+client 1 name=Bob social=sim-bob puppet
+client 2 name=Carol social=sim-carol puppet
+at 10 0 cmd loc at %l
+at 22 1 cmd loc at %l
+"""
+    during = [("wait", r"Loc: Alice: at \[", 40), ("cmd", "set g_loc 0")]
+    startup = scenario_startup(rig, ["+set", "g_gametype", "ffa", "+set", "g_auto_join", "1", "+set", "g_loc", "2",
+                                     "+map", "q2dm1"])
+    log = rig.run(startup, scenario_steps(rig, script, during), timeout=args.boot_timeout + 100)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    if not {"Alice", "Bob", "Carol"} <= set(humans):
+        results.append((label, False, [f"humans connected: {sorted(humans)}"] + error_lines(log, rig)[:20]))
+        return
+    locs = [r for r in tap if r.get("type") == "locprint"]
+    said = [r for r in locs if r["base"] == "{}: {}\n" and r["args"][0] == f"##P{humans['Alice']}"]
+    to = sorted(n for n, s in humans.items() if any(r["to"] == s for r in said))
+    if to != ["Alice", "Bob", "Carol"]:
+        detail.append(f"Alice's callout reached {to}, expected everyone")
+    if not all(re.fullmatch(r"at \[.+\]", r["args"][1]) for r in said):
+        detail.append(f"Alice's callout: {[r['args'][1] for r in said]}")
+    if "Loc: 0 places" in log or re.search(r"Loc: \d+ places from", log):
+        detail.append("a .loc file was read for a map without one")
+    if any(r["base"] == "{}: {}\n" and r["args"][0] == f"##P{humans['Bob']}" for r in locs):
+        detail.append("Bob's callout went out with g_loc 0")
+    if not any(r["to"] == humans["Bob"] and r["base"] == "Location callouts are off on this server.\n" for r in locs):
+        detail.append("Bob wasn't told callouts are off")
+    if rig.returncode != 0:
+        detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append((label, not detail, detail))
+
 
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
          tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
          tier_human_join, tier_human_readyvote, tier_human_shuffle, tier_entities, tier_startup_ruleset,
-         tier_admin_commands, tier_human_timeout)
+         tier_admin_commands, tier_human_timeout, tier_human_loc)
 
 
 def run_tier(tier, args):
@@ -2075,7 +2198,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset", "admin_commands", "human_timeout"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset", "admin_commands", "human_timeout", "human_loc"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

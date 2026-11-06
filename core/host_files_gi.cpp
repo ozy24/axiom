@@ -4,6 +4,10 @@
 #include "core/host_files.h"
 #include "core/host_files_ext.h"
 
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+
 namespace
 {
 const q2red_filesystem_api_v1_t *Extension()
@@ -50,5 +54,28 @@ bool Core_HostFiles_Read(const std::string &game_path, std::string &data)
 	data.assign(static_cast<const char *>(buffer), static_cast<size_t>(length));
 	if (fs->FreeFile)
 		fs->FreeFile(buffer);
+	return true;
+}
+
+bool Core_ReadGameFile(std::string_view dir, std::string_view file, std::string &text, std::string &where)
+{
+	const std::string game_path = Core_GamePath(dir, file);
+	if (Core_HostFiles_Available() && Core_HostFiles_Read(game_path, text))
+	{
+		where = game_path;
+		return true;
+	}
+	const char *basedir = gi.cvar("basedir", "", CVAR_NOFLAGS)->string;
+	const char *game = gi.cvar("game", "", CVAR_NOFLAGS)->string;
+	const std::filesystem::path path = std::filesystem::path(basedir) / (*game ? game : "baseq2") /
+	                                   std::filesystem::path(std::string(dir)) /
+	                                   std::filesystem::path(std::string(file));
+	std::ifstream in(path, std::ios::binary);
+	if (!in)
+		return false;
+	std::ostringstream data;
+	data << in.rdbuf();
+	text = data.str();
+	where = path.generic_string();
 	return true;
 }
