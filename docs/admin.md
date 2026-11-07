@@ -160,6 +160,22 @@ Set it in `server.cfg`. Details: docs/design/joining.md.
 
 Bots aren't moved: use `bot_count`.
 
+## Match records
+
+```
+set g_matchlog_dir "matches"   // empty (the default): none written
+```
+
+Each finished match is written as one JSON file,
+`<yyyymmdd-hhmmss>-<map>.json` (UTC): the gametype, ruleset, map, why it
+ended, how long it was live, every player's score and team, the teams'
+scores and the winner. The log says where (`Match record: ...`). A
+relative directory goes in the game folder on Q2RED, and under the
+server's working directory elsewhere.
+
+The format is `"schema": "q2game-match/0"`: version 0, which may still
+change before 1.0 (listed in CHANGELOG.md when it does).
+
 ## Admins in the game
 
 Give trusted players a password and they can run a match from inside the

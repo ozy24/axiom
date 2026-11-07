@@ -24,7 +24,7 @@ clients need nothing installed.
 ### Matches
 - Warmup with every weapon the map places, ready-up, a countdown, a live
   match with the map reset, overtime, and intermission. A JSON record of
-  each match.
+  each match (`g_matchlog_dir`; schema `q2game-match/0`).
 - **Timeouts:** one per side per match (`time-out` / `time-in`).
 - **Teams:** first-on captains, team locks with a roster (a dropped player
   can rejoin), `teamkick`, `readyteam`, and a random shuffle by vote.
