@@ -564,7 +564,7 @@ void T_Damage(edict_t *targ, edict_t *inflictor, edict_t *attacker, const vec3_t
 
 	// ROGUE
 	//  allow the deathmatch game to change values
-	if (deathmatch->integer && gamerules->integer)
+	if (deathmatch->integer && (gamerules->integer || DMGame.ChangeDamage || DMGame.ChangeKnockback)) // [mod] registry gametypes too
 	{
 		if (DMGame.ChangeDamage)
 			damage = DMGame.ChangeDamage(targ, attacker, damage, mod);

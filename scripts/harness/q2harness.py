@@ -2345,11 +2345,47 @@ def tier_fuzz(args, results):
     results.append((label, not detail, detail or [f"{sent} commands"]))
 
 
+def tier_downstream(args, results):
+    """The downstream example (examples/jump, docs/downstream.md): a module
+    built from this base by another project, with its own identity and its
+    own gametype. Bots on q2dm1: under ffa they frag each other; under the
+    example's `jump` (no damage from players or falls) nobody dies by
+    another's hand. Needs --downstream (the built example); Q2RED only
+    (Q2REX's bots don't fight in a bot-only match)."""
+    if not args.downstream:
+        results.append(("30 downstream", True, ["skipped: no --downstream module"]))
+        return
+    if args.engine_kind != "q2red":
+        results.append(("30 downstream", True, ["skipped: Q2RED only (bots must fight)"]))
+        return
+    for gt in ("ffa", "jump"):
+        label = f"30 downstream {gt}"
+        rig = RIGS[args.engine_kind](args, args.downstream, f"t30-{gt}")
+        startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "timelimit", "0",
+                    "+set", "fraglimit", "0", "+set", "g_gametype", gt] + rig.bot_args() + ["+map", "q2dm1"])
+        log = rig.run(startup, [rig.wait_ready(), ("sleep", args.dm_seconds), ("cmd", "quit")],
+                      timeout=args.boot_timeout + args.dm_seconds + 60)
+        frags = [l for l in log.splitlines() if re.search(r"\b(killed|was |by |fragged)\b", l) and "Nav" not in l]
+        detail = []
+        if not re.search(r"\bJumpExample 0\.1\.0 \(", log):
+            detail.append("the module didn't announce the example's identity (JumpExample 0.1.0)")
+        if not re.search(rf"Gametype: .+ \({gt}\)", log):
+            detail.append(f"no 'Gametype: ... ({gt})' line")
+        if gt == "ffa" and not frags:
+            detail.append("no frags under ffa: the bots didn't fight, so jump's check proves nothing")
+        if gt == "jump" and frags:
+            detail.append(f"{len(frags)} frags under jump, expected none: {frags[:3]}")
+        if rig.returncode != 0 or "==== ShutdownGame ====" not in log:
+            detail.append(f"no clean shutdown (exit code {rig.returncode})")
+        detail += error_lines(log, rig)[:20]
+        results.append((label, not detail, detail or [f"{len(frags)} obituary lines"]))
+
+
 TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tier_match_flow, tier_duel,
          tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
          tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
          tier_human_join, tier_human_readyvote, tier_human_shuffle, tier_entities, tier_startup_ruleset,
-         tier_admin_commands, tier_human_timeout, tier_human_admin, tier_human_loc, tier_early_commands, tier_fuzz)
+         tier_admin_commands, tier_human_timeout, tier_human_admin, tier_human_loc, tier_early_commands, tier_fuzz, tier_downstream)
 
 
 def run_tier(tier, args):
@@ -2448,12 +2484,14 @@ def main():
     ap.add_argument("--settle", type=float, default=6, help="seconds after the map loads before saving")
     ap.add_argument("--dm-seconds", type=float, default=60)
     ap.add_argument("--runs", type=int, default=6, help="calibration runs")
+    ap.add_argument("--downstream", default=None,
+                    help="tier 30: the downstream example's module (examples/jump, built)")
     ap.add_argument("--gametypes", default="ffa,duel,tdm,ctf",
                     help="gametype ids tier 4 boots (the registry's, GAME_GAMETYPES)")
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset", "admin_commands", "human_timeout", "human_admin", "human_loc", "early_commands", "fuzz"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset", "admin_commands", "human_timeout", "human_admin", "human_loc", "early_commands", "fuzz", "downstream"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

@@ -96,6 +96,36 @@ jobs:
       - name: Unit tests under ASan and UBSan
         run: build/sanitize/game_tests
 
+  downstream:
+    # A mod built on this base by another project, as docs/downstream.md
+    # describes: examples/jump, with its own identity and gametype. Its unit
+    # tests run here; the jumpbox's tier 30 boots it.
+    runs-on: ubuntu-24.04
+    container: ubuntu:22.04
+    steps:
+      - name: Install toolchain
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq g++-12 cmake ninja-build git binutils
+      - uses: actions/checkout@v4
+      - name: Let git read the checkout (owned by another user in the container)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Configure
+        run: >-
+          cmake -S examples/jump -B build/jump -G Ninja -DCMAKE_CXX_COMPILER=g++-12
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - name: Build
+        run: cmake --build build/jump
+      - name: The mod's unit tests
+        run: ctest --test-dir build/jump --output-on-failure
+      - name: The module is the mod's, with its gametype
+        run: |
+          so=build/jump/base/game_x64.so
+          strings -n 4 "$so" | grep -q "mod-identity: name=JumpExample id=jumpexample " ||
+            { echo "not the example's identity"; strings -n 4 "$so" | grep mod-identity; exit 1; }
+          grep -q '&gametype_jump' build/jump/base/generated/gametype_registry.cpp ||
+            { echo "jump is not registered"; exit 1; }
+
   rename-drill:
     # The mod's name lives only in mod.json: rebuild under a dummy name and
     # require the module to carry it and nothing of the real one.
@@ -141,6 +171,11 @@ jobs:
           if (-not ($out -match '\bGetGameAPI\b') -or -not ($out -match '\bGetCGameAPI\b')) {
             Write-Error "GetGameAPI and GetCGameAPI must both be exported"; exit 1
           }
+      - name: The downstream example builds with MSVC too (docs/downstream.md)
+        run: |
+          cmake -S examples/jump -B build/jump -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          cmake --build build/jump
+          ctest --test-dir build/jump --output-on-failure
       - uses: actions/upload-artifact@v4
         with:
           name: game-module-windows-x64

@@ -43,6 +43,7 @@ Principles:
 | `tools/` | One-off generators (each says how and when to run it) |
 | `docs/baselines/` | Generated baselines the checks compare against |
 | `docs/decisions/` | One file per settled question. Add one when you settle something. |
+| `examples/jump/` | A downstream mod built on this one (docs/downstream.md); CI builds and boots it |
 | `repos/` | Local reference checkouts (Q2REX, MuffMode, id). **Git-ignored; never commit.** |
 
 New code (from Phase 2) goes in small, focused files under `core/` and
@@ -250,6 +251,11 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   backslashes, control and UTF-8 bytes, 300-byte and 400-byte arguments,
   out-of-range numbers and path tricks. The server must survive and quit
   cleanly, print no errors, and never run stock CTF's admin election (Q2RED only).
+- **Tier 30 downstream:** the example downstream mod (`examples/jump`,
+  passed as `--downstream`) with bots on q2dm1: it announces its own
+  identity; under ffa the bots frag, under its `jump` gametype (no damage
+  from players or falls) nobody does. Skipped without `--downstream`
+  (Q2RED only).
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

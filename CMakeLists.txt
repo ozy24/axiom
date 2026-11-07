@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21)
 # mod.json (Phase 1c), never from build-system names.
 project(q2game LANGUAGES CXX)
 
-set(GAME_SOURCE_DIR "${CMAKE_SOURCE_DIR}/rerelease")
+set(GAME_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/rerelease")
 
 include(cmake/identity.cmake)
 
@@ -33,11 +33,11 @@ endif()
 # non-const format(), which fmt 11+ rejects. q_std.cpp compiles fmt's
 # src/format.cc itself unless NO_FMT_SOURCE is defined, so fmt needs only its
 # include path here.
-set(GAME_FMT_DIR "${CMAKE_SOURCE_DIR}/third_party/fmt-10.2.1")
+set(GAME_FMT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/fmt-10.2.1")
 
 # jsoncpp 1.9.6 is vendored and linked statically, so the module carries no
 # runtime dependency on a distro's libjsoncpp.
-set(GAME_JSONCPP_DIR "${CMAKE_SOURCE_DIR}/third_party/jsoncpp-1.9.6")
+set(GAME_JSONCPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/jsoncpp-1.9.6")
 add_library(game_jsoncpp STATIC
     "${GAME_JSONCPP_DIR}/src/lib_json/json_reader.cpp"
     "${GAME_JSONCPP_DIR}/src/lib_json/json_value.cpp"
@@ -54,14 +54,18 @@ set_target_properties(game_jsoncpp PROPERTIES
 
 # --- Gametypes ---------------------------------------------------------------
 
-# The enabled gametypes, each in gametypes/<id>/gametype.cpp defining
+# The enabled gametypes, each in <dir>/<id>/gametype.cpp defining
 # `gametype_<id>` (docs/design/gametype-api.md). A downstream mod sets this to
-# its own list; ffa must stay in it.
+# its own list; ffa must stay in it. Each id is looked up in
+# GAME_GAMETYPE_DIRS (a downstream mod's own gametypes folders), then in
+# this base's gametypes/ (docs/downstream.md).
 # A plain default rather than a cache entry, so a change to the list here
-# reaches existing build trees; a downstream mod passes -DGAME_GAMETYPES=...
+# reaches existing build trees; a downstream mod sets it before
+# add_subdirectory(), or passes -DGAME_GAMETYPES=...
 if(NOT DEFINED GAME_GAMETYPES)
     set(GAME_GAMETYPES "ffa;duel;tdm;ctf")
 endif()
+set(_gametype_dirs ${GAME_GAMETYPE_DIRS} "${CMAKE_CURRENT_SOURCE_DIR}/gametypes")
 if(NOT "ffa" IN_LIST GAME_GAMETYPES)
     message(FATAL_ERROR "GAME_GAMETYPES must include ffa (the fallback)")
 endif()
@@ -69,17 +73,26 @@ set(GAMETYPE_DECLS "")
 set(GAMETYPE_ENTRIES "")
 set(GAME_GAMETYPE_SOURCES "")
 foreach(gt IN LISTS GAME_GAMETYPES)
-    if(NOT gt MATCHES "^[a-z][a-z0-9_]*$" OR NOT EXISTS "${CMAKE_SOURCE_DIR}/gametypes/${gt}/gametype.cpp")
-        message(FATAL_ERROR "gametype '${gt}': expected gametypes/${gt}/gametype.cpp")
+    if(NOT gt MATCHES "^[a-z][a-z0-9_]*$")
+        message(FATAL_ERROR "gametype '${gt}': ids are lowercase letters, digits and _")
+    endif()
+    set(_gt_dir "")
+    foreach(dir IN LISTS _gametype_dirs)
+        if(NOT _gt_dir AND EXISTS "${dir}/${gt}/gametype.cpp")
+            set(_gt_dir "${dir}/${gt}")
+        endif()
+    endforeach()
+    if(NOT _gt_dir)
+        message(FATAL_ERROR "gametype '${gt}': no ${gt}/gametype.cpp in ${_gametype_dirs}")
     endif()
     string(APPEND GAMETYPE_DECLS "extern const GametypeDef gametype_${gt};\n")
     string(APPEND GAMETYPE_ENTRIES "&gametype_${gt}, ")
     # Every .cpp in the gametype's folder: its definition, logic and adapter.
-    file(GLOB _gt_sources CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/gametypes/${gt}/*.cpp")
+    file(GLOB _gt_sources CONFIGURE_DEPENDS "${_gt_dir}/*.cpp")
     list(APPEND GAME_GAMETYPE_SOURCES ${_gt_sources})
 endforeach()
 string(REPLACE "\\n" "\n" GAMETYPE_DECLS "${GAMETYPE_DECLS}")
-configure_file("${CMAKE_SOURCE_DIR}/cmake/gametype_registry.cpp.in"
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/gametype_registry.cpp.in"
     "${MOD_GENERATED_DIR}/gametype_registry.cpp" @ONLY)
 
 # --- The game module ---------------------------------------------------------
@@ -87,55 +100,55 @@ configure_file("${CMAKE_SOURCE_DIR}/cmake/gametype_registry.cpp.in"
 add_library(game_x64 SHARED ${GAME_SOURCES}
     # Compile-time checks that the stat and ammo/powerup layout stock clients
     # depend on is unchanged (AGENTS.md hard rule 2).
-    "${CMAKE_SOURCE_DIR}/checks/stock_client_contract.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/checks/stock_client_contract.cpp"
     # The mod's own code (AGENTS.md: small focused files, not id's).
-    "${CMAKE_SOURCE_DIR}/core/entities.cpp"
-    "${CMAKE_SOURCE_DIR}/core/entities_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/eyecam_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/frag_message.cpp"
-    "${CMAKE_SOURCE_DIR}/core/frag_message_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/gametype.cpp"
-    "${CMAKE_SOURCE_DIR}/core/gametype_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/entities.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/entities_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/eyecam_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/frag_message.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/frag_message_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/gametype.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/gametype_register.cpp"
     ${GAME_GAMETYPE_SOURCES}
     "${MOD_GENERATED_DIR}/gametype_registry.cpp"
-    "${CMAKE_SOURCE_DIR}/core/host_files.cpp"
-    "${CMAKE_SOURCE_DIR}/core/host_files_gi.cpp"
-    "${CMAKE_SOURCE_DIR}/core/host_gi.cpp"
-    "${CMAKE_SOURCE_DIR}/core/identity.cpp"
-    "${CMAKE_SOURCE_DIR}/core/id_view_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/identity_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/maps.cpp"
-    "${CMAKE_SOURCE_DIR}/core/maps_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/match.cpp"
-    "${CMAKE_SOURCE_DIR}/core/match_record.cpp"
-    "${CMAKE_SOURCE_DIR}/core/match_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/menu.cpp"
-    "${CMAKE_SOURCE_DIR}/core/miniscore.cpp"
-    "${CMAKE_SOURCE_DIR}/core/miniscore_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/movement.cpp"
-    "${CMAKE_SOURCE_DIR}/core/movement_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/movers_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/scoreboard.cpp"
-    "${CMAKE_SOURCE_DIR}/core/scoreboard_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/warmup_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/menu_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/vote.cpp"
-    "${CMAKE_SOURCE_DIR}/core/vote_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/player_name_gi.cpp"
-    "${CMAKE_SOURCE_DIR}/core/rulesets.cpp"
-    "${CMAKE_SOURCE_DIR}/core/rulesets_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/stat_slots.cpp"
-    "${CMAKE_SOURCE_DIR}/core/stat_slots_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/teams.cpp"
-    "${CMAKE_SOURCE_DIR}/core/teams_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/timeout.cpp"
-    "${CMAKE_SOURCE_DIR}/core/timeout_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/join.cpp"
-    "${CMAKE_SOURCE_DIR}/core/join_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/admin.cpp"
-    "${CMAKE_SOURCE_DIR}/core/admin_register.cpp"
-    "${CMAKE_SOURCE_DIR}/core/loc.cpp"
-    "${CMAKE_SOURCE_DIR}/core/loc_register.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/host_files.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/host_files_gi.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/host_gi.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/identity.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/id_view_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/identity_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/maps.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/maps_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/match.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/match_record.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/match_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/menu.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/miniscore.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/miniscore_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/movement.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/movement_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/movers_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/scoreboard.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/scoreboard_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/warmup_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/menu_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/vote.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/vote_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/player_name_gi.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/rulesets.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/rulesets_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/stat_slots.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/stat_slots_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/teams.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/teams_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/timeout.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/timeout_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/join.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/join_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/admin.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/admin_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/loc.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/loc_register.cpp")
 
 set_target_properties(game_x64 PROPERTIES
     # id's project uses C++17 (game.vcxproj LanguageStandard stdcpp17).
@@ -148,7 +161,8 @@ set_target_properties(game_x64 PROPERTIES
 
 target_include_directories(game_x64 PRIVATE
     "${GAME_SOURCE_DIR}"
-    "${CMAKE_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    ${GAME_INCLUDE_DIRS} # a downstream mod's own (docs/downstream.md)
     "${MOD_GENERATED_DIR}"
     "${GAME_FMT_DIR}/include")
 target_link_libraries(game_x64 PRIVATE game_jsoncpp)
@@ -173,14 +187,14 @@ if(MSVC)
         MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
     target_sources(game_x64 PRIVATE
-        "${CMAKE_SOURCE_DIR}/platform/posix/game_exports_posix.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/platform/posix/game_exports_posix.cpp")
     set_target_properties(game_x64 PROPERTIES
         CXX_VISIBILITY_PRESET hidden
         VISIBILITY_INLINES_HIDDEN ON)
     # id's code is written for MSVC; GCC's warnings on it are not ours to fix.
     # New code (Phase 2) gets its own targets with warnings as errors.
     target_compile_options(game_x64 PRIVATE -w
-        -include "${CMAKE_SOURCE_DIR}/platform/posix/compat.h")
+        -include "${CMAKE_CURRENT_SOURCE_DIR}/platform/posix/compat.h")
     # GCC 12 (Ubuntu 22.04) rejects id's compile-time format strings in
     # q_std.h; GCC 13+ accepts them. Empty FMT_CONSTEVAL makes the check
     # run-time instead, with identical output.
@@ -189,9 +203,9 @@ else()
         target_compile_definitions(game_x64 PRIVATE "FMT_CONSTEVAL=")
     endif()
     target_link_options(game_x64 PRIVATE -Wl,--no-undefined
-        "-Wl,--version-script=${CMAKE_SOURCE_DIR}/platform/posix/exports.map")
+        "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/platform/posix/exports.map")
     set_property(TARGET game_x64 APPEND PROPERTY LINK_DEPENDS
-        "${CMAKE_SOURCE_DIR}/platform/posix/exports.map")
+        "${CMAKE_CURRENT_SOURCE_DIR}/platform/posix/exports.map")
     # Release builds keep libstdc++ and libgcc out of the module's runtime
     # dependencies so it loads on any distro the server binary does. Off by
     # default because Fedora needs the libstdc++-static package for it.
@@ -205,7 +219,9 @@ endif()
 
 # The mod's own logic, without the engine (AGENTS.md: the Host seam). Adapters
 # (*_register.cpp, *_gi.cpp) are deliberately left out: they need gi.
-option(GAME_BUILD_TESTS "Build the unit tests (game_tests)" ON)
+# On by default only when this is the top-level project: a downstream mod
+# builds its own tests, not these.
+option(GAME_BUILD_TESTS "Build the unit tests (game_tests)" ${PROJECT_IS_TOP_LEVEL})
 if(GAME_BUILD_TESTS)
     enable_testing()
     add_executable(game_tests
@@ -257,10 +273,10 @@ if(GAME_BUILD_TESTS)
         gametypes/duel/duel_queue.cpp
         gametypes/duel/duel_board.cpp)
     target_include_directories(game_tests PRIVATE
-        "${CMAKE_SOURCE_DIR}"
-        "${CMAKE_SOURCE_DIR}/tests"
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests"
         "${MOD_GENERATED_DIR}"
-        "${CMAKE_SOURCE_DIR}/third_party/doctest-2.4.11")
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/doctest-2.4.11")
     set_target_properties(game_tests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
     # The CI `sanitize` job: the unit tests (tests/test_fuzz.cpp above all)
     # under AddressSanitizer and UBSan, any finding fatal.
