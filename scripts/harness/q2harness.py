@@ -2209,6 +2209,10 @@ at 68 0 cmd admin match
         detail.append(f"after the new password Alice was told {to_alice[-1:]}, expected she isn't an admin")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append((label, not detail, detail))
+
+
 def tier_early_commands(args, results):
     """Commands from a client that has connected but not yet entered the game
     (known id bug 3). Stock's `team` put such a client in the game before
@@ -2354,6 +2358,8 @@ def run_tier(tier, args):
         tier(args, results)
     except Exception as e:  # a crashed tier is a failed tier, not a crashed harness
         results.append((tier.__name__[5:], False, [str(e)]))
+    if not results:  # a tier that reports nothing has checked nothing (a lost results.append)
+        results.append((tier.__name__[5:], False, ["the tier reported no result"]))
     return results
 
 
