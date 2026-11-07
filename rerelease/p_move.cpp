@@ -1160,7 +1160,8 @@ void PM_CheckSpecialMovement()
 	float time = 0.1f;
 	bool has_time = true;
 
-	for (size_t i = 0; i < min(50, (int32_t) (10 * (800.f / pm->s.gravity))); i++)
+	const int waterjump_steps = Core_Movement_WaterJumpSteps(pm->s.gravity); // [mod] was min(50, (int32_t) (10 * (800.f / pm->s.gravity))): wraps at gravity <= 0
+	for (int i = 0; i < waterjump_steps; i++) // [mod] was size_t, see above
 	{
 		waterjump_vel[2] -= pm->s.gravity * time;
 

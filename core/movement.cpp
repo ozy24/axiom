@@ -33,3 +33,15 @@ MoveVec Core_Movement_TeleportVelocity(const MoveVec &entry, const MoveVec &angl
 	// AngleVectors' forward
 	return {std::cos(pitch) * std::cos(yaw) * speed, std::cos(pitch) * std::sin(yaw) * speed, -std::sin(pitch) * speed};
 }
+
+int Core_Movement_WaterJumpSteps(float gravity)
+{
+	constexpr int kMaxSteps = 50;
+	const float g = std::fabs(gravity);
+	if (!(g > 0.0f))
+		return kMaxSteps; // zero (or NaN): no fall to wait for, the whole probe
+	const float steps = 10.0f * (800.0f / g);
+	if (!(steps < kMaxSteps))
+		return kMaxSteps;
+	return steps < 0 ? 0 : static_cast<int>(steps);
+}

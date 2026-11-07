@@ -21,3 +21,8 @@ float Core_Movement_JumpSpeed(bool classic, float vz, float z);
 // exit facing its `angles` (pitch, yaw, roll in degrees) at the speed they
 // went in with (`entry`), instead of stock's stop.
 MoveVec Core_Movement_TeleportVelocity(const MoveVec &entry, const MoveVec &angles);
+
+// The water-jump probe's steps of 0.1 s at `gravity` (id's bug, docs/known-id-bugs.md): stock's
+// min(50, int(10 * 800 / gravity)) for positive gravity; MuffMode's magnitude for negative gravity, and the cap
+// for zero, where stock's count wraps to billions of traces (negative) or is undefined (zero, infinity cast).
+int Core_Movement_WaterJumpSteps(float gravity);

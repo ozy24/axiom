@@ -44,3 +44,17 @@ TEST_CASE("teleporters without the freeze: out of the exit at the speed in")
 	CHECK(v[0] == 0);
 	CHECK(v[1] == 0);
 }
+
+TEST_CASE("water-jump probe: stock's steps for positive gravity, bounded otherwise")
+{
+	// stock: min(50, int(10 * 800 / gravity))
+	CHECK(Core_Movement_WaterJumpSteps(800.0f) == 10);
+	CHECK(Core_Movement_WaterJumpSteps(1600.0f) == 5);
+	CHECK(Core_Movement_WaterJumpSteps(100.0f) == 50);
+	CHECK(Core_Movement_WaterJumpSteps(300.0f) == 26);
+	// stock wraps: a negative count compared with size_t is billions of traces
+	CHECK(Core_Movement_WaterJumpSteps(-800.0f) == 10);
+	CHECK(Core_Movement_WaterJumpSteps(-1.0f) == 50);
+	// stock casts infinity to int (undefined)
+	CHECK(Core_Movement_WaterJumpSteps(0.0f) == 50);
+}
