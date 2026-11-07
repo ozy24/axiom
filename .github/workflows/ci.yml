@@ -74,6 +74,28 @@ jobs:
           path: build/linux-release/game_x64.so
           if-no-files-found: error
 
+  sanitize:
+    # The unit tests (tests/test_fuzz.cpp above all) under AddressSanitizer
+    # and UBSan; any finding fails the job. Same image and compiler as linux.
+    runs-on: ubuntu-24.04
+    container: ubuntu:22.04
+    steps:
+      - name: Install toolchain
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq g++-12 cmake ninja-build git
+      - uses: actions/checkout@v4
+      - name: Let git read the checkout (owned by another user in the container)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Configure
+        run: >-
+          cmake -S . -B build/sanitize -G Ninja -DCMAKE_CXX_COMPILER=g++-12
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGAME_SANITIZE=ON
+      - name: Build
+        run: cmake --build build/sanitize --target game_tests
+      - name: Unit tests under ASan and UBSan
+        run: build/sanitize/game_tests
+
   rename-drill:
     # The mod's name lives only in mod.json: rebuild under a dummy name and
     # require the module to carry it and nothing of the real one.
