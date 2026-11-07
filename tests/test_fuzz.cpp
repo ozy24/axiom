@@ -27,10 +27,59 @@ namespace
 constexpr int kRounds = 3000;
 
 const char *const kFragments[] = {
-    "\"", "\"\"", "{", "}", "{ \"classname\" \"worldspawn\" }", "//", "/*", "*/", "\n", "\r\n", "\t", " ", ";",
-    "\\", "%", "%l", "%h", "%n", "%N", "%%", "%s", "%n%n%n", "{}", "{0}", "{:>999999}", "$", "$g_", "##P", "##P99",
-    "*", "-", "+", "e", "1e999", "nan", "-0", "0x", "9999999999999999999", "set", "seta", "exec", "x", "..", "/",
-    "ctf -40 ", "ctf 200 ", "xv 0 yv 0 string \"", "male/grunt", "q2dm1", "q2ctf1", "weapon_", "item_", "ammo_",
+    "\"",
+    "\"\"",
+    "{",
+    "}",
+    "{ \"classname\" \"worldspawn\" }",
+    "//",
+    "/*",
+    "*/",
+    "\n",
+    "\r\n",
+    "\t",
+    " ",
+    ";",
+    "\\",
+    "%",
+    "%l",
+    "%h",
+    "%n",
+    "%N",
+    "%%",
+    "%s",
+    "%n%n%n",
+    "{}",
+    "{0}",
+    "{:>999999}",
+    "$",
+    "$g_",
+    "##P",
+    "##P99",
+    "*",
+    "-",
+    "+",
+    "e",
+    "1e999",
+    "nan",
+    "-0",
+    "0x",
+    "9999999999999999999",
+    "set",
+    "seta",
+    "exec",
+    "x",
+    "..",
+    "/",
+    "ctf -40 ",
+    "ctf 200 ",
+    "xv 0 yv 0 string \"",
+    "male/grunt",
+    "q2dm1",
+    "q2ctf1",
+    "weapon_",
+    "item_",
+    "ammo_",
 };
 
 std::string Hostile(std::mt19937 &rng)
@@ -84,11 +133,11 @@ TEST_CASE("fuzz: .ent files and ruleset .cfg files")
 	for (int i = 0; i < kRounds; ++i)
 	{
 		const std::string text = Hostile(rng);
-		(void) Core_Entities_ValidFile(text, error);
+		(void)Core_Entities_ValidFile(text, error);
 		for (const RulesetCfgStep &step : Core_Ruleset_ParseCfg(text))
 			REQUIRE(!step.name.empty());
-		(void) Core_Ruleset_ValidName(text);
-		(void) Core_Ruleset_All(text, {"ffa", "duel", "tdm", "ctf"});
+		(void)Core_Ruleset_ValidName(text);
+		(void)Core_Ruleset_All(text, {"ffa", "duel", "tdm", "ctf"});
 	}
 }
 
@@ -100,18 +149,18 @@ TEST_CASE("fuzz: map lists and vote arguments")
 		const std::string text = Hostile(rng);
 		for (const std::string &word : Core_Vote_Words(text))
 			REQUIRE(!word.empty());
-		(void) Core_Maps_Words(text);
+		(void)Core_Maps_Words(text);
 		const std::vector<std::string> list = Core_Vote_MapList(text, i % 2);
-		(void) Core_Vote_MapFor(list, Hostile(rng));
-		(void) Core_Vote_ParseKind(text);
+		(void)Core_Vote_MapFor(list, Hostile(rng));
+		(void)Core_Vote_ParseKind(text);
 		for (const VoteKind kind : Core_Vote_AllKinds())
 		{
 			if (const auto setting = Core_Vote_Setting(kind, i % 2))
 			{
 				if (const auto value = Core_Vote_SettingValue(*setting, text))
 				{
-					(void) Core_Vote_SettingText(*setting, *value);
-					(void) Core_Vote_SettingArg(*setting, *value);
+					(void)Core_Vote_SettingText(*setting, *value);
+					(void)Core_Vote_SettingArg(*setting, *value);
 				}
 			}
 		}
