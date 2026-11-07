@@ -129,9 +129,47 @@ Set it in `server.cfg`. Details: docs/design/joining.md.
 | `kick <player>` | the engine's own: off the server |
 | `sv timeout` | stop the match under way now (two minutes, or `match_timeout`); needs no player's allowance |
 | `sv timein` | end any timeout: the countdown back to play starts |
+| `sv setteam <player> red\|blue` | onto a team, as if they had joined it: not past a lock (unlock it first) |
+| `sv endmatch` | end the match under way now, as it stands: the intermission and its results |
+| `sv resetmatch` | the match under way back to warmup, every score zeroed |
+| `sv passvote` / `sv cancelvote` | decide the open vote: passed (it runs after the usual delay) or gone |
 | `sv match` | the state, and everyone's score (and a timeout under way) |
 
 Bots aren't moved: use `bot_count`.
+
+## Admins in the game
+
+Give trusted players a password and they can run a match from inside the
+game, with no console access:
+
+```
+set admin_password "something long"   // in server.cfg; empty (the default): no admins
+```
+
+A player types `admin <password>` in the console (never in chat: chat goes
+to everyone; quote a password with spaces) and is an admin until they leave; everyone is told. Then
+`admin` lists the commands and `admin <command>` runs one:
+
+| | |
+|---|---|
+| `match`, `teams`, `maplist`, `rulesets` | look: the state, the teams, the maps, the modes |
+| `readyall`, `readyteam`, `lockteam`, `unlockteam`, `shuffle`, `setteam`, `spectate`, `timeout`, `timein`, `endmatch`, `resetmatch`, `callvote`, `passvote`, `cancelvote`, `ruleset` | as `sv <command>` above |
+| `map <name>` | change map: only maps on `g_map_list` |
+| `kick <player>` | off the server |
+
+That is all an admin can do: never a `set`, an `exec` or anything else the
+console can, so a leaked password spoils a match, not the server. Each
+command is in the server log with who ran it, and players see everything
+but the looks (`Alice (admin): kick Bob`).
+
+- Three wrong passwords lock that player out of `admin` for 10 minutes
+  (by their account, so reconnecting doesn't help); each wrong one is
+  logged with their name, account and address.
+- A new `admin_password` logs every admin out: the way to take it back.
+- Keep it different from `rcon_password` (the server warns if they match).
+- On a LAN the password crosses the network as plain text.
+
+Details: docs/design/admin.md, decision 0026.
 
 ## Scoreboard
 

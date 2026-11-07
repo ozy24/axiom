@@ -246,6 +246,11 @@ bool Core_Timeout_ServerCommand(const char *cmd)
 	return true;
 }
 
+void Core_Timeout_Drop(const char *why)
+{
+	Drop(why);
+}
+
 void Core_Timeout_NewMatch()
 {
 	if (timeout.Paused())

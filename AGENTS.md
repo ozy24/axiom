@@ -218,6 +218,15 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   counts down to RESUMING); Bob's own call, his `time-in`, `kill` and
   `callvote` are refused; Alice's second call is refused (one a match); Bob
   calls his and ends it early with `time-in` (Q2RED only).
+- **Tier 26 human-admin:** TDM with four simulated players and
+  `admin_password` set: Carol's three wrong passwords lock her out (then
+  the right one is refused too; `admin readyall` from a non-admin isn't a
+  guess). Alice logs in and runs the match through `admin` with the
+  replies sent to her (setteam, cancelvote/passvote, lockteam and a
+  setteam it refuses, readyall, timeout/timein, match, a map off the list
+  refused, endmatch); `admin set` is refused; after `admin map q2dm3`
+  (a module reload) she is still an admin and kicks Dave; a new password
+  logs her out (Q2RED only).
 - **Tier 27 human-loc:** location callouts (decision 0027). TDM with a
   one-place q2dm1 `.loc` file and five simulated players: Alice's `cmd
   loc ENEMY - %l` reaches RED alone as team chat (name a whole argument),

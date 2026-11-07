@@ -515,3 +515,29 @@ TEST_CASE("vote shuffle: the admin's sv callvote still needs the warmup")
 	      VoteError::WarmupOnly);
 	CHECK(v.Call(Vote::kServer, {VoteKind::Shuffle, "", ""}, TeamWarmup(4), false, {0, 1}, 0) == VoteError::None);
 }
+
+TEST_CASE("vote: an admin passes the open vote; it runs after the delay")
+{
+	Vote v(AllKinds());
+	const std::vector<int> four{0, 1, 2, 3};
+	CHECK_FALSE(v.ForcePass(0)); // nothing open
+	REQUIRE(v.Call(0, Map("q2dm2"), Choices(), false, four, 0) == VoteError::None);
+	CHECK(v.ForcePass(500)); // 1 of 4: not a majority, but passed
+	CHECK(v.Passed());
+	CHECK_FALSE(v.ForcePass(600));
+	CHECK(v.Update(four, 1000) == VoteEvent::None);
+	CHECK(v.Update(four, 3500) == VoteEvent::Execute);
+}
+
+TEST_CASE("vote: an admin cancels the open vote, with no cooldown for its caller")
+{
+	Vote v(AllKinds());
+	const std::vector<int> four{0, 1, 2, 3};
+	CHECK_FALSE(v.Cancel());
+	REQUIRE(v.Call(0, Map("q2dm2"), Choices(), false, four, 0) == VoteError::None);
+	CHECK(v.Cancel());
+	CHECK_FALSE(v.Open());
+	CHECK(v.HudText(10).empty());
+	CHECK(v.Update(four, 10) == VoteEvent::None);
+	CHECK(v.Call(0, Map("q2dm3"), Choices(), false, four, 20) == VoteError::None);
+}

@@ -236,6 +236,12 @@ class Vote
 	// passes, fails, times out, or runs.
 	VoteEvent Update(const std::vector<int> &voters, int64_t now_ms);
 
+	// An admin decides the open vote (`sv passvote`, `sv cancelvote`): passed
+	// as a majority would (it runs after the pass delay), or gone with no
+	// cooldown for its caller. False with no vote open.
+	bool ForcePass(int64_t now_ms);
+	bool Cancel();
+
 	// Open (being voted on) or passed (waiting to run).
 	bool Open() const
 	{

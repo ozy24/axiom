@@ -178,6 +178,10 @@ class Match
 	// Nothing outside play (warmup, the countdown, the intermission).
 	std::vector<MatchAction> BackToWarmup(int64_t now_ms);
 
+	// An admin ends the match under way now (`sv endmatch`): the intermission,
+	// with the scores as they stand. Nothing outside play.
+	std::vector<MatchAction> EndNow(const char *why);
+
 	// When the HUD clock reaches zero (level ms), or 0 for no clock: none in
 	// warmup, the countdown or sudden death; the timelimit from LIVE, then
 	// timed overtime. Only meaningful when OwnsRules().

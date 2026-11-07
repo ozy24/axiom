@@ -1,6 +1,6 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-11-06 (location callouts)._
+_Updated at the end of every session. Last update: 2026-11-06 (in-game admin merged with location callouts)._
 
 ## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
@@ -356,7 +356,22 @@ checked against two broken builds (the world not stopped; players not
 frozen). Played on the rig with a retail client (2026-11-02, Chris: "worked
 ok"): the freeze, `time-in` and the resume countdown.
 
-**Next:** in-game admin; the M4 checklist. (The FFA/Duel
+**In-game admin (2026-11-02, decision 0026, branch `admin/in-game`):**
+`admin <password>` (`admin_password`, empty = off) and `admin <command>`:
+the console's `sv` match commands plus `kick` and `map` (only `g_map_list`
+maps), never a cvar or `exec`. Three wrong passwords lock a player (by
+account) out for 10 minutes; an admin stays one until gone over a minute
+(kept in `g_admin_memory` across a `map` reload); a new password logs
+everyone out; every command is logged and announced. New console commands
+with it: `sv setteam`, `sv endmatch`, `sv resetmatch`, `sv passvote`,
+`sv cancelvote`. An admin's `kick`/`map` wait for the next game frame: run
+from inside the client's command, `map` stranded the simulated players.
+Harness tier 26, checked against two broken builds (no lockout; admins
+forgotten across `map`). Not done: an admin page in the Tab menu; logging
+in by social ID (needs a check that IDs can't be forged).
+
+**Next:** the M4 checklist; end-of-match stats (per-weapon accuracy, then a
+JSON match record, then MVD auto-recording through Q2RED's extension). (The FFA/Duel
 miniscore stays as built: the top two, no highlight. Chris, 2026-10-31.)
 
 **The playtest rig** (`~/q2playtest`, `./run.sh`, `./cmd.sh "<console>"`).
@@ -373,7 +388,8 @@ default doesn't apply until the server restarts).
   1. Timeouts and pauses (`timeout`/`timein`, one per player, a resume
      countdown). Done 2026-11-01, one per side (decision 0025).
   2. In-game admin (`admin <password>`, `startmatch`, `endmatch`,
-     `resetmatch`, `setteam`, `boot`, `forcevote`, an admin menu).
+     `resetmatch`, `setteam`, `boot`, `forcevote`, an admin menu). Done
+     2026-11-02 without the menu (decision 0026).
   3. Team balance and shuffle.
   4. A mercy limit.
   5. Duel's `forfeit` command and repeating timed overtime.
@@ -430,8 +446,6 @@ default doesn't apply until the server restarts).
   message that quotes a bind with `cmd` in it gets executed. The `loc`
   usage text leaves the bind example out for that reason.
 - **Not yet:** played with a retail client. BB runs it (below).
-  PR #48 (in-game admin, decision 0026) was still open when this branched
-  from main, so AGENTS.md's tier list and STATUS will need a trivial merge.
 
 ## Known issues
 - One intermittent Q2RED segfault in a CTF server with simulated players

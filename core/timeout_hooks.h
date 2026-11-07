@@ -30,6 +30,10 @@ bool Core_Timeout_ServerCommand(const char *cmd);
 // its timeout again; one under way is dropped.
 void Core_Timeout_NewMatch();
 
+// The timeout under way, if any, is dropped (the allowance kept): an admin
+// ends or resets the match. `why` goes in the log line.
+void Core_Timeout_Drop(const char *why);
+
 // The HUD: the status line ("TIMEOUT 1:45", "RESUMING"; empty when none)
 // and the resume countdown's big digits (0 when none).
 const char *Core_Timeout_Status();

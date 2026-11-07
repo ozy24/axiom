@@ -8,6 +8,7 @@
 #include "core/maps_hooks.h" // [mod]
 #include "core/teams_hooks.h" // [mod]
 #include "core/join_hooks.h" // [mod]
+#include "core/admin_hooks.h" // [mod]
 #include "core/loc_hooks.h" // [mod]
 #include "m_player.h"
 
@@ -1615,6 +1616,8 @@ void ClientCommand(edict_t *ent)
 	cmd = gi.argv(0);
 
 	if (Core_EyeCam_Command(ent, cmd)) // [mod] eyecam
+		return; // [mod]
+	if (Core_Admin_ClientCommand(ent, cmd)) // [mod] admin <password>, admin <command>
 		return; // [mod]
 	if (Core_Match_ClientCommand(ent, cmd)) // [mod] ready / notready
 		return;

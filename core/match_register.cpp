@@ -19,6 +19,7 @@
 #include "core/join_hooks.h"
 #include "core/vote_hooks.h"
 #include "core/timeout_hooks.h"
+#include "core/admin_hooks.h"
 
 #include <array>
 #include <optional>
@@ -426,6 +427,7 @@ void Core_Match_Frame()
 	Core_Movers_Frame();
 	Core_Vote_Frame();
 	Core_Maps_Frame();
+	Core_Admin_Frame();
 	// Settings that change before the match starts take effect: an admin's
 	// rulesets/<gametype>.cfg lands after the level has begun (the engine runs
 	// queued commands when it gets to them), and so does a `set` in warmup.
@@ -470,6 +472,7 @@ void Core_Match_Frame()
 
 void Core_Match_PausedFrame()
 {
+	Core_Admin_Frame();
 	PublishHud();
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
@@ -525,9 +528,35 @@ bool ReadyCommand(const char *cmd)
 	return true;
 }
 
+// `sv endmatch`, `sv resetmatch`: an admin stops the match under way.
+static bool StopCommand(const char *cmd)
+{
+	const bool end = !Q_strcasecmp(cmd, "endmatch");
+	if (!end && Q_strcasecmp(cmd, "resetmatch"))
+		return false;
+	if (!begun || !Core_Match_OwnsRules() || !Core_Match_InPlay())
+	{
+		gi.Com_Print("No match is under way.\n");
+		return true;
+	}
+	Core_Timeout_Drop(end ? "the match ended" : "the match was reset");
+	if (!end)
+	{
+		if (Core_Match_BackToWarmup("reset by the server"))
+			gi.LocBroadcast_Print(PRINT_HIGH, "The match was reset.\n");
+		return true;
+	}
+	const MatchState before = match.State();
+	const std::vector<MatchAction> actions = match.EndNow("stopped by the server");
+	gi.Com_PrintFmt("Match: {} -> {}\n", MatchStateName(before), MatchStateName(match.State()));
+	gi.LocBroadcast_Print(PRINT_HIGH, "The match was ended.\n");
+	Act(actions);
+	return true;
+}
+
 bool Core_Match_ServerCommand(const char *cmd)
 {
-	if (ReadyCommand(cmd) || Core_Timeout_ServerCommand(cmd))
+	if (ReadyCommand(cmd) || StopCommand(cmd) || Core_Timeout_ServerCommand(cmd))
 		return true;
 	if (Q_strcasecmp(cmd, "match"))
 		return false;
@@ -682,15 +711,16 @@ bool Core_Match_InPlay()
 	return !Core_Match_OwnsRules() || MatchStateInPlay(match.State());
 }
 
-void Core_Match_BackToWarmup()
+bool Core_Match_BackToWarmup(const char *why)
 {
-	if (!begun)
-		return;
+	if (!begun || level.intermissiontime)
+		return false;
 	const std::vector<MatchAction> actions = match.BackToWarmup(level.time.milliseconds());
 	if (actions.empty())
-		return;
+		return false;
 	Act(actions);
-	gi.Com_Print("Match: back to warmup (a player removed)\n");
+	gi.Com_PrintFmt("Match: back to warmup ({})\n", why);
+	return true;
 }
 
 bool Core_Match_IsReady(const edict_t *ent)
