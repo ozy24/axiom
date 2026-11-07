@@ -1,6 +1,6 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-11-02 (in-game admin)._
+_Updated at the end of every session. Last update: 2026-11-06 (in-game admin merged with location callouts)._
 
 ## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
@@ -296,9 +296,15 @@ MuffMode's maps now play as in MuffMode, and `.ent` overrides work
 - Merged with `match/overtime` (overtime + the mover reset) as PR #39
   (6170da0, 2026-10-31), with the startup ruleset fix (tier 23: the files'
   `set` lines apply as the game loads, before the first map spawns).
-- **BB runs 77e251c** (main after #45, timeouts; deployed 2026-11-02 when
-  empty, backup `game_x64.so.bak-6170da0`; its ruleset files set no
-  `match_timeout`, so the built-ins apply: duel, tdm, ctf 120, ffa off).
+- **BB runs 3cd6faf** (main after #49, location callouts; deployed
+  2026-11-06 15:36 UTC when empty, backup `game_x64.so.bak-77e251c`).
+  Its four ruleset files gained `set g_loc 2` (backup
+  `rulesets.bak-20261106-pre-loc/`). The only `.loc` file is MuffMode's
+  `baseq2/locs/q2dm1.loc` (136 places, read through Q2RED's search
+  path); other maps use the nearest item. Not yet tried by a player.
+  BB ran 77e251c (main after #45, timeouts; deployed 2026-11-02 when
+  empty; its ruleset files set no `match_timeout`, so the built-ins
+  apply: duel, tdm, ctf 120, ffa off).
   BB ran 6170da0 (main after #39, deployed 2026-10-31 when it emptied):
   after a restart its FFA ruleset applied by itself, with no hand steps.
 
@@ -390,7 +396,8 @@ default doesn't apply until the server restarts).
   6. Mid-match reconnect "ghost" reservations.
   7. End-of-match stats (per-weapon accuracy, JSON/HTML exports, an
      awards reel, Elo with profiles, a next-map pick).
-  8. Follow-cam commands, a MOTD, team-chat `loc` tags, an announcer,
+  8. Follow-cam commands, a MOTD, team-chat `loc` tags (done 2026-11-06,
+     decision 0027), an announcer,
      danger-scored spawns.
 - **Where we're ahead:**
   - The FFA and Duel scoreboards.
@@ -420,6 +427,26 @@ default doesn't apply until the server restarts).
   session scratchpad, not the repo. If boards are worked on again, it's
   worth adding to `tools/`.
 
+## Location callouts (2026-11-06, decision 0027; branch `loc/callouts`)
+- `cmd loc <text>` with MuffMode's tokens (`%l` place, `%h` `%a` `%w` `%m`,
+  `%n` / `%N` players in view), so BB players' MuffMode binds work again.
+  Places come from `<g_loc_dir>/<map>.loc` (default `locs`, read at
+  spawn through the `.ent` reader, now shared as `Core_ReadGameFile`); with
+  `g_loc 2` and no file, the nearest weapon, powerup or mega in the PVS.
+  `g_loc` is 0 compiled (stock); every built-in ruleset sets 2.
+- Sent as team chat (spectators to spectators), with stock's flood check.
+  The nearest place in sight wins over one through a wall. Short item
+  names, never `$item_*` keys inside the text (the first run showed
+  `$item_grenades:15`).
+- Tier 27 human-loc (Q2RED): TDM with a one-place `.loc` file and five
+  simulated players, then FFA with no file and `g_loc 0`. It fails a build
+  with the team filter and the flood check removed.
+- Harness gotcha: the sim client runs any `cmd ...` it is printed
+  (`sim_client.cpp:1222`, meant for the spawn's stuffed commands), so a
+  message that quotes a bind with `cmd` in it gets executed. The `loc`
+  usage text leaves the bind example out for that reason.
+- **Not yet:** played with a retail client. BB runs it (below).
+
 ## Known issues
 - One intermittent Q2RED segfault in a CTF server with simulated players
   (tier 12, 2026-10-27, once under `--jobs 4`); not reproduced in 16 more
@@ -427,7 +454,11 @@ default doesn't apply until the server restarts).
   Seen again 2026-10-30: tier 18 human-join tdm under `--jobs 4` locally
   (crash log lost to a cleanup); three reruns passed. 2026-10-31: not
   reproduced in six full `--jobs 4` passes and 48 runs of tiers 12 and 18
-  eight at a time; every rig keeps its crash log.
+  eight at a time; every rig keeps its crash log. 2026-11-06: once in five
+  runs of tier 27 (TDM, five simulated players). The crash log has no
+  backtrace; its last lines are a late-connecting client ("Dave connected",
+  no "entered the game") joining BLUE, then the crash, before any `loc`
+  was sent. A `team` command from a client that hasn't begun is the lead.
 - Q2REX under Wine on the jumpbox once stalled after loading base1 (tier 1,
   the stock DLL: no answer to `save`); a rerun passed. Wine also sometimes
   prints "error: XDG_RUNTIME_DIR is invalid" inside `unshare -rn`: it's in

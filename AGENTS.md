@@ -227,6 +227,14 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   refused, endmatch); `admin set` is refused; after `admin map q2dm3`
   (a module reload) she is still an admin and kicks Dave; a new password
   logs her out (Q2RED only).
+- **Tier 27 human-loc:** location callouts (decision 0027). TDM with a
+  one-place q2dm1 `.loc` file and five simulated players: Alice's `cmd
+  loc ENEMY - %l` reaches RED alone as team chat (name a whole argument),
+  Bob's status bind expands with short item names, `loc hello` is
+  refused, a spectator's callout reaches spectators only, and the fifth
+  of six in a second is flooded. FFA with no file and `g_loc 2`: the
+  nearest item, to everyone; after `set g_loc 0` a callout is refused
+  (Q2RED only).
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

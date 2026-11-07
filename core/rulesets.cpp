@@ -26,7 +26,8 @@ const RulesetDef core_rulesets[] = {
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
      "set g_scoreboard 1\n"
-     "set g_frag_messages 1\n"},
+     "set g_frag_messages 1\n"
+     "set g_loc 2\n"},
     {"duel", "duel", "one on one: warmup and ready-up, 10 minutes, 2-minute overtimes on a tie, winner stays on",
      "set g_gametype duel\n"
      "set ctf 0\n"
@@ -47,7 +48,8 @@ const RulesetDef core_rulesets[] = {
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
      "set g_scoreboard 1\n"
-     "set g_frag_messages 1\n"},
+     "set g_frag_messages 1\n"
+     "set g_loc 2\n"},
     {"tdm", "tdm", "team deathmatch: warmup and ready-up, 20 minutes, 2-minute overtimes on a tie",
      "set g_gametype tdm\n"
      "set ctf 0\n"
@@ -68,7 +70,8 @@ const RulesetDef core_rulesets[] = {
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
      "set g_scoreboard 1\n"
-     "set g_frag_messages 1\n"},
+     "set g_frag_messages 1\n"
+     "set g_loc 2\n"},
     {"ctf", "ctf", "capture the flag: warmup and ready-up, 20 minutes or 8 captures, 2-minute overtimes on a tie",
      "set g_gametype ctf\n"
      "set ctf 1\n"
@@ -90,7 +93,8 @@ const RulesetDef core_rulesets[] = {
      "set g_map_list_shuffle 1\n"
      "set capturelimit 8\n"
      "set g_scoreboard 1\n"
-     "set g_frag_messages 1\n"},
+     "set g_frag_messages 1\n"
+     "set g_loc 2\n"},
     // The four core gametypes only (decision 0022): no built-in variants. An
     // admin lists their own in g_ruleset_variants.
 };
@@ -125,6 +129,7 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"g_friendly_fire", "0"}, // the friendly fire vote
     {"g_scoreboard", "0"},    // the column board (core/scoreboard_register.cpp)
     {"g_frag_messages", "0"}, // the centre prints on a frag (core/frag_message_register.cpp)
+    {"g_loc", "0"},           // location callouts (core/loc_register.cpp)
 };
 const size_t core_gameplay_cvar_count = sizeof(core_gameplay_cvars) / sizeof(core_gameplay_cvars[0]);
 
