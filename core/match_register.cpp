@@ -18,6 +18,8 @@
 #include "core/teams_hooks.h"
 #include "core/join_hooks.h"
 #include "core/vote_hooks.h"
+#include "core/timeout_hooks.h"
+#include "core/admin_hooks.h"
 
 #include <array>
 #include <optional>
@@ -270,6 +272,9 @@ void PublishHud()
 	// An open vote takes the status's place; the clock stays (core/vote_register.cpp).
 	if (std::string vote = Core_Vote_HudText(); !vote.empty())
 		hud.status = std::move(vote);
+	// A timeout's, over all: no vote is decided while the world stands still.
+	if (const char *timeout = Core_Timeout_Status(); *timeout)
+		hud.status = timeout;
 	Publish(kStatusConfigstring, status_text, hud.status);
 	Publish(kClockConfigstring, clock_text, hud.clock);
 }
@@ -385,6 +390,7 @@ void Act(const std::vector<MatchAction> &actions)
 		case MatchActionKind::Countdown:
 			break; // shown by the HUD's big digits (Core_Match_SetStats)
 		case MatchActionKind::ResetArena:
+			Core_Timeout_NewMatch(); // every side has its timeout again
 			ResetArena();
 			break;
 		case MatchActionKind::EndMatch:
@@ -421,6 +427,7 @@ void Core_Match_Frame()
 	Core_Movers_Frame();
 	Core_Vote_Frame();
 	Core_Maps_Frame();
+	Core_Admin_Frame();
 	// Settings that change before the match starts take effect: an admin's
 	// rulesets/<gametype>.cfg lands after the level has begun (the engine runs
 	// queued commands when it gets to them), and so does a `set` in warmup.
@@ -463,13 +470,94 @@ void Core_Match_Frame()
 	PublishHud();
 }
 
+void Core_Match_PausedFrame()
+{
+	Core_Admin_Frame();
+	PublishHud();
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *ent = ClientEdict(i);
+		if (!ent->inuse || !ent->client)
+			continue;
+		Core_Match_SetStats(ent);
+		// ClientEndServerFrame's menu redraw doesn't run, and level time
+		// stands still: a menu changed by a press is sent now.
+		if (ent->client->menudirty && ent->client->menu)
+		{
+			PMenu_Do_Update(ent);
+			gi.unicast(ent, true);
+		}
+		ent->client->menudirty = false;
+	}
+}
+
 bool Core_Match_OwnsRules()
 {
 	return begun && match.OwnsRules();
 }
 
+// `sv readyall`, `sv readyteam red|blue`: what a passed vote does, from the console.
+bool ReadyCommand(const char *cmd)
+{
+	const bool all = !Q_strcasecmp(cmd, "readyall");
+	if (!all && Q_strcasecmp(cmd, "readyteam"))
+		return false;
+	const char *word = gi.argv(2);
+	const int team = !Q_strcasecmp(word, "red") ? CTF_TEAM1 : !Q_strcasecmp(word, "blue") ? CTF_TEAM2 : CTF_NOTEAM;
+	if (!all && (!G_TeamplayEnabled() || team == CTF_NOTEAM))
+	{
+		gi.Com_Print("Usage: sv readyteam red|blue (team games only)\n");
+		return true;
+	}
+	if (!Core_Match_ReadyUp())
+	{
+		gi.Com_Print("There is no ready-up now.\n");
+		return true;
+	}
+	for (uint32_t i = 0; i < game.maxclients; ++i)
+	{
+		edict_t *ent = ClientEdict(i);
+		if (Playing(ent) && (all || ent->client->resp.ctf_team == team))
+			Core_Match_SetReady(ent, true, false);
+	}
+	if (all)
+		gi.LocBroadcast_Print(PRINT_HIGH, "Everyone is ready.\n");
+	else
+		gi.LocBroadcast_Print(PRINT_HIGH, "{} is ready.\n", CTFTeamName(team));
+	gi.Com_PrintFmt("Match: {} readied by the server\n", all ? "everyone" : CTFTeamName(team));
+	return true;
+}
+
+// `sv endmatch`, `sv resetmatch`: an admin stops the match under way.
+static bool StopCommand(const char *cmd)
+{
+	const bool end = !Q_strcasecmp(cmd, "endmatch");
+	if (!end && Q_strcasecmp(cmd, "resetmatch"))
+		return false;
+	if (!begun || !Core_Match_OwnsRules() || !Core_Match_InPlay())
+	{
+		gi.Com_Print("No match is under way.\n");
+		return true;
+	}
+	Core_Timeout_Drop(end ? "the match ended" : "the match was reset");
+	if (!end)
+	{
+		if (Core_Match_BackToWarmup("reset by the server"))
+			gi.LocBroadcast_Print(PRINT_HIGH, "The match was reset.\n");
+		return true;
+	}
+	const MatchState before = match.State();
+	const std::vector<MatchAction> actions = match.EndNow("stopped by the server");
+	gi.Com_PrintFmt("Match: {} -> {}\n", MatchStateName(before), MatchStateName(match.State()));
+	gi.LocBroadcast_Print(PRINT_HIGH, "The match was ended.\n");
+	Act(actions);
+	return true;
+}
+
 bool Core_Match_ServerCommand(const char *cmd)
 {
+	if (ReadyCommand(cmd) || StopCommand(cmd) || Core_Timeout_ServerCommand(cmd))
+		return true;
 	if (Q_strcasecmp(cmd, "match"))
 		return false;
 	gi.Com_PrintFmt("Match: {}\n", Core_Match_OwnsRules() ? MatchStateName(match.State()) : "off (stock rules)");
@@ -478,6 +566,7 @@ bool Core_Match_ServerCommand(const char *cmd)
 		const std::array<int, 2> scores = ctf->integer ? G_TeamCaptures() : G_TeamFrags();
 		gi.Com_PrintFmt("  teams: red {}, blue {}\n", scores[0], scores[1]);
 	}
+	Core_Timeout_PrintStatus();
 	for (uint32_t i = 0; i < game.maxclients; ++i)
 	{
 		const edict_t *ent = ClientEdict(i);
@@ -539,8 +628,10 @@ void Core_Match_SetStats(edict_t *ent)
 	if (ClockStat())
 		ent->client->ps.stats[ClockStat()] = clock_text.empty() ? 0 : kClockConfigstring;
 	if (CountdownStat())
-		ent->client->ps.stats[CountdownStat()] =
-		    Core_Match_OwnsRules() ? match.CountdownSeconds(level.time.milliseconds()) : 0;
+		ent->client->ps.stats[CountdownStat()] = Core_Timeout_CountdownSeconds() ? Core_Timeout_CountdownSeconds()
+		                                         : Core_Match_OwnsRules()
+		                                             ? match.CountdownSeconds(level.time.milliseconds())
+		                                             : 0;
 	if (LimitStat())
 	{
 		const int limit = ctf->integer ? capturelimit->integer : fraglimit->integer;
@@ -570,6 +661,8 @@ bool Core_Match_ClockEnd(gtime_t &end)
 
 bool Core_Match_ClientCommand(edict_t *ent, const char *cmd)
 {
+	if (Core_Timeout_ClientCommand(ent, cmd)) // time-out, time-in; no kill while paused
+		return true;
 	// The active gametype's own commands first (Duel's `queue`).
 	if (const GametypeDef *gt = deathmatch->integer ? Core_Gametype_Active() : nullptr)
 	{
@@ -616,6 +709,18 @@ bool Core_Match_InPlay()
 	if (level.intermissiontime)
 		return false;
 	return !Core_Match_OwnsRules() || MatchStateInPlay(match.State());
+}
+
+bool Core_Match_BackToWarmup(const char *why)
+{
+	if (!begun || level.intermissiontime)
+		return false;
+	const std::vector<MatchAction> actions = match.BackToWarmup(level.time.milliseconds());
+	if (actions.empty())
+		return false;
+	Act(actions);
+	gi.Com_PrintFmt("Match: back to warmup ({})\n", why);
+	return true;
 }
 
 bool Core_Match_IsReady(const edict_t *ent)

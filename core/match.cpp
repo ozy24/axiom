@@ -138,9 +138,13 @@ bool Match::CanStart(const MatchInput &in) const
 
 namespace
 {
-// "M:SS" for a whole number of seconds, rounded up (a clock showing 0:00
-// has run out).
 std::string Clock(int64_t ms)
+{
+	return Core_Match_Clock(ms);
+}
+} // namespace
+
+std::string Core_Match_Clock(int64_t ms)
 {
 	const int64_t s = ms <= 0 ? 0 : (ms + 999) / 1000;
 	char buf[24];
@@ -148,16 +152,17 @@ std::string Clock(int64_t ms)
 	return buf;
 }
 
+namespace
+{
 int SecondsLeft(int64_t total_ms, int64_t elapsed_ms)
 {
 	const int64_t left = total_ms - elapsed_ms;
 	return left <= 0 ? 0 : (int)((left + 999) / 1000);
 }
 
-// The stock voice for a number of seconds left, as MuffMode plays it:
-// world/1.wav to world/10.wav, then world/20sec, 30sec and 40sec (the ones
-// retail ships). Empty for any other number.
-std::string SpokenSeconds(int s)
+} // namespace
+
+std::string Core_Match_SpokenSeconds(int s)
 {
 	if (s >= 1 && s <= 10)
 		return "world/" + std::to_string(s) + ".wav";
@@ -166,9 +171,11 @@ std::string SpokenSeconds(int s)
 	return "";
 }
 
+namespace
+{
 void Speak(int s, std::vector<MatchAction> &out)
 {
-	const std::string sound = SpokenSeconds(s);
+	const std::string sound = Core_Match_SpokenSeconds(s);
 	if (!sound.empty())
 		out.push_back({MatchActionKind::Sound, sound, 0});
 }
@@ -278,6 +285,31 @@ void Match::ChangeLimits(int64_t timelimit_ms, int fraglimit, int64_t now_ms)
 
 // LIVE with a timelimit: the stock voice at 30 and 20 seconds left, then every
 // second from 10, as MuffMode does.
+void Match::ToWarmup(int64_t now_ms, std::vector<MatchAction> &out)
+{
+	state_ = MatchState::Warmup;
+	state_since_ms_ = now_ms;
+	time_end_ms_ = 0;
+	last_countdown_s_ = -1;
+	out.push_back({MatchActionKind::ResetArena, "", 0});
+}
+
+std::vector<MatchAction> Match::BackToWarmup(int64_t now_ms)
+{
+	std::vector<MatchAction> out;
+	if (config_.enabled && MatchStateInPlay(state_))
+		ToWarmup(now_ms, out);
+	return out;
+}
+
+std::vector<MatchAction> Match::EndNow(const char *why)
+{
+	std::vector<MatchAction> out;
+	if (config_.enabled && MatchStateInPlay(state_))
+		End(why, out);
+	return out;
+}
+
 void Match::TimeWarning(int64_t now_ms, std::vector<MatchAction> &out)
 {
 	if (!time_end_ms_)
@@ -302,11 +334,7 @@ std::vector<MatchAction> Match::Update(const MatchInput &in)
 	// (Chris, 2026-10-29). Not with match_allow_no_humans.
 	if (!config_.allow_no_humans && MatchStateInPlay(state_) && !HumansPlaying(in))
 	{
-		state_ = MatchState::Warmup;
-		state_since_ms_ = in.now_ms;
-		time_end_ms_ = 0;
-		last_countdown_s_ = -1;
-		out.push_back({MatchActionKind::ResetArena, "", 0});
+		ToWarmup(in.now_ms, out);
 		return out;
 	}
 

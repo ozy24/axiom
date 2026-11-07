@@ -20,6 +20,13 @@ void Core_Join_Frame();
 // chain (after the gametype's own, so Duel's queue answers them there).
 bool Core_Join_ClientCommand(edict_t *ent, const char *cmd);
 
+// `sv spectate <player>`: the server moves a player out of play, in any
+// gametype (a team game: off the team's roster, as a captain's teamkick;
+// Duel: a duellist in a match under way sends it back to warmup). True if
+// handled. `sv setteam <player> red|blue`: onto a team, not past a lock.
+// From ServerCommand.
+bool Core_Join_ServerCommand(const char *cmd);
+
 // The same from the Tab menu.
 void Core_Join_Run(edict_t *ent, bool join);
 

@@ -60,6 +60,18 @@ set match_overtime -1      // sudden death instead of overtimes
 set match_overtime_max 10  // still tied after 10 minutes: a draw
 ```
 
+Timeouts: in Duel, TDM and CTF each side (a player, or a team) may stop a
+match under way once, with `time-out` or the Tab menu: everything stands
+still for 2 minutes, then a 10-second countdown back to play. The side that
+called it can end it early with `time-in`. FFA has none: one player
+shouldn't freeze a public server. To change them:
+
+```
+// rulesets/tdm.cfg
+set match_timeout 60         // seconds; 0 turns timeouts off
+set match_timeout_resume 5   // the countdown back to play
+```
+
 `match_minplayers` (2) counts bots, so one player and the server's bots
 (`bot_minPlayers`) can start a match; a match always needs a human, so
 bots alone stay in warmup, and a match whose last human leaves goes back
@@ -107,6 +119,58 @@ chooses to play (`join`, or the menu); players stay in from map to map.
 
 Set it in `server.cfg`. Details: docs/design/joining.md.
 
+## Running a match from the console
+
+| | |
+|---|---|
+| `sv readyall` | in a ready-up warmup: everyone playing is ready, so the countdown starts (as a passed `callvote readyall`) |
+| `sv readyteam red\|blue` | the same for one team |
+| `sv spectate <player>` | out of play, in any mode: a name as shown (any case, spaces and all) or a client number. On a team: off it and its roster, so a locked team keeps them out (a captain's `teamkick`). In Duel, a duellist in a match under way sends it back to warmup and the next in line steps up: no forfeit |
+| `kick <player>` | the engine's own: off the server |
+| `sv timeout` | stop the match under way now (two minutes, or `match_timeout`); needs no player's allowance |
+| `sv timein` | end any timeout: the countdown back to play starts |
+| `sv setteam <player> red\|blue` | onto a team, as if they had joined it: not past a lock (unlock it first) |
+| `sv endmatch` | end the match under way now, as it stands: the intermission and its results |
+| `sv resetmatch` | the match under way back to warmup, every score zeroed |
+| `sv passvote` / `sv cancelvote` | decide the open vote: passed (it runs after the usual delay) or gone |
+| `sv match` | the state, and everyone's score (and a timeout under way) |
+
+Bots aren't moved: use `bot_count`.
+
+## Admins in the game
+
+Give trusted players a password and they can run a match from inside the
+game, with no console access:
+
+```
+set admin_password "something long"   // in server.cfg; empty (the default): no admins
+```
+
+A player types `admin <password>` in the console (never in chat: chat goes
+to everyone; quote a password with spaces) and is an admin until they leave; everyone is told. Then
+`admin` lists the commands and `admin <command>` runs one:
+
+| | |
+|---|---|
+| `match`, `teams`, `maplist`, `rulesets` | look: the state, the teams, the maps, the modes |
+| `readyall`, `readyteam`, `lockteam`, `unlockteam`, `shuffle`, `setteam`, `spectate`, `timeout`, `timein`, `endmatch`, `resetmatch`, `callvote`, `passvote`, `cancelvote`, `ruleset` | as `sv <command>` above |
+| `map <name>` | change map: only maps on `g_map_list` |
+| `kick <player>` | off the server |
+
+That is all an admin can do: never a `set`, an `exec` or anything else the
+console can, so a leaked password spoils a match, not the server. Each
+command is in the server log with who ran it, and players see everything
+but the looks (`Alice (admin): kick Bob`).
+
+- Three wrong passwords lock that player out of `admin` for 10 minutes
+  (by their account, so reconnecting doesn't help); each wrong one is
+  logged with their name, account and address.
+- A new `admin_password` logs every admin out: the way to take it back.
+- Keep it different from `rcon_password` (the server warns if they match).
+- On a LAN the password crosses the network as plain text.
+
+Details: docs/design/admin.md, decision 0026.
+
 ## Scoreboard
 
 | Cvar | Default | What |
@@ -127,8 +191,8 @@ else.
 | `match_warmup_weapons` | 1 | in warmup, everyone has every weapon the map places, with full ammo; 0 = stock's start |
 | `match_lock` | 1 in `tdm` and `ctf` | lock both teams as the match goes live; 0 = only when a captain locks |
 
-From the console: `sv lockteam red|blue`, `sv unlockteam red|blue`,
-`sv teams` to see each team's lock, captain and players, and `sv shuffle`
+From the console: `sv lockteam` and `sv unlockteam` (both teams, or
+`red` / `blue` for one), `sv teams` to see each team's lock, captain and players, and `sv shuffle`
 to split the players into two new random teams (warmup only; players can
 vote one with `callvote shuffle`, decision 0020). For a public
 server, put `set match_lock 0` in `rulesets/tdm.cfg` and `rulesets/ctf.cfg`.

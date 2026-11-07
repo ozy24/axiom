@@ -128,8 +128,14 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_SOURCE_DIR}/core/stat_slots_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/teams.cpp"
     "${CMAKE_SOURCE_DIR}/core/teams_register.cpp"
+    "${CMAKE_SOURCE_DIR}/core/timeout.cpp"
+    "${CMAKE_SOURCE_DIR}/core/timeout_register.cpp"
     "${CMAKE_SOURCE_DIR}/core/join.cpp"
-    "${CMAKE_SOURCE_DIR}/core/join_register.cpp")
+    "${CMAKE_SOURCE_DIR}/core/join_register.cpp"
+    "${CMAKE_SOURCE_DIR}/core/admin.cpp"
+    "${CMAKE_SOURCE_DIR}/core/admin_register.cpp"
+    "${CMAKE_SOURCE_DIR}/core/loc.cpp"
+    "${CMAKE_SOURCE_DIR}/core/loc_register.cpp")
 
 set_target_properties(game_x64 PROPERTIES
     # id's project uses C++17 (game.vcxproj LanguageStandard stdcpp17).
@@ -220,6 +226,9 @@ if(GAME_BUILD_TESTS)
         tests/test_frag_message.cpp
         tests/test_entities.cpp
         tests/test_movement.cpp
+        tests/test_timeout.cpp
+        tests/test_admin.cpp
+        tests/test_loc.cpp
         core/identity.cpp
         core/match_record.cpp
         core/host_files.cpp
@@ -236,6 +245,9 @@ if(GAME_BUILD_TESTS)
         core/frag_message.cpp
         core/entities.cpp
         core/movement.cpp
+        core/timeout.cpp
+        core/admin.cpp
+        core/loc.cpp
         tests/test_duel_queue.cpp
         tests/test_duel_board.cpp
         tests/test_eyecam.cpp

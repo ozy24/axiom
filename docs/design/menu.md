@@ -46,6 +46,8 @@ A human new to the server arrives spectating with the main page open
   - FFA: Join the Match or Spectate;
   - a spectator: Chase Camera or Stop Chasing;
   - in warmup: Ready or Not Ready;
+  - in a match under way, with timeouts on: Call Timeout while your side
+    has one, End Timeout during the one it called (decision 0025);
   - a team's captain: Team (captain).
 
   A locked team always reads "Join Red [LOCKED]" (Chris, 2026-10-29); if

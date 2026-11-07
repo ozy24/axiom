@@ -782,3 +782,45 @@ TEST_CASE("every human gone between rounds or in overtime: back to warmup too")
 	m.Update(At(live + 61000, {}));
 	CHECK(m.State() == MatchState::Warmup);
 }
+
+TEST_CASE("an admin's BackToWarmup: a match under way back to warmup, the arena reset; nothing outside play")
+{
+	Match m(Enabled());
+	m.Begin(0);
+	CHECK(m.BackToWarmup(0).empty()); // warmup already
+	const int64_t live = ToLive(m);
+	const auto out = m.BackToWarmup(live + 1000);
+	CHECK(m.State() == MatchState::Warmup);
+	CHECK(Has(out, MatchActionKind::ResetArena));
+	CHECK_FALSE(Has(out, MatchActionKind::EndMatch));
+	CHECK(m.ClockEndMs() == 0);
+	// Back through ready-up and the countdown, with the full timelimit from the new LIVE.
+	m.Update(At(live + 2000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Countdown);
+	m.Update(At(live + 5000, {P(1, true), P(2, true)}));
+	REQUIRE(m.State() == MatchState::Live);
+	CHECK(m.HudText(At(live + 5000, {P(1, true), P(2, true)})).clock == "1:00");
+
+	Match stock; // the match flow off: stock's rules own the level
+	stock.Begin(0);
+	CHECK(stock.BackToWarmup(1000).empty());
+	CHECK(stock.State() == MatchState::Live);
+}
+
+TEST_CASE("an admin's EndNow: the intermission with the scores as they stand; nothing outside play")
+{
+	Match m(Enabled());
+	m.Begin(0);
+	CHECK(m.EndNow("stopped").empty()); // warmup
+	const int64_t live = ToLive(m);
+	const auto out = m.EndNow("stopped by the server");
+	CHECK(m.State() == MatchState::Intermission);
+	CHECK(std::any_of(out.begin(), out.end(), [](const MatchAction &a)
+	                  { return a.kind == MatchActionKind::EndMatch && a.text == "stopped by the server"; }));
+	CHECK(m.EndNow("again").empty());
+	(void)live;
+
+	Match stock;
+	stock.Begin(0);
+	CHECK(stock.EndNow("stopped").empty());
+}

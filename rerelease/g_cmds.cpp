@@ -8,6 +8,8 @@
 #include "core/maps_hooks.h" // [mod]
 #include "core/teams_hooks.h" // [mod]
 #include "core/join_hooks.h" // [mod]
+#include "core/admin_hooks.h" // [mod]
+#include "core/loc_hooks.h" // [mod]
 #include "m_player.h"
 
 void SelectNextItem(edict_t *ent, item_flags_t itflags, bool menu = true)
@@ -1615,6 +1617,8 @@ void ClientCommand(edict_t *ent)
 
 	if (Core_EyeCam_Command(ent, cmd)) // [mod] eyecam
 		return; // [mod]
+	if (Core_Admin_ClientCommand(ent, cmd)) // [mod] admin <password>, admin <command>
+		return; // [mod]
 	if (Core_Match_ClientCommand(ent, cmd)) // [mod] ready / notready
 		return;
 	if (Core_Vote_ClientCommand(ent, cmd)) // [mod] callvote / vote; yes, no, warp while ours
@@ -1624,6 +1628,8 @@ void ClientCommand(edict_t *ent)
 	if (Core_Teams_ClientCommand(ent, cmd)) // [mod] captain, lockteam, unlockteam, teamkick, readyteam
 		return; // [mod]
 	if (Core_Join_ClientCommand(ent, cmd)) // [mod] join, spectate
+		return; // [mod]
+	if (Core_Loc_ClientCommand(ent, cmd)) // [mod] loc (deathmatch)
 		return; // [mod]
 
 	if (Q_strcasecmp(cmd, "players") == 0)

@@ -1,6 +1,6 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-10-31 (playtest batch merged, #39)._
+_Updated at the end of every session. Last update: 2026-11-06 (in-game admin merged with location callouts)._
 
 ## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
 
@@ -296,8 +296,17 @@ MuffMode's maps now play as in MuffMode, and `.ent` overrides work
 - Merged with `match/overtime` (overtime + the mover reset) as PR #39
   (6170da0, 2026-10-31), with the startup ruleset fix (tier 23: the files'
   `set` lines apply as the game loads, before the first map spawns).
-- **BB runs a61e783**, before the startup ruleset fix: after a restart,
-  apply the ruleset by hand until 6170da0 (or later) is deployed there.
+- **BB runs 3cd6faf** (main after #49, location callouts; deployed
+  2026-11-06 15:36 UTC when empty, backup `game_x64.so.bak-77e251c`).
+  Its four ruleset files gained `set g_loc 2` (backup
+  `rulesets.bak-20261106-pre-loc/`). The only `.loc` file is MuffMode's
+  `baseq2/locs/q2dm1.loc` (136 places, read through Q2RED's search
+  path); other maps use the nearest item. Not yet tried by a player.
+  BB ran 77e251c (main after #45, timeouts; deployed 2026-11-02 when
+  empty; its ruleset files set no `match_timeout`, so the built-ins
+  apply: duel, tdm, ctf 120, ffa off).
+  BB ran 6170da0 (main after #39, deployed 2026-10-31 when it emptied):
+  after a restart its FFA ruleset applied by itself, with no hand steps.
 
 ## Handover (2026-10-30): back to the four core gametypes (decision 0022)
 
@@ -316,7 +325,53 @@ before adding surface**. Removed on branch `remove-rounds`:
 - Kept from the CA playtest: the frag/capture limit in big digits under the
   scores (`yb -56 xr -56` teams, `yb -46 xr -60` FFA/Duel).
 
-**Next:** timeouts/pauses and in-game admin; the M4 checklist. (The FFA/Duel
+**Console admin commands (2026-10-31, branch `admin/console-commands`):**
+`sv readyall`, `sv readyteam red|blue`, `sv spectate <player>` (any mode;
+on a team it's a teamkick, roster and all; a duellist in a live Duel sends
+the match back to warmup and the next in line steps up, no forfeit: Chris),
+and `sv lockteam` / `sv unlockteam` with no team = both. A full kick stays
+the engine's `kick` until in-game admin, which will run these same
+commands. Harness tier 24; checked against a broken build (the Duel match
+played on with Carol in Alice's place).
+
+**MuffMode parity (2026-10-31):** BB's old configs checked against Axiom
+(79 settings). Mapped or stock-equivalent, apart from: MuffMode's spawn
+selection (avoids enemy sight, players, your last spawn; Axiom's is stock's),
+idle players moved to spectate (`g_inactivity`), per-mode player caps
+(`maxplayers`), votable off-rotation maps (`g_map_pool`), Power Shields
+removed everywhere. Chris (2026-10-31): only the q2dm8 Power Shield
+mattered (taken out in BB's `.ent`); spawn selection is the one to watch in
+play. Nothing else to build.
+
+**Match timeouts (2026-11-01, decision 0025, PR #45):**
+`time-out` / `time-in` (and the Tab menu's Call / End Timeout), one per
+side per match (a team, or a player by social ID), only while LIVE or in
+overtime; `sv timeout` / `sv timein` for the console. The game frame
+stops before level time moves (MMREX's way), so everything pauses with no
+code of its own; players get `PM_FREEZE`; no `kill` or `callvote` in one.
+`match_timeout` (compiled 0 = off; duel, tdm, ctf 120; ffa 0) and
+`match_timeout_resume` (10). No anti-escape rule (Chris). Players can't
+type `timeout`: retail's client has a cvar of that name. Harness tier 25,
+checked against two broken builds (the world not stopped; players not
+frozen). Played on the rig with a retail client (2026-11-02, Chris: "worked
+ok"): the freeze, `time-in` and the resume countdown.
+
+**In-game admin (2026-11-02, decision 0026, branch `admin/in-game`):**
+`admin <password>` (`admin_password`, empty = off) and `admin <command>`:
+the console's `sv` match commands plus `kick` and `map` (only `g_map_list`
+maps), never a cvar or `exec`. Three wrong passwords lock a player (by
+account) out for 10 minutes; an admin stays one until gone over a minute
+(kept in `g_admin_memory` across a `map` reload); a new password logs
+everyone out; every command is logged and announced. New console commands
+with it: `sv setteam`, `sv endmatch`, `sv resetmatch`, `sv passvote`,
+`sv cancelvote`. An admin's `kick`/`map` wait for the next game frame: run
+from inside the client's command, `map` stranded the simulated players.
+Harness tier 26, checked against two broken builds (no lockout; admins
+forgotten across `map`). Not done: an admin page in the Tab menu; logging
+in by social ID (needs a check that IDs can't be forged).
+
+**Next:** the M4 checklist; end-of-match stats (per-weapon accuracy, then a
+JSON match record, then MVD auto-recording through Q2RED's extension). (The FFA/Duel
 miniscore stays as built: the top two, no highlight. Chris, 2026-10-31.)
 
 **The playtest rig** (`~/q2playtest`, `./run.sh`, `./cmd.sh "<console>"`).
@@ -331,16 +386,18 @@ default doesn't apply until the server restarts).
 `repos/Q2REX/mmrex/src/sgame` (183k lines):
 - **What MMREX has that we lack, roughly by value:**
   1. Timeouts and pauses (`timeout`/`timein`, one per player, a resume
-     countdown).
+     countdown). Done 2026-11-01, one per side (decision 0025).
   2. In-game admin (`admin <password>`, `startmatch`, `endmatch`,
-     `resetmatch`, `setteam`, `boot`, `forcevote`, an admin menu).
+     `resetmatch`, `setteam`, `boot`, `forcevote`, an admin menu). Done
+     2026-11-02 without the menu (decision 0026).
   3. Team balance and shuffle.
   4. A mercy limit.
   5. Duel's `forfeit` command and repeating timed overtime.
   6. Mid-match reconnect "ghost" reservations.
   7. End-of-match stats (per-weapon accuracy, JSON/HTML exports, an
      awards reel, Elo with profiles, a next-map pick).
-  8. Follow-cam commands, a MOTD, team-chat `loc` tags, an announcer,
+  8. Follow-cam commands, a MOTD, team-chat `loc` tags (done 2026-11-06,
+     decision 0027), an announcer,
      danger-scored spawns.
 - **Where we're ahead:**
   - The FFA and Duel scoreboards.
@@ -370,6 +427,26 @@ default doesn't apply until the server restarts).
   session scratchpad, not the repo. If boards are worked on again, it's
   worth adding to `tools/`.
 
+## Location callouts (2026-11-06, decision 0027; branch `loc/callouts`)
+- `cmd loc <text>` with MuffMode's tokens (`%l` place, `%h` `%a` `%w` `%m`,
+  `%n` / `%N` players in view), so BB players' MuffMode binds work again.
+  Places come from `<g_loc_dir>/<map>.loc` (default `locs`, read at
+  spawn through the `.ent` reader, now shared as `Core_ReadGameFile`); with
+  `g_loc 2` and no file, the nearest weapon, powerup or mega in the PVS.
+  `g_loc` is 0 compiled (stock); every built-in ruleset sets 2.
+- Sent as team chat (spectators to spectators), with stock's flood check.
+  The nearest place in sight wins over one through a wall. Short item
+  names, never `$item_*` keys inside the text (the first run showed
+  `$item_grenades:15`).
+- Tier 27 human-loc (Q2RED): TDM with a one-place `.loc` file and five
+  simulated players, then FFA with no file and `g_loc 0`. It fails a build
+  with the team filter and the flood check removed.
+- Harness gotcha: the sim client runs any `cmd ...` it is printed
+  (`sim_client.cpp:1222`, meant for the spawn's stuffed commands), so a
+  message that quotes a bind with `cmd` in it gets executed. The `loc`
+  usage text leaves the bind example out for that reason.
+- **Not yet:** played with a retail client. BB runs it (below).
+
 ## Known issues
 - One intermittent Q2RED segfault in a CTF server with simulated players
   (tier 12, 2026-10-27, once under `--jobs 4`); not reproduced in 16 more
@@ -377,7 +454,11 @@ default doesn't apply until the server restarts).
   Seen again 2026-10-30: tier 18 human-join tdm under `--jobs 4` locally
   (crash log lost to a cleanup); three reruns passed. 2026-10-31: not
   reproduced in six full `--jobs 4` passes and 48 runs of tiers 12 and 18
-  eight at a time; every rig keeps its crash log.
+  eight at a time; every rig keeps its crash log. 2026-11-06: once in five
+  runs of tier 27 (TDM, five simulated players). The crash log has no
+  backtrace; its last lines are a late-connecting client ("Dave connected",
+  no "entered the game") joining BLUE, then the crash, before any `loc`
+  was sent. A `team` command from a client that hasn't begun is the lead.
 - Q2REX under Wine on the jumpbox once stalled after loading base1 (tier 1,
   the stock DLL: no answer to `save`); a rerun passed. Wine also sometimes
   prints "error: XDG_RUNTIME_DIR is invalid" inside `unshare -rn`: it's in

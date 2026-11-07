@@ -74,6 +74,15 @@ struct MatchInput
 	std::array<int, 2> team_scores{}; // with MatchConfig::teams: team 1, team 2 (frags or captures)
 };
 
+// "M:SS" for a time left, whole seconds rounded up (a clock showing 0:00 has
+// run out).
+std::string Core_Match_Clock(int64_t ms);
+
+// The stock voice for a number of seconds left, as MuffMode plays it:
+// world/1.wav to world/10.wav, then world/20sec, 30sec and 40sec (the ones
+// retail ships). Empty for any other number.
+std::string Core_Match_SpokenSeconds(int s);
+
 struct MatchHudText
 {
 	std::string status;
@@ -164,6 +173,15 @@ class Match
 	// next update, as stock's CheckDMRules would. Overtime keeps its own end.
 	void ChangeLimits(int64_t timelimit_ms, int fraglimit, int64_t now_ms);
 
+	// An admin took a duellist out of a match under way (`sv spectate`): back
+	// to warmup, as when every human leaves, the arena reset and scores zeroed.
+	// Nothing outside play (warmup, the countdown, the intermission).
+	std::vector<MatchAction> BackToWarmup(int64_t now_ms);
+
+	// An admin ends the match under way now (`sv endmatch`): the intermission,
+	// with the scores as they stand. Nothing outside play.
+	std::vector<MatchAction> EndNow(const char *why);
+
 	// When the HUD clock reaches zero (level ms), or 0 for no clock: none in
 	// warmup, the countdown or sudden death; the timelimit from LIVE, then
 	// timed overtime. Only meaningful when OwnsRules().
@@ -178,6 +196,7 @@ class Match
 	void End(const char *why, std::vector<MatchAction> &out);
 	void Draw(std::vector<MatchAction> &out);
 	void TimeWarning(int64_t now_ms, std::vector<MatchAction> &out);
+	void ToWarmup(int64_t now_ms, std::vector<MatchAction> &out);
 
 	MatchConfig config_;
 	MatchState state_ = MatchState::Live;

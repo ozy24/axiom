@@ -10,6 +10,7 @@
 #include "core/teams_hooks.h"
 #include "core/vote.h"
 #include "core/vote_hooks.h"
+#include "core/timeout_hooks.h"
 
 #include <cstring>
 
@@ -302,6 +303,11 @@ void Call(edict_t *ent, std::string_view kind_name, std::string_view arg)
 		reply("Wait for the next map.");
 		return;
 	}
+	if (Core_Timeout_Paused()) // nothing is decided while the world stands still
+	{
+		reply("Wait for the timeout to end.");
+		return;
+	}
 	VoteProposal p{*kind, std::string(arg), ""};
 	if (p.kind == VoteKind::Gametype)
 	{
@@ -462,6 +468,22 @@ void VoteMap(const char *gametype)
 
 bool Core_Vote_ServerCommand(const char *cmd)
 {
+	const bool pass = !Q_strcasecmp(cmd, "passvote");
+	if (pass || !Q_strcasecmp(cmd, "cancelvote"))
+	{
+		const std::string what = Core_Vote_Describe(vote.Proposal());
+		if (!Active() || !(pass ? vote.ForcePass(level.time.milliseconds()) : vote.Cancel()))
+		{
+			gi.Com_Print("No vote is open.\n");
+			return true;
+		}
+		gi.LocBroadcast_Print(PRINT_HIGH,
+		                      pass ? "The server passed the vote: {}.\n" : "The server cancelled the vote: {}.\n",
+		                      what.c_str());
+		gi.Com_PrintFmt("Vote: {} {} by the server\n", what, pass ? "passed" : "cancelled");
+		DirtyMenus();
+		return true;
+	}
 	if (!Q_strcasecmp(cmd, "votemap"))
 	{
 		RegisterCvars();

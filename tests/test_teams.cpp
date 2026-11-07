@@ -257,3 +257,19 @@ TEST_CASE("shuffle: varies with the draw; two players or none are fine")
 	CHECK(Count(Core_Teams_Shuffle({1, 2}, rng), 1) == 1);
 	CHECK(Core_Teams_Shuffle({}, rng).empty());
 }
+
+TEST_CASE("the server removes a player from either team's roster; never a bot")
+{
+	Teams t;
+	t.Sync({Red("a"), Red("b"), Blue("c"), Blue("d"), Bot("x", 2)});
+	t.Lock(1);
+	t.Lock(2);
+	CHECK(t.Remove("nobody") == TeamsResult::NoTeam);
+	CHECK(t.Remove("x") == TeamsResult::Bot);
+	CHECK(t.Remove("a") == TeamsResult::Ok); // the captain too: no captain needed
+	CHECK(t.Remove("c") == TeamsResult::Ok);
+	t.Sync({{"a", 0, false}, Red("b"), {"c", 0, false}, Blue("d"), Bot("x", 2)}); // moved to spectating
+	CHECK_FALSE(t.MayJoin("a", 1, false));
+	CHECK_FALSE(t.MayJoin("c", 2, false));
+	CHECK(t.MayJoin("b", 1, false));
+}
