@@ -40,6 +40,12 @@ jobs:
           cmake --preset linux-release >/dev/null
           nice cmake --build --preset linux-release
 
+      - name: Build the downstream example
+        # examples/jump on this base: tier 30 boots it (docs/downstream.md).
+        run: |
+          cmake -S examples/jump -B build/jump -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo >/dev/null
+          nice cmake --build build/jump
+
       - name: Build stock reference
         # Unmodified id code with this repo's build system, tagged once and
         # never moved. Cached on the runner by commit.
@@ -67,6 +73,7 @@ jobs:
           # Four tiers at once, each on its own ports: ~5 min instead of ~25.
           nice python3 -I scripts/harness/q2harness.py test --engine-kind q2red --jobs 4 \
             --stock "$STOCK_SO" --candidate build/linux-release/game_x64.so \
+            --downstream build/jump/base/game_x64.so \
             --workdir "$RIGS" --keep 2>&1 | tee harness-logs/summary.txt
           exit "${PIPESTATUS[0]}"
 

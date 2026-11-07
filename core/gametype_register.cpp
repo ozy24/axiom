@@ -99,6 +99,7 @@ void Core_Gametype_Start()
 	if (Q_strcasecmp(g_gametype->string, def->id))
 		gi.cvar_forceset("g_gametype", def->id);
 
+	DMGame = {}; // nothing left from a gametype before (the module can outlive one)
 	if (def->install)
 	{
 		def->install(DMGame);

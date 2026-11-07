@@ -23,7 +23,8 @@ DMGame  ──► id's call sites (p_client.cpp, g_combat.cpp, g_main.cpp, …)
 - **Registry:** `core/gametype.h`. The enabled gametypes are listed in CMake
   (`GAME_GAMETYPES`), which generates the table. No static self-registration
   (a static library drops it). A downstream mod adds its own gametypes to the
-  list.
+  list, from its own folders (`GAME_GAMETYPE_DIRS`; docs/downstream.md,
+  `examples/jump`). `DMGame` is cleared before the selected gametype installs.
 - **Selection:** `g_gametype` (neutral name, decision 0004), default `ffa`. An
   unknown id falls back to `ffa` with a console warning.
 - **Team gametypes run on stock's team code** (decision 0012). In deathmatch,
@@ -44,7 +45,8 @@ DMGame  ──► id's call sites (p_client.cpp, g_combat.cpp, g_main.cpp, …)
   A gametype that installs a hook while `gamerules` is 0 needs that gate
   relaxed to `DMGame.X`, marked `[mod]`. Relax gates one at a time, when a
   gametype first needs them; with every hook null the relaxed gate is
-  identical to stock.
+  identical to stock. Relaxed so far: `ClientBegin` (Duel) and
+  `ChangeDamage` / `ChangeKnockback` (`T_Damage`; the Jump example).
 
 ## Gametype hooks (beyond DMGame)
 
@@ -92,5 +94,6 @@ grows in the right direction:
 | Lobby metadata (retail mode + display name) — **done**: `GametypeDef::retail_mode`; `Core_Gametype_Start` publishes Q2REX's `q2rex_lobby_*` cvars each game load | Duel | Phase 3a |
 
 Rules for new hooks: plain function pointers and simple types (decision 0005
-keeps a plugin loader possible), null means stock, and each call site in id's
-code is a marked one-line call.
+keeps a plugin loader possible), null means stock, each call site in id's
+code is a marked one-line call, and a new `GametypeDef` member goes at the
+end, so downstream definitions (docs/downstream.md) keep compiling.

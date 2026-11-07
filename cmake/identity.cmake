@@ -10,7 +10,7 @@
 # The build id is the git commit (with -dirty for uncommitted changes), or
 # "nogit" when built from a source archive without git.
 
-set(MOD_IDENTITY_FILE "${CMAKE_SOURCE_DIR}/mod.json" CACHE FILEPATH "The mod's identity file")
+set(MOD_IDENTITY_FILE "${CMAKE_CURRENT_SOURCE_DIR}/mod.json" CACHE FILEPATH "The mod's identity file")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MOD_IDENTITY_FILE}")
 
 file(READ "${MOD_IDENTITY_FILE}" _mod_json)
@@ -41,17 +41,20 @@ if(MOD_NAME MATCHES "[\"\\\\]")
     message(FATAL_ERROR "mod.json: name must not contain quotes or backslashes")
 endif()
 
+# The commit of the repository that holds the identity file: this base's, or
+# a downstream mod's (with this base as its submodule).
 find_package(Git QUIET)
 set(MOD_BUILD "nogit")
-if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+get_filename_component(_mod_dir "${MOD_IDENTITY_FILE}" DIRECTORY)
+if(GIT_FOUND)
     execute_process(COMMAND "${GIT_EXECUTABLE}" describe --always --dirty --abbrev=8 --exclude "*"
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" OUTPUT_VARIABLE _build
+        WORKING_DIRECTORY "${_mod_dir}" OUTPUT_VARIABLE _build
         OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET RESULT_VARIABLE _rc)
     if(_rc EQUAL 0 AND _build)
         set(MOD_BUILD "${_build}")
     endif()
 endif()
 
-set(MOD_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
-configure_file("${CMAKE_SOURCE_DIR}/cmake/mod_identity.h.in" "${MOD_GENERATED_DIR}/mod_identity.h" @ONLY)
+set(MOD_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/mod_identity.h.in" "${MOD_GENERATED_DIR}/mod_identity.h" @ONLY)
 message(STATUS "Mod identity: ${MOD_NAME} (${MOD_ID}) ${MOD_VERSION}, build ${MOD_BUILD}")
