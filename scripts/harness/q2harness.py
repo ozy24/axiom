@@ -2208,6 +2208,54 @@ at 68 0 cmd admin match
         detail.append(f"after the new password Alice was told {to_alice[-1:]}, expected she isn't an admin")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
+def tier_early_commands(args, results):
+    """Commands from a client that has connected but not yet entered the game
+    (known id bug 3). Stock's `team` put such a client in the game before
+    ClientBegin and crashed the server, on stock as well. TDM, five simulated
+    players who send team, join, ready, captain, loc and kill as they
+    connect: the server must survive, nobody may join a team before they
+    have entered, and `team` after entering must still work (Q2RED only)."""
+    label = "28 early-commands tdm"
+    rig, why = scenario_rig(args, "t28-early")
+    if not rig:
+        results.append((label, True, [f"skipped: {why}"]))
+        return
+    names = ["Alice", "Bob", "Carol", "Dave", "Eve"]
+    lines = ["seconds 36"]
+    for i, name in enumerate(names):
+        lines.append(f"client {i} name={name} social=sim-{name.lower()} puppet join={1 + i * 1.5}")
+    early = ["team red", "team blue", "join", "ready", "captain", "lockteam red", "loc x %l %n", "kill",
+             "callvote map q2dm2", "spectate"]
+    for i in range(len(names)):
+        t = 1 + i * 1.5
+        for k in range(24):  # every 25 ms from the moment it connects
+            lines.append(f"at {t + k * 0.025:.3f} {i} cmd {early[k % len(early)]}")
+        # Each sim client sends one reliable message at a time, so the burst
+        # delays its own spawn: the last enters near 19 s.
+        lines.append(f"at 28 {i} cmd team {'red' if i % 2 else 'blue'}")
+    startup = scenario_startup(rig, ["+set", "g_gametype", "tdm", "+set", "g_loc", "2", "+map", "q2dm1"])
+    log = rig.run(startup, scenario_steps(rig, "\n".join(lines) + "\n"), timeout=args.boot_timeout + 100)
+    # From the tap, by slot: the console's names can't be trusted here (Q2RED
+    # decodes ##P tokens off by one while a dropped connection holds a slot).
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    slots = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    detail = []
+    for name in names:
+        if name not in slots:
+            detail.append(f"{name} never connected")
+            continue
+        slot = slots[name]
+        begun = [r["t"] for r in tap if r.get("type") == "begin" and r["slot"] == slot]
+        joined = [r["t"] for r in tap if r.get("type") == "locprint" and r["base"] in ("$g_joined_team", "$g_changed_team")
+                  and r["args"][:1] == [f"##P{slot}"]]
+        if not begun:
+            detail.append(f"{name} never entered the game")
+        elif any(t < begun[0] for t in joined):
+            detail.append(f"{name} joined a team before entering the game")
+        elif not joined:
+            detail.append(f"{name}'s `team` after entering didn't put them on a team")
+    if "SIGSEGV" in log or rig.returncode != 0:
+        detail.append(f"server crashed or exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]
     results.append((label, not detail, detail))
 
@@ -2216,7 +2264,7 @@ TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tie
          tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
          tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
          tier_human_join, tier_human_readyvote, tier_human_shuffle, tier_entities, tier_startup_ruleset,
-         tier_admin_commands, tier_human_timeout, tier_human_admin, tier_human_loc)
+         tier_admin_commands, tier_human_timeout, tier_human_admin, tier_human_loc, tier_early_commands)
 
 
 def run_tier(tier, args):
@@ -2318,7 +2366,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset", "admin_commands", "human_timeout", "human_admin", "human_loc"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset", "admin_commands", "human_timeout", "human_admin", "human_loc", "early_commands"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

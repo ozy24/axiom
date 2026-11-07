@@ -235,6 +235,11 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   of six in a second is flooded. FFA with no file and `g_loc 2`: the
   nearest item, to everyone; after `set g_loc 0` a callout is refused
   (Q2RED only).
+- **Tier 28 early-commands:** TDM with five simulated players who send
+  `team`, `join`, `ready`, `captain`, `loc`, `kill` and a vote as they
+  connect, before they have entered the game (known id bug 3: stock
+  crashed). The server must survive, nobody joins a team before entering,
+  and `team` afterwards still works. Read from the tap by slot (Q2RED only).
 - **Tier 8 teams:** `tdm` on q2dm1 and `ctf` on q2ctf1 with four bots and the
   match flow: warmup → live → timelimit, and a match record with both teams
   and every playing client on one.

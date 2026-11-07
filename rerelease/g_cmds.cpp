@@ -1612,6 +1612,8 @@ void ClientCommand(edict_t *ent)
 
 	if (!ent->client)
 		return; // not fully in game yet
+	if (!ent->inuse) // [mod] connected but not begun: `team` put such a client in the game early
+		return; // [mod]
 
 	cmd = gi.argv(0);
 
