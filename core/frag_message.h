@@ -3,7 +3,7 @@
 // frag_message_register.cpp.
 //
 //   the killer:  You fragged Bob                  team modes, warmup
-//                You fragged Bob, your teammate
+//                You fragged Bob, your teammate :(
 //                You fragged Bob                  FFA and Duel in play
 //                2nd place with 12
 //   the victim:  You were fragged by Alice

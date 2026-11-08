@@ -31,7 +31,7 @@ std::string Core_FragPlaceText(FragPlace place)
 std::string Core_FragKillerText(bool teammate, bool ranked, FragPlace place, int score)
 {
 	if (teammate)
-		return "You fragged {}, your teammate";
+		return "You fragged {}, your teammate :(";
 	if (!ranked)
 		return "You fragged {}";
 	return "You fragged {}\n" + Core_FragPlaceText(place) + " place with " + std::to_string(score);

@@ -31,8 +31,8 @@ TEST_CASE("frag messages: place names")
 TEST_CASE("frag messages: the killer's and the victim's text, the name left to the client")
 {
 	CHECK(Core_FragKillerText(false, false, {}, 0) == "You fragged {}");
-	CHECK(Core_FragKillerText(true, false, {}, 0) == "You fragged {}, your teammate");
-	CHECK(Core_FragKillerText(true, true, {}, 0) == "You fragged {}, your teammate");
+	CHECK(Core_FragKillerText(true, false, {}, 0) == "You fragged {}, your teammate :(");
+	CHECK(Core_FragKillerText(true, true, {}, 0) == "You fragged {}, your teammate :(");
 	CHECK(Core_FragKillerText(false, true, {2, false}, 12) == "You fragged {}\n2nd place with 12");
 	CHECK(Core_FragKillerText(false, true, {1, true}, 9) == "You fragged {}\nTied for 1st place with 9");
 	CHECK(Core_FragVictimText() == "You were fragged by {}");
