@@ -90,7 +90,9 @@ scripts/check.sh          # everything hosted CI runs that needs no game data
 ```
 
 Hosted CI (`.github/workflows/ci.yml`) runs the same script plus both builds,
-the unit tests and the rename drill.
+the unit tests, the unit tests again under ASan and UBSan (job `sanitize`,
+`-DGAME_SANITIZE=ON`; `tests/test_fuzz.cpp` feeds every pure parser
+seeded hostile input) and the rename drill.
 
 **Unit tests** (`tests/`, doctest, target `game_tests`) cover the mod's own
 logic without the engine:
@@ -236,6 +238,19 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   of six in a second is flooded. FFA with no file and `g_loc 2`: the
   nearest item, to everyone; after `set g_loc 0` a callout is refused
   (Q2RED only).
+- **Tier 28 early-commands:** TDM with five simulated players who send
+  `team`, `join`, `ready`, `captain`, `loc`, `kill` and a vote as they
+  connect, before they have entered the game (known id bug 3: stock
+  crashed). The server must survive, nobody joins a team before entering,
+  and `team` afterwards still works. Read from the tap by slot (Q2RED only).
+- **Tier 29 fuzz:** TDM with four simulated players (one an admin)
+  connecting with hostile userinfo (format strings, `$loc` keys, control
+  bytes and 40-byte names; path-trick skins; nan, huge and negative fov and
+  hand) and sending about 2,200 seeded random commands, every client
+  command (the mod's and stock's) with format strings, `$loc` keys, quotes,
+  backslashes, control and UTF-8 bytes, 300-byte and 400-byte arguments,
+  out-of-range numbers and path tricks. The server must survive and quit
+  cleanly, print no errors, and never run stock CTF's admin election (Q2RED only).
 - **Tier 30 downstream:** the example downstream mod (`examples/jump`,
   passed as `--downstream`) with bots on q2dm1: it announces its own
   identity; under ffa the bots frag, under its `jump` gametype (no damage

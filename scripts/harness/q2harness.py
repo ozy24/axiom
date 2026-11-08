@@ -69,6 +69,7 @@ import gzip
 import json
 import os
 import pathlib
+import random
 import re
 import shutil
 import struct
@@ -2212,6 +2213,138 @@ at 68 0 cmd admin match
     results.append((label, not detail, detail))
 
 
+def tier_early_commands(args, results):
+    """Commands from a client that has connected but not yet entered the game
+    (known id bug 3). Stock's `team` put such a client in the game before
+    ClientBegin and crashed the server, on stock as well. TDM, five simulated
+    players who send team, join, ready, captain, loc and kill as they
+    connect: the server must survive, nobody may join a team before they
+    have entered, and `team` after entering must still work (Q2RED only)."""
+    label = "28 early-commands tdm"
+    rig, why = scenario_rig(args, "t28-early")
+    if not rig:
+        results.append((label, True, [f"skipped: {why}"]))
+        return
+    names = ["Alice", "Bob", "Carol", "Dave", "Eve"]
+    lines = ["seconds 36"]
+    for i, name in enumerate(names):
+        lines.append(f"client {i} name={name} social=sim-{name.lower()} puppet join={1 + i * 1.5}")
+    early = ["team red", "team blue", "join", "ready", "captain", "lockteam red", "loc x %l %n", "kill",
+             "callvote map q2dm2", "spectate"]
+    for i in range(len(names)):
+        t = 1 + i * 1.5
+        for k in range(24):  # every 25 ms from the moment it connects
+            lines.append(f"at {t + k * 0.025:.3f} {i} cmd {early[k % len(early)]}")
+        # Each sim client sends one reliable message at a time, so the burst
+        # delays its own spawn: the last enters near 19 s.
+        lines.append(f"at 28 {i} cmd team {'red' if i % 2 else 'blue'}")
+    startup = scenario_startup(rig, ["+set", "g_gametype", "tdm", "+set", "g_loc", "2", "+map", "q2dm1"])
+    log = rig.run(startup, scenario_steps(rig, "\n".join(lines) + "\n"), timeout=args.boot_timeout + 100)
+    # From the tap, by slot: the console's names can't be trusted here (Q2RED
+    # decodes ##P tokens off by one while a dropped connection holds a slot).
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    slots = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
+    detail = []
+    for name in names:
+        if name not in slots:
+            detail.append(f"{name} never connected")
+            continue
+        slot = slots[name]
+        begun = [r["t"] for r in tap if r.get("type") == "begin" and r["slot"] == slot]
+        joined = [r["t"] for r in tap if r.get("type") == "locprint" and r["base"] in ("$g_joined_team", "$g_changed_team")
+                  and r["args"][:1] == [f"##P{slot}"]]
+        if not begun:
+            detail.append(f"{name} never entered the game")
+        elif any(t < begun[0] for t in joined):
+            detail.append(f"{name} joined a team before entering the game")
+        elif not joined:
+            detail.append(f"{name}'s `team` after entering didn't put them on a team")
+    if "SIGSEGV" in log or rig.returncode != 0:
+        detail.append(f"server crashed or exited with code {rig.returncode}")
+    detail += error_lines(log, rig)[:20]
+    results.append((label, not detail, detail))
+
+
+# Hostile arguments for tier 29. Never "cmd " (the sim client runs a printed
+# "cmd ..."), "reconnect" or "precache" (it acts on those in any print), or
+# '#' (a comment in its script, so no ##P name tokens: unit tests cover
+# those).
+FUZZ_ARGS = ["", "%s%s%s%s%n%n", "%d %x %p", "$g_flood_cant_talk", "$item_quad", '"', '""',
+             '"a b', "\\", "\\name\\x", ";", "; quit", "\x01\x02\x1b[31m", "\x7f\x7f", "\u00e9\u00e8\u4e2d",
+             "A" * 300, "9" * 40, "-1", "0", "-2147483648", "2147483648", "4294967296", "1e999", "nan", "inf", "0x7fffffff",
+             "red", "blue", "RED", "spectator", "none", "q2dm1", "Q2DM1", "../../../etc/passwd", "../baseq2/q2dm1",
+             "maps/q2dm1.bsp", "con:", "aux", "ffa", "duel", "tdm", "ctf", "on", "off", "yes", "no", "%l %h %a %w %m %n %N",
+             "%", "%%%%%%", "x " * 200]
+FUZZ_COMMANDS = ["callvote", "callvote map", "callvote ruleset", "callvote gametype", "callvote timelimit",
+                 "callvote fraglimit", "callvote friendlyfire", "callvote powerups", "callvote restart",
+                 "callvote shuffle", "callvote readyall", "callvote readyteam", "callvote kick", "vote", "yes", "no",
+                 "captain", "lockteam", "unlockteam", "teamkick", "readyteam", "teams", "team", "join", "spectate",
+                 "spectator", "ready", "notready", "queue", "loc", "eyecam", "maplist", "votemap", "match", "rulesets",
+                 "ruleset", "time-out", "time-in", "timein", "warp", "admin", "admin setteam", "admin readyall",
+                 "admin endmatch", "admin resetmatch", "admin passvote", "admin cancelvote", "admin lockteam",
+                 "admin spectate", "admin match", "admin set", "admin exec", "admin map", "use", "use_index",
+                 "use_index_only", "drop", "drop_index", "give", "god", "noclip", "notarget", "inven", "invuse",
+                 "invdrop", "invnext", "weapnext", "weapprev", "weaplast", "wave", "players", "playerlist", "score",
+                 "help", "id", "putaway", "stats", "boot", "observer", "switchteam", "ghost", "say", "say_team", "steam",
+                 "listmonsters", "immortal", "menu_select", "saveents"]
+
+
+def tier_fuzz(args, results):
+    """Hostile input from players: every client command, the mod's and
+    stock's, with format strings, name tokens, $loc keys, quotes and
+    backslashes, control and UTF-8 bytes, 300-byte and 400-byte arguments,
+    out-of-range numbers and path tricks; and connect-time userinfo of the
+    same kind (names, skins, fov, hand). TDM with four simulated players, one
+    of them an admin. The server must survive, print no errors and quit
+    cleanly (Q2RED only). Seeded, so a failure reruns the same."""
+    rng = random.Random(29)
+    label = "29 fuzz tdm"
+    rig, why = scenario_rig(args, "t29-fuzz")
+    if not rig:
+        results.append((label, True, [f"skipped: {why}"]))
+        return
+    infos = ["\\skin\\../../../../etc/passwd\\fov\\nan\\hand\\-99999",
+             "\\skin\\male/%s%s%n\\fov\\1e999\\hand\\2147483648\\spectator\\1",
+             "\\skin\\" + "x" * 60 + "\\fov\\-5\\hand\\abc\\password\\%n",
+             "\\skin\\female/\\gender\\none\\fov\\0\\hand\\"]
+    names = ["Al%s%n", "\x01Ctl\x7f", "$g_entered_game", "Z" * 40]
+    lines = ["seconds 40"]
+    for i, (name, info) in enumerate(zip(names, infos)):
+        lines.append(f"client {i} name={name} social=sim-fuzz{i} puppet userinfo={info}")
+    lines.append("at 5 0 cmd admin fuzzpass")
+    lines.append("at 5 1 cmd team red")
+    lines.append("at 5 2 cmd team blue")
+    lines.append("at 5 3 cmd team blue")
+    t = 6.0
+    while t < 34:
+        for i in range(4):
+            command = rng.choice(FUZZ_COMMANDS)
+            argv = " ".join(rng.choice(FUZZ_ARGS) for _ in range(rng.randint(0, 3)))
+            lines.append(f"at {t:.2f} {i} cmd {command} {argv}".rstrip())
+        t += 0.05
+    script = "\n".join(l.replace("\n", " ") for l in lines) + "\n"
+    startup = scenario_startup(rig, ["+set", "g_gametype", "tdm", "+set", "g_loc", "2", "+set", "admin_password",
+                                     "fuzzpass", "+set", "match_timeout", "120", "+set", "flood_msgs", "1000",
+                                     "+map", "q2dm1"])
+    log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 110)
+    tap = read_jsonl(rig.dir / "tap.jsonl")
+    detail = []
+    connected = [r for r in tap if r.get("type") == "connect" and not r.get("bot")]
+    begun = {r["slot"] for r in tap if r.get("type") == "begin"}
+    if len(begun) < 4:
+        detail.append(f"{len(begun)} of 4 clients entered the game (connected: {[r['name'] for r in connected]})")
+    if "SIGSEGV" in log or rig.returncode != 0:
+        detail.append(f"server crashed or exited with code {rig.returncode}")
+    # Stock CTF's admin election (`admin` with no password, allow_admin 1)
+    # gave its winner stock's admin menu and `boot`: admin is the password's
+    # alone (decision 0026).
+    if "has requested admin rights" in log:
+        detail.append("stock's admin election ran")
+    sent = sum(1 for l in lines if l.startswith("at "))
+    detail += error_lines(log, rig)[:20]
+    results.append((label, not detail, detail or [f"{sent} commands"]))
+
+
 def tier_downstream(args, results):
     """The downstream example (examples/jump, docs/downstream.md): a module
     built from this base by another project, with its own identity and its
@@ -2252,7 +2385,7 @@ TIERS = (tier_save_diff, tier_load_stock, tier_dm_smoke, tier_gametype_boot, tie
          tier_teams, tier_warmup, tier_duel_rotation, tier_human_duel, tier_human_teams,
          tier_human_vote, tier_maps, tier_human_settings, tier_human_teamlock,
          tier_human_join, tier_human_readyvote, tier_human_shuffle, tier_entities, tier_startup_ruleset,
-         tier_admin_commands, tier_human_timeout, tier_human_admin, tier_human_loc, tier_downstream)
+         tier_admin_commands, tier_human_timeout, tier_human_admin, tier_human_loc, tier_early_commands, tier_fuzz, tier_downstream)
 
 
 def run_tier(tier, args):
@@ -2261,6 +2394,8 @@ def run_tier(tier, args):
         tier(args, results)
     except Exception as e:  # a crashed tier is a failed tier, not a crashed harness
         results.append((tier.__name__[5:], False, [str(e)]))
+    if not results:  # a tier that reports nothing has checked nothing (a lost results.append)
+        results.append((tier.__name__[5:], False, ["the tier reported no result"]))
     return results
 
 
@@ -2356,7 +2491,7 @@ def main():
     ap.add_argument("--stock-gamerules", default="2,3",
                     help="Rogue's stock gamerules values tier 4 also boots (Tag, DeathBall)")
     ap.add_argument("--boot-seconds", type=float, default=20, help="tier 4 run time per gametype")
-    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset", "admin_commands", "human_timeout", "human_admin", "human_loc", "downstream"])
+    ap.add_argument("--only", choices=["save_diff", "load_stock", "dm_smoke", "gametype_boot", "match_flow", "duel", "teams", "warmup", "duel_rotation", "human_duel", "human_teams", "human_vote", "maps", "human_settings", "human_teamlock", "human_join", "human_readyvote", "human_shuffle", "entities", "startup_ruleset", "admin_commands", "human_timeout", "human_admin", "human_loc", "early_commands", "fuzz", "downstream"])
     args = ap.parse_args()
     if args.command == "test" and not args.candidate:
         ap.error("test needs --candidate")

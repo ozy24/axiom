@@ -245,6 +245,7 @@ if(GAME_BUILD_TESTS)
         tests/test_timeout.cpp
         tests/test_admin.cpp
         tests/test_loc.cpp
+        tests/test_fuzz.cpp
         core/identity.cpp
         core/match_record.cpp
         core/host_files.cpp
@@ -277,6 +278,15 @@ if(GAME_BUILD_TESTS)
         "${MOD_GENERATED_DIR}"
         "${CMAKE_CURRENT_SOURCE_DIR}/third_party/doctest-2.4.11")
     set_target_properties(game_tests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    # The CI `sanitize` job: the unit tests (tests/test_fuzz.cpp above all)
+    # under AddressSanitizer and UBSan, any finding fatal.
+    option(GAME_SANITIZE "Build the unit tests with ASan and UBSan (GCC/Clang)" OFF)
+    if(GAME_SANITIZE AND NOT MSVC)
+        target_compile_options(game_tests PRIVATE -fsanitize=address,undefined -fno-sanitize-recover=all
+                                                  -fno-omit-frame-pointer
+                                                  -Wno-maybe-uninitialized) # GCC false positives under ASan
+        target_link_options(game_tests PRIVATE -fsanitize=address,undefined)
+    endif()
     if(MSVC)
         target_compile_options(game_tests PRIVATE /W4 /WX /permissive-)
         set_property(TARGET game_tests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

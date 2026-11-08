@@ -448,17 +448,10 @@ default doesn't apply until the server restarts).
 - **Not yet:** played with a retail client. BB runs it (below).
 
 ## Known issues
-- One intermittent Q2RED segfault in a CTF server with simulated players
-  (tier 12, 2026-10-27, once under `--jobs 4`); not reproduced in 16 more
-  runs. CI now keeps CRASHLOG.TXT (collect-logs.sh); look there if it recurs.
-  Seen again 2026-10-30: tier 18 human-join tdm under `--jobs 4` locally
-  (crash log lost to a cleanup); three reruns passed. 2026-10-31: not
-  reproduced in six full `--jobs 4` passes and 48 runs of tiers 12 and 18
-  eight at a time; every rig keeps its crash log. 2026-11-06: once in five
-  runs of tier 27 (TDM, five simulated players). The crash log has no
-  backtrace; its last lines are a late-connecting client ("Dave connected",
-  no "entered the game") joining BLUE, then the crash, before any `loc`
-  was sent. A `team` command from a client that hasn't begun is the lead.
+- Q2RED's console decodes `##P` name tokens off by one while a dropped
+  connection still holds a slot (a sim client that retried its connect):
+  "Bob entered the game" for Alice's slot. Only the server's console text;
+  the tap and the clients get the right token. Tier 28 reads the tap.
 - Q2REX under Wine on the jumpbox once stalled after loading base1 (tier 1,
   the stock DLL: no answer to `save`); a rerun passed. Wine also sometimes
   prints "error: XDG_RUNTIME_DIR is invalid" inside `unshare -rn`: it's in
