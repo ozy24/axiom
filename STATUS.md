@@ -1,8 +1,13 @@
 # Status
 
-_Updated at the end of every session. Last update: 2026-11-06 (in-game admin merged with location callouts)._
+_Updated at the end of every session. Last update: 2026-11-08 (release preparation: admin, downstream API, hardening, docs)._
 
-## Current phase: Phase 4 in progress (Tab menu, voting, eyecam, HUD, map rotation, miniscore done)
+## Current phase: preparing the first public release
+
+Phase 4's code is done; its M4 checklist (a human gate) is not. Phase 6
+(downstream builds) is done; Phase 5 (full stats) is not part of the first
+release: match records stay at schema `q2game-match/0`. Release steps are
+in AGENTS.md (Workflow, Releases).
 
 ## Phase 2b, part 1 (match flow) done
 - `core/match.*` state machine (24 unit-test cases) and adapter: warmup,
@@ -370,8 +375,9 @@ Harness tier 26, checked against two broken builds (no lockout; admins
 forgotten across `map`). Not done: an admin page in the Tab menu; logging
 in by social ID (needs a check that IDs can't be forged).
 
-**Next:** the M4 checklist; end-of-match stats (per-weapon accuracy, then a
-JSON match record, then MVD auto-recording through Q2RED's extension). (The FFA/Duel
+**Next:** see "Release preparation" below. After the release:
+end-of-match stats (per-weapon accuracy, MVD auto-recording through Q2RED's
+extension). (The FFA/Duel
 miniscore stays as built: the top two, no highlight. Chris, 2026-10-31.)
 
 **The playtest rig** (`~/q2playtest`, `./run.sh`, `./cmd.sh "<console>"`).
@@ -446,6 +452,38 @@ default doesn't apply until the server restarts).
   message that quotes a bind with `cmd` in it gets executed. The `loc`
   usage text leaves the bind example out for that reason.
 - **Not yet:** played with a retail client. BB runs it (below).
+
+## Release preparation (2026-11-07/08; Chris: "get this release as solid as possible")
+- **Merged:** #48 in-game admin (decision 0026); #42 the water-jump probe
+  (known id bug 2); #51 downstream builds (decision 0028); #52 hardening;
+  #53 release docs.
+- **The intermittent Q2RED segfault was id's bug** (known id bug 3): a
+  client still connecting could send `team` and be put in the game before
+  `ClientBegin`; the stock module crashed every run. `ClientCommand` now
+  ignores clients whose edict isn't in use. Harness tier 28. **BB still
+  runs 3cd6faf, without the fix**: deploy when Chris says.
+- **Fuzzing:** tier 29 (hostile userinfo and about 2,200 random commands
+  from four sim players); `tests/test_fuzz.cpp` (every parser of outside
+  text) under ASan/UBSan in the new hosted `sanitize` job. Nothing found
+  beyond stock CTF's admin election, which #48 had already closed (the tier
+  checks it stays closed). The harness now fails a tier that reports no
+  result (a rebase had dropped tier 26's).
+- **Downstream:** a mod keeps this repo as a submodule and sets
+  `MOD_IDENTITY_FILE`, `GAME_GAMETYPES`, `GAME_GAMETYPE_DIRS`,
+  `GAME_INCLUDE_DIRS` before `add_subdirectory()` (docs/downstream.md).
+  `examples/jump` is a real one: hosted job `downstream`, an MSVC build in
+  `windows`, harness tier 30 with `--downstream`.
+- **Docs:** README, docs/players.md, docs/admin.md (installing, callouts,
+  match records), CHANGELOG.md (Unreleased), `.github/workflows/release.yml`
+  (a `v*` tag that matches `mod.json` and the changelog makes a draft
+  release).
+- **Before going public (Chris):** the M4 checklist on retail (listen
+  server, Q2REX) and the single-player checklist with the MSVC DLL; the
+  version bump and tag; making the repo public, with Actions set to require
+  approval for fork PRs (the self-hosted jobs already skip fork PRs).
+- Learned: `#` starts a comment in a sim-client script, so `##P` tokens
+  can't be sent from one; the sim client sends one reliable command at a
+  time, so a burst of commands delays its own spawn.
 
 ## Known issues
 - Q2RED's console decodes `##P` name tokens off by one while a dropped
