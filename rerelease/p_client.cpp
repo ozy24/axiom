@@ -6,6 +6,7 @@
 #include "core/vote_hooks.h" // [mod]
 #include "core/join_hooks.h" // [mod]
 #include "core/scoreboard_hooks.h" // [mod]
+#include "core/name_cap.h" // [mod]
 #include "core/warmup_hooks.h" // [mod]
 #include "core/frag_message_hooks.h" // [mod]
 #include "core/timeout_hooks.h" // [mod]
@@ -2592,6 +2593,8 @@ void ClientUserinfoChanged(edict_t *ent, const char *userinfo)
 	// set name
 	if (!gi.Info_ValueForKey(userinfo, "name", ent->client->pers.netname, sizeof(ent->client->pers.netname)))
 		Q_strlcpy(ent->client->pers.netname, "badinfo", sizeof(ent->client->pers.netname));
+	if (deathmatch->integer) // [mod] 15 characters, so a team board's columns hold (core/name_cap.h)
+		Q_strlcpy(ent->client->pers.netname, Core_Name_Cap(ent->client->pers.netname).c_str(), sizeof(ent->client->pers.netname)); // [mod]
 
 	// set spectator
 	char val[MAX_INFO_VALUE] = { 0 };

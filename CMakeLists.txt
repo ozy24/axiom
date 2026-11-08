@@ -107,6 +107,7 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_CURRENT_SOURCE_DIR}/core/eyecam_register.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/core/frag_message.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/core/frag_message_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/name_cap.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/core/gametype.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/core/gametype_register.cpp"
     ${GAME_GAMETYPE_SOURCES}
@@ -240,6 +241,7 @@ if(GAME_BUILD_TESTS)
         tests/test_join.cpp
         tests/test_scoreboard.cpp
         tests/test_frag_message.cpp
+        tests/test_name_cap.cpp
         tests/test_entities.cpp
         tests/test_movement.cpp
         tests/test_timeout.cpp
@@ -260,6 +262,7 @@ if(GAME_BUILD_TESTS)
         core/join.cpp
         core/scoreboard.cpp
         core/frag_message.cpp
+        core/name_cap.cpp
         core/entities.cpp
         core/movement.cpp
         core/timeout.cpp

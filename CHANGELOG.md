@@ -46,6 +46,9 @@ clients need nothing installed.
   Duel's duellists and queue, ready marks and captains on team boards.
 - A HUD status line (warmup, ready-up, votes, the countdown), a miniscore,
   frag messages, and a first-person view when watching someone (`eyecam`).
+- Names in deathmatch are cut to 15 characters, classic Quake II's limit,
+  so team boards' columns don't overlap (players' platform names are
+  drawn by their clients and can't be cut).
 
 ### Maps
 - `.ent` override files (MuffMode's keys: per-gametype items, jump pads,
