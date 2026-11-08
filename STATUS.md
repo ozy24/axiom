@@ -477,6 +477,8 @@ default doesn't apply until the server restarts).
   match records), CHANGELOG.md (Unreleased), `.github/workflows/release.yml`
   (a `v*` tag that matches `mod.json` and the changelog makes a draft
   release).
+- **Single player on retail passed** (2026-11-08, part A of the release
+  checklist, `docs/checklists/results/2026-11-08-release.md`).
 - **Before going public (Chris):** `docs/checklists/release.md` on retail
   (single player and a listen server with the MSVC DLL, then the retail
   client against the rig: fonts, layouts, feel); the
