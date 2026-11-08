@@ -323,7 +323,8 @@ These come from id's code and the engine; each was verified in source.
 - A change players or admins will notice gets a line in `CHANGELOG.md`'s
   Unreleased section, and the player or admin guide (`docs/players.md`,
   `docs/admin.md`) if it changes what they type or set.
-- **Releases** are Chris's call (version bump, publishing). To cut one: set
+- **Releases** are Chris's call (version bump, publishing), after he has run
+  `docs/checklists/release.md` on retail. To cut one: set
   `mod.json`'s version, rename the changelog's Unreleased section to
   `## <version> (<date>)`, merge, then tag `v<version>` on main.
   `.github/workflows/release.yml` refuses a tag that disagrees with either,
