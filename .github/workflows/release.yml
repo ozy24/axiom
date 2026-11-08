@@ -1,0 +1,114 @@
+# A release: push a tag `v<version>` on main, where <version> is mod.json's
+# and CHANGELOG.md has a `## <version>` section. This builds both modules as
+# CI does (MSVC for Windows; GCC 12 on Ubuntu 22.04 with a static C++
+# runtime for Linux), packages them with the player and admin docs, and
+# leaves a DRAFT release. Publishing it is a person's decision (AGENTS.md,
+# human gates).
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    outputs:
+      id: ${{ steps.mod.outputs.id }}
+      name: ${{ steps.mod.outputs.name }}
+      version: ${{ steps.mod.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: The tag, mod.json and the changelog agree
+        id: mod
+        run: |
+          python3 -I - "$GITHUB_REF_NAME" <<'PY' >> "$GITHUB_OUTPUT"
+          import json, re, sys
+          tag = sys.argv[1]
+          mod = json.load(open("mod.json"))
+          if tag != "v" + mod["version"]:
+              sys.exit(f"tag {tag} is not v{mod['version']} (mod.json)")
+          if not re.search(rf"^## {re.escape(mod['version'])}\b", open("CHANGELOG.md").read(), re.M):
+              sys.exit(f"CHANGELOG.md has no '## {mod['version']}' section")
+          for k in ("id", "name", "version"):
+              print(f"{k}={mod[k]}")
+          PY
+
+  linux:
+    needs: check
+    runs-on: ubuntu-24.04
+    container: ubuntu:22.04
+    steps:
+      - name: Install toolchain
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq g++-12 cmake ninja-build git
+      - uses: actions/checkout@v4
+      - name: Let git read the checkout (owned by another user in the container)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Build
+        run: |
+          cmake --preset linux-release -DCMAKE_CXX_COMPILER=g++-12 -DGAME_STATIC_RUNTIME=ON
+          cmake --build --preset linux-release
+          ctest --test-dir build/linux-release --output-on-failure
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: build/linux-release/game_x64.so
+          if-no-files-found: error
+
+  windows:
+    needs: check
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: x64
+      - name: Build
+        run: |
+          cmake --preset windows-msvc-release
+          cmake --build --preset windows-msvc-release
+          ctest --test-dir build/windows-msvc-release --output-on-failure
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: build/windows-msvc-release/game_x64.dll
+          if-no-files-found: error
+
+  draft:
+    needs: [check, linux, windows]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: modules
+      - name: Package
+        env:
+          ID: ${{ needs.check.outputs.id }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          dir="$ID-$VERSION"
+          mkdir -p "$dir/docs"
+          cp modules/windows/game_x64.dll modules/linux/game_x64.so "$dir/"
+          cp README.md CHANGELOG.md LICENSE THIRD_PARTY_NOTICES.md "$dir/"
+          cp docs/players.md docs/admin.md "$dir/docs/"
+          (cd "$dir" && sha256sum game_x64.dll game_x64.so > SHA256SUMS)
+          zip -qr "$dir.zip" "$dir"
+          cp "$dir/game_x64.dll" "$dir/game_x64.so" "$dir/SHA256SUMS" .
+          # The release notes: this version's section of the changelog.
+          awk -v v="$VERSION" '$0 ~ "^## "v"( |$)" {on=1; next} on && /^## / {exit} on' CHANGELOG.md > notes.md
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NAME: ${{ needs.check.outputs.name }}
+          ID: ${{ needs.check.outputs.id }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
+            --title "$NAME $VERSION" --notes-file notes.md \
+            "$ID-$VERSION.zip" game_x64.dll game_x64.so SHA256SUMS

@@ -1,5 +1,28 @@
 # Running a server
 
+## Installing
+
+The mod is one file: `game_x64.dll` (Windows) or `game_x64.so` (Linux).
+Players need nothing: they join with their normal client.
+
+- **Windows, the retail game or Q2REX:** back up `baseq2/game_x64.dll` and
+  put the mod's in its place. Single player, coop and the mission packs
+  keep working as stock, so the swap is safe for a listen server too. To
+  go back, restore the backup.
+- **Linux, Q2RED's dedicated server:** give it a folder of its own beside
+  `baseq2` (`<basedir>/axiom/game_x64.so`) and start the server with
+  `+set game axiom`. Maps, `.ent` and `.loc` files are still found in
+  `baseq2`. The `.so` is built on Ubuntu 22.04 with its C++ runtime
+  linked in, so it loads on any distribution with glibc 2.35 or later.
+
+The server's console prints the version as the game loads
+(`Axiom 0.1.0 (<build>)`), and `g_version` holds it.
+
+The files below (`server.cfg`, `rulesets/`, `maps/`, `locs/`) go in the
+same game folder as the module.
+
+## Your files
+
 Two kinds of file, and plain console commands in both (decision 0013).
 
 | File | Holds |
@@ -9,7 +32,7 @@ Two kinds of file, and plain console commands in both (decision 0013).
 
 Nothing else is needed: every gametype works with no files at all.
 
-## server.cfg
+### server.cfg
 
 ```
 set hostname "My Server"
@@ -137,6 +160,22 @@ Set it in `server.cfg`. Details: docs/design/joining.md.
 
 Bots aren't moved: use `bot_count`.
 
+## Match records
+
+```
+set g_matchlog_dir "matches"   // empty (the default): none written
+```
+
+Each finished match is written as one JSON file,
+`<yyyymmdd-hhmmss>-<map>.json` (UTC): the gametype, ruleset, map, why it
+ended, how long it was live, every player's score and team, the teams'
+scores and the winner. The log says where (`Match record: ...`). A
+relative directory goes in the game folder on Q2RED, and under the
+server's working directory elsewhere.
+
+The format is `"schema": "q2game-match/0"`: version 0, which may still
+change before 1.0 (listed in CHANGELOG.md when it does).
+
 ## Admins in the game
 
 Give trusted players a password and they can run a match from inside the
@@ -224,6 +263,27 @@ work as they are. The log names the file it used (`Entities:
 maps/q2dm1.ent`); a broken one is skipped with the reason. `set
 g_entity_override_load 0` turns the files off. Details:
 docs/design/entities.md.
+
+## Location callouts
+
+Players' `loc` binds (`cmd loc ENEMY - %l`, docs/players.md) name their
+place from a map's `.loc` file: `locs/<map>.loc`, the community format
+(MuffMode's and other mods' files work as they are):
+
+```
+// one place per line: x y z (eight times the map's coordinates), then its name
+1024 -512 256 Red Armor
+```
+
+| | Default | |
+|---|---|---|
+| `g_loc` | 0 (every built-in ruleset sets 2) | 0: off. 1: the map's `.loc` file only. 2: the file, or with none, the nearest weapon, powerup or mega health ("upper RG") |
+| `g_loc_dir` | `locs` | where the files are |
+
+A file is read when its map loads (`Loc: 136 places from locs/q2dm1.loc`
+in the log). Callouts are team chat in team games and use the chat flood
+limits (`flood_msgs`, `flood_persecond`, `flood_waitdelay`). Details:
+decision 0027.
 
 ## Jumps and teleporters
 
