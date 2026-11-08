@@ -477,8 +477,9 @@ default doesn't apply until the server restarts).
   match records), CHANGELOG.md (Unreleased), `.github/workflows/release.yml`
   (a `v*` tag that matches `mod.json` and the changelog makes a draft
   release).
-- **Before going public (Chris):** the M4 checklist on retail (listen
-  server, Q2REX) and the single-player checklist with the MSVC DLL; the
+- **Before going public (Chris):** `docs/checklists/release.md` on retail
+  (single player and a listen server with the MSVC DLL, then the retail
+  client against the rig: fonts, layouts, feel); the
   version bump and tag; making the repo public, with Actions set to require
   approval for fork PRs (the self-hosted jobs already skip fork PRs).
 - Learned: `#` starts a comment in a sim-client script, so `##P` tokens
