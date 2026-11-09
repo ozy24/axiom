@@ -83,6 +83,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true # logs only: a full artifact quota doesn't fail passed tests
         with:
           name: game-test-logs
           path: harness-logs/
