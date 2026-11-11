@@ -68,16 +68,9 @@ jobs:
           echo "exports: $exports"
           [ "$exports" = "GetGameAPI" ] || { echo "unexpected exports"; exit 1; }
           if ldd "$so" | grep -E 'libstdc\+\+|libgcc_s'; then echo "C++ runtime not static"; exit 1; fi
-      # Artifact storage is a quota (it filled on 2026-11-09, failing every
-      # PR): nothing downloads this one, so it's kept a week, and a full
-      # quota doesn't fail a build that passed.
-      - uses: actions/upload-artifact@v4
-        continue-on-error: true
-        with:
-          name: game-module-linux-x64
-          path: build/linux-release/game_x64.so
-          if-no-files-found: error
-          retention-days: 7
+      # No artifact of the Linux module: nothing downloads it, and at 19 MB
+      # a run it filled the private repo's 500 MB artifact quota (2026-11-09),
+      # failing every PR. The release workflow builds its own.
 
   sanitize:
     # The unit tests (tests/test_fuzz.cpp above all) under AddressSanitizer
