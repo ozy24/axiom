@@ -9,4 +9,5 @@ python3 -I scripts/check_save_baseline.py
 python3 -I scripts/check_name_leak.py
 python3 -I scripts/check_mod_markers.py
 python3 -I scripts/check_core_seam.py
+python3 -I scripts/check_gameplay_cvars.py
 scripts/check_format.sh
