@@ -103,7 +103,7 @@ const size_t core_ruleset_count = sizeof(core_rulesets) / sizeof(core_rulesets[0
 // The defaults their modules register: g_gametype (core/gametype_register.cpp),
 // match_* (core/match_register.cpp, core/timeout_register.cpp), the limits (rerelease/g_main.cpp),
 // g_map_list, g_map_list_shuffle, g_no_items and g_friendly_fire
-// (rerelease/g_main.cpp).
+// (rerelease/g_main.cpp), g_disable_items (core/entities_register.cpp).
 const GameplayCvar core_gameplay_cvars[] = {
     {"g_gametype", "ffa"},
     {"ctf", "0"},
@@ -130,6 +130,7 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"g_scoreboard", "0"},    // the column board (core/scoreboard_register.cpp)
     {"g_frag_messages", "0"}, // the centre prints on a frag (core/frag_message_register.cpp)
     {"g_loc", "0"},           // location callouts (core/loc_register.cpp)
+    {"g_disable_items", ""},  // items that don't spawn (core/entities_register.cpp)
 };
 const size_t core_gameplay_cvar_count = sizeof(core_gameplay_cvars) / sizeof(core_gameplay_cvars[0]);
 
