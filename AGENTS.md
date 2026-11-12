@@ -44,6 +44,7 @@ Principles:
 | `docs/baselines/` | Generated baselines the checks compare against |
 | `docs/decisions/` | One file per settled question. Add one when you settle something. |
 | `examples/jump/` | A downstream mod built on this one (docs/downstream.md); CI builds and boots it |
+| `examples/server/` | Example server files for the release zip; `rulesets/{ffa,duel,tdm,ctf}.cfg` are generated (`scripts/gen_example_rulesets.py`, checked by `check.sh`) |
 | `repos/` | Local reference checkouts (Q2REX, MuffMode, id). **Git-ignored; never commit.** |
 
 New code (from Phase 2) goes in small, focused files under `core/` and
@@ -327,9 +328,12 @@ These come from id's code and the engine; each was verified in source.
 - **Releases** are Chris's call (version bump, publishing), after he has run
   `docs/checklists/release.md` on retail. To cut one: set
   `mod.json`'s version, rename the changelog's Unreleased section to
-  `## <version> (<date>)`, merge, then tag `v<version>` on main.
-  `.github/workflows/release.yml` refuses a tag that disagrees with either,
-  builds both modules and leaves a draft release to publish.
+  `## <version> (<date>)` and merge; then run the `release` workflow on
+  main (Actions, Run workflow). It refuses a version without a changelog
+  section or one already released, builds both modules, packs them with
+  the docs and `examples/server/` (generated rulesets:
+  `scripts/gen_example_rulesets.py`) and leaves a draft release. Never push
+  a `v*` tag: publishing the draft creates it.
 - End every session by updating `STATUS.md`.
 
 ## Glossary

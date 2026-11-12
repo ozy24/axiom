@@ -475,8 +475,8 @@ default doesn't apply until the server restarts).
   `windows`, harness tier 30 with `--downstream`.
 - **Docs:** README, docs/players.md, docs/admin.md (installing, callouts,
   match records), CHANGELOG.md (Unreleased), `.github/workflows/release.yml`
-  (a `v*` tag that matches `mod.json` and the changelog makes a draft
-  release).
+  (run by hand on main: a draft release with both modules, the docs and
+  `examples/server/`; publishing it creates the tag).
 - **Single player on retail passed** (2026-11-08, part A of the release
   checklist, `docs/checklists/results/2026-11-08-release.md`).
 - **Before going public (Chris):** `docs/checklists/release.md` on retail

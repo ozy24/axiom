@@ -1,14 +1,16 @@
-# A release: push a tag `v<version>` on main, where <version> is mod.json's
-# and CHANGELOG.md has a `## <version>` section. This builds both modules as
-# CI does (MSVC for Windows; GCC 12 on Ubuntu 22.04 with a static C++
-# runtime for Linux), packages them with the player and admin docs, and
-# leaves a DRAFT release. Publishing it is a person's decision (AGENTS.md,
-# human gates).
+# A release, started by hand: Actions -> release -> Run workflow, on main.
+# mod.json's version must have a `## <version>` section in CHANGELOG.md, and
+# no release for it may exist yet. This builds both modules as CI does
+# (MSVC for Windows; GCC 12 on Ubuntu 22.04 with a static C++ runtime for
+# Linux), packages them with the docs and the example server files, and
+# leaves a DRAFT release, visible only to the repo's maintainers. Publishing
+# it is a person's decision (AGENTS.md, human gates), and creates the tag
+# v<version> on the commit it was built from; until then there is no tag,
+# so a draft can be deleted and made again.
 name: release
 
 on:
-  push:
-    tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -22,20 +24,35 @@ jobs:
       version: ${{ steps.mod.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      - name: The tag, mod.json and the changelog agree
+      - name: Run on main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run the release from main, not $GITHUB_REF_NAME"
+          exit 1
+      - name: mod.json and the changelog agree
         id: mod
         run: |
-          python3 -I - "$GITHUB_REF_NAME" <<'PY' >> "$GITHUB_OUTPUT"
+          python3 -I - <<'PY' >> "$GITHUB_OUTPUT"
           import json, re, sys
-          tag = sys.argv[1]
           mod = json.load(open("mod.json"))
-          if tag != "v" + mod["version"]:
-              sys.exit(f"tag {tag} is not v{mod['version']} (mod.json)")
           if not re.search(rf"^## {re.escape(mod['version'])}\b", open("CHANGELOG.md").read(), re.M):
-              sys.exit(f"CHANGELOG.md has no '## {mod['version']}' section")
+              sys.exit(f"CHANGELOG.md has no '## {mod['version']}' section: rename Unreleased first")
           for k in ("id", "name", "version"):
               print(f"{k}={mod[k]}")
           PY
+      - name: No release or tag for this version yet
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.mod.outputs.version }}
+        run: |
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::A release v$VERSION exists (a draft too): delete it to make it again, or bump the version"
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+            echo "::error::Tag v$VERSION exists: bump the version"
+            exit 1
+          fi
 
   linux:
     needs: check
@@ -99,6 +116,7 @@ jobs:
           cp modules/windows/game_x64.dll modules/linux/game_x64.so "$dir/"
           cp README.md CHANGELOG.md LICENSE THIRD_PARTY_NOTICES.md "$dir/"
           cp docs/players.md docs/admin.md "$dir/docs/"
+          cp -r examples/server "$dir/examples"
           (cd "$dir" && sha256sum game_x64.dll game_x64.so > SHA256SUMS)
           zip -qr "$dir.zip" "$dir"
           cp "$dir/game_x64.dll" "$dir/game_x64.so" "$dir/SHA256SUMS" .
@@ -111,6 +129,6 @@ jobs:
           ID: ${{ needs.check.outputs.id }}
           VERSION: ${{ needs.check.outputs.version }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
+          gh release create "v$VERSION" --draft --target "$GITHUB_SHA" \
             --title "$NAME $VERSION" --notes-file notes.md \
             "$ID-$VERSION.zip" game_x64.dll game_x64.so SHA256SUMS
