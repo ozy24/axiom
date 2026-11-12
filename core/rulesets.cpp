@@ -131,6 +131,28 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"g_frag_messages", "0"}, // the centre prints on a frag (core/frag_message_register.cpp)
     {"g_loc", "0"},           // location callouts (core/loc_register.cpp)
     {"g_disable_items", ""},  // items that don't spawn (core/entities_register.cpp)
+    // Stock's own gameplay switches (rerelease/g_main.cpp), so a variant's
+    // `set g_instagib 1` ends with the variant.
+    {"g_instagib", "0"},
+    {"g_infinite_ammo", "0"},
+    {"g_no_armor", "0"},
+    {"g_no_health", "0"},
+    {"g_no_mines", "0"},
+    {"g_no_nukes", "0"},
+    {"g_no_spheres", "0"},
+    {"g_dm_weapons_stay", "0"},
+    {"g_dm_instant_items", "1"},
+    {"g_dm_no_fall_damage", "0"},
+    {"g_dm_no_quad_drop", "0"},
+    {"g_dm_no_quadfire_drop", "0"},
+    {"g_dm_no_stack_double", "0"},
+    {"g_dm_random_items", "0"},
+    {"g_dm_same_level", "0"},
+    {"g_dm_spawn_farthest", "1"},
+    {"g_dm_strong_mines", "0"},
+    {"g_dm_force_respawn", "0"},
+    {"g_dm_force_respawn_time", "0"},
+    {"g_dm_allow_exit", "0"},
 };
 const size_t core_gameplay_cvar_count = sizeof(core_gameplay_cvars) / sizeof(core_gameplay_cvars[0]);
 

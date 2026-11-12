@@ -129,7 +129,11 @@ your `rulesets/ctf.cfg`.
 | `sv rulesets` | list every mode and where its settings come from |
 | `callvote gametype <name>` | players' way: a vote, which reloads the map |
 
-Each switch starts clean: nothing a previous mode set carries over.
+Each switch starts clean: nothing a previous mode set carries over,
+stock's gameplay switches included (`g_instagib`, `g_dm_weapons_stay`,
+`g_no_armor`...). Three settings are the server's, not a mode's, and hold
+across switches: `g_classic_jumps`, `g_teleporter_freeze` and
+`sv_gravity`. Set them in `server.cfg`.
 
 ## Joining
 
