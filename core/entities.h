@@ -39,6 +39,12 @@ bool Core_Entities_IsKey(std::string_view key);
 // Other known keys (author, notarena...) change nothing.
 bool Core_Entities_Excluded(const EntityKeys &keys, const EntitySpawnMode &mode);
 
+// Whether `classname` is in g_disable_items (a list, spaces or commas, any
+// case), so it doesn't spawn in deathmatch: MuffMode's disable_<item>
+// switches as one setting. Only pickups can be disabled (item_, weapon_,
+// ammo_), never a CTF flag: anything else in the list is ignored.
+bool Core_Entities_Disabled(std::string_view list, std::string_view classname);
+
 // MuffMode's small and large ammo: stock's ammo with its own amount and
 // model, which retail's pak0 carries.
 struct AmmoAlias

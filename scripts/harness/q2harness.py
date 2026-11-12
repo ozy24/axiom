@@ -1666,6 +1666,7 @@ ENTITY_ADDITIONS = """
 { "classname" "target_remove_powerups" "targetname" "t_strip" "origin" "0 0 0" }
 { "classname" "trigger_multiple" "origin" "0 0 0" "mins" "-4096 -4096 -4096" "maxs" "4096 4096 4096" "target" "t_strip" }
 { "classname" "trigger_teleport" "model" "*1" "target" "t_apex" }
+{ "classname" "item_power_shield" "origin" "-144 432 676" }
 """
 
 
@@ -1678,7 +1679,9 @@ def tier_entities(args, results):
     starting file for a map without one but never over an existing one.
     A map-sized trigger fires target_remove_powerups at the bots (it once
     crashed on its first player: playtest 2026-10-30), and a
-    trigger_teleport's brush is hidden (stock draws it)."""
+    trigger_teleport's brush is hidden (stock draws it). Duel sets
+    g_disable_items (in capitals, as admins may type it): the Power Shield
+    is left out there and spawns in FFA."""
     world, rest = bsp_entities(args.retail, "q2dm1").split("}", 1)
     text = world + '"author" "harness"\n"no_dm_spawnpads" "1"\n}' + rest + ENTITY_ADDITIONS
     for gametype, left_out in (("ffa", 4), ("duel", 3)):
@@ -1686,8 +1689,9 @@ def tier_entities(args, results):
         game_dir = rig.dir / "baseq2" if args.engine_kind == "q2red" else rig.base / "baseq2"
         (game_dir / "maps").mkdir(parents=True, exist_ok=True)
         (game_dir / "maps" / "q2dm1.ent").write_text(text, encoding="latin1")
+        disable = ["+set", "g_disable_items", "ITEM_POWER_SHIELD"] if gametype == "duel" else []
         startup = (["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_gametype", gametype]
-                   + rig.bot_args() + ["+map", "q2dm1"])
+                   + disable + rig.bot_args() + ["+map", "q2dm1"])
         # Q2REX's bots begin but may not announce it in a bot-only match.
         joined = ("wait", r"entered the game", 30) if rig.expects_frags else ("sleep", 10)
         steps = [rig.wait_ready(), joined, ("sleep", 5), ("cmd", "sv saveents"), ("sleep", 1)]
@@ -1703,6 +1707,11 @@ def tier_entities(args, results):
         if want not in log:
             found = re.findall(r"Entities: \d+ left out.*", log)
             detail.append(f"expected '{want}', got {found}")
+        disabled = re.findall(r"Entities: \d+ disabled by g_disable_items", log)
+        if gametype == "duel" and disabled != ["Entities: 1 disabled by g_disable_items"]:
+            detail.append(f"g_disable_items: expected the Power Shield left out, got {disabled}")
+        if gametype == "ffa" and disabled:
+            detail.append(f"g_disable_items is empty, yet {disabled}")
         if "Entities: 1 jump pads aimed" not in log:
             detail.append("the jump pad wasn't aimed at its target_position")
         # Stock draws its brush, trigger texture and all (playtest 2026-10-30).

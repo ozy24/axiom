@@ -206,6 +206,7 @@ to docs alone (`*.md`, `docs/`) skips both game-test jobs.
   say, nothing is unknown, the pad is aimed, a map-sized trigger fires
   `target_remove_powerups` at the bots, and `sv saveents` writes
   q2dm2's list but never over an existing file (docs/design/entities.md).
+  Duel's `g_disable_items` leaves out the file's Power Shield; FFA keeps it.
 - **Tier 23 startup-ruleset:** an empty server started with `set g_ruleset
   ffa`: rulesets/ffa.cfg's settings and a file it execs are in force as the
   first map spawns (its `.ent` folder is the file's), with nobody connecting.
