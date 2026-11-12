@@ -68,11 +68,9 @@ jobs:
           echo "exports: $exports"
           [ "$exports" = "GetGameAPI" ] || { echo "unexpected exports"; exit 1; }
           if ldd "$so" | grep -E 'libstdc\+\+|libgcc_s'; then echo "C++ runtime not static"; exit 1; fi
-      - uses: actions/upload-artifact@v4
-        with:
-          name: game-module-linux-x64
-          path: build/linux-release/game_x64.so
-          if-no-files-found: error
+      # No artifact of the Linux module: nothing downloads it, and at 19 MB
+      # a run it filled the private repo's 500 MB artifact quota (2026-11-09),
+      # failing every PR. The release workflow builds its own.
 
   sanitize:
     # The unit tests (tests/test_fuzz.cpp above all) under AddressSanitizer
@@ -181,6 +179,8 @@ jobs:
           name: game-module-windows-x64
           path: build/windows-msvc-release/game_x64.dll
           if-no-files-found: error
+          # windows-game-tests runs it, and the release checklist downloads it.
+          retention-days: 30
 
   changes:
     # Whether anything but docs changed: a docs-only change runs no game code,
@@ -242,6 +242,7 @@ jobs:
         run: scripts/harness/collect-logs.sh "${RIGS:-/nonexistent}" harness-logs
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true # logs only: a full artifact quota doesn't fail passed tests
         with:
           name: windows-game-test-logs
           path: harness-logs/
