@@ -23,7 +23,7 @@ TITLES = {"ffa": "Free For All", "duel": "Duel", "tdm": "Team Deathmatch", "ctf"
 # Stock maps only: every player has them (Chris, 2026-11-12).
 MAP_LISTS = {
     "ffa": "q2dm1 q2dm2 q2dm3 q2dm4 q2dm5 q2dm6 q2dm7 q2dm8",
-    "duel": "q2dm1 q2dm2 q2dm3 q2dm6 q2dm8",
+    "duel": "q2dm1 q2dm2 q2dm3 q64/dm3 q64/dm4 q64/dm8",  # as the ranked duel server
     "tdm": "q2dm1 q2dm2 q2dm3 q2dm4 q2dm5 q2dm6 q2dm7 q2dm8",
     "ctf": "q2ctf1 q2ctf2 q2ctf3 q2ctf4 q2ctf5",
 }
