@@ -35,6 +35,18 @@ only for Clan Arena stays out of all four.
 The log counts what the keys left out: `Entities: 4 left out of ffa by
 their keys`.
 
+## Disabling items
+
+`g_disable_items` lists pickups that don't spawn in deathmatch, on any
+map: `set g_disable_items "item_power_shield"`. It is MuffMode's
+`disable_<item>` switches as one setting (BB took the Power Shield off
+every map that way). Classnames, spaces or commas between them, any case;
+only `item_`, `weapon_` and `ammo_` entities, never a CTF flag. It is read
+as a level spawns, so it applies from the next map, and it is checked
+before the mode keys. Empty by default, and no built-in ruleset sets it:
+removing an item changes gameplay, which stays stock unless an admin says
+otherwise. The log counts them: `Entities: 1 disabled by g_disable_items`.
+
 ## Entities
 
 | Entity | Here |

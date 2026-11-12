@@ -132,3 +132,23 @@ TEST_CASE("entities: a .ent file must be well-formed and begin with worldspawn")
 	CHECK(error == "expected { at entity 2");
 	CHECK_FALSE(Core_Entities_ValidFile("{ \"classname\" }", error)); // a key without its value
 }
+
+TEST_CASE("entities: g_disable_items, any case, spaces or commas")
+{
+	CHECK(Core_Entities_Disabled("item_power_shield", "item_power_shield"));
+	CHECK(Core_Entities_Disabled("ITEM_POWER_SHIELD", "item_power_shield"));
+	CHECK(Core_Entities_Disabled("item_quad, item_power_shield", "item_power_shield"));
+	CHECK(Core_Entities_Disabled("item_quad item_power_screen weapon_bfg", "weapon_bfg"));
+	CHECK(Core_Entities_Disabled("ammo_slugs", "ammo_slugs"));
+	CHECK_FALSE(Core_Entities_Disabled("", "item_power_shield"));
+	CHECK_FALSE(Core_Entities_Disabled("item_power_shield", "item_power_screen"));
+	CHECK_FALSE(Core_Entities_Disabled("item_power", "item_power_shield")); // whole words only
+}
+
+TEST_CASE("entities: g_disable_items leaves everything but pickups alone")
+{
+	CHECK_FALSE(Core_Entities_Disabled("info_player_deathmatch", "info_player_deathmatch"));
+	CHECK_FALSE(Core_Entities_Disabled("trigger_push misc_teleporter", "trigger_push"));
+	CHECK_FALSE(Core_Entities_Disabled("item_flag_team1", "item_flag_team1"));
+	CHECK_FALSE(Core_Entities_Disabled("item_", "item_"));
+}

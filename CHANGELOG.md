@@ -51,6 +51,9 @@ clients need nothing installed.
 - `.ent` override files (MuffMode's keys: per-gametype items, jump pads,
   small ammo); `sv saveents` writes a map's list to start from.
 - Original Quake II's jump heights below height 0 (`g_classic_jumps`).
+- `g_disable_items`: items, weapons or ammo that don't spawn on any map
+  (MuffMode's `disable_<item>`), e.g. `"item_power_shield"`. Empty by
+  default.
 
 ### Fixed from stock
 - Tag crashed on the first frame of every map.

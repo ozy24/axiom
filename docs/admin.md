@@ -264,6 +264,16 @@ maps/q2dm1.ent`); a broken one is skipped with the reason. `set
 g_entity_override_load 0` turns the files off. Details:
 docs/design/entities.md.
 
+To take an item off every map instead, list it in `g_disable_items`,
+in the gametype's ruleset (it applies from the next map):
+
+```
+set g_disable_items "item_power_shield"      // as MuffMode's disable_item_power_shield
+```
+
+Classnames, separated by spaces; only items, weapons and ammo (never a
+CTF flag). Empty by default: every item spawns, as stock.
+
 ## Location callouts
 
 Players' `loc` binds (`cmd loc ENEMY - %l`, docs/players.md) name their

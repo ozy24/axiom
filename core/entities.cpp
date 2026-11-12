@@ -156,6 +156,18 @@ bool Core_Entities_IsKey(std::string_view key)
 	return false;
 }
 
+bool Core_Entities_Disabled(std::string_view list, std::string_view classname)
+{
+	const auto starts = [&](std::string_view prefix)
+	{ return classname.size() > prefix.size() && Same(classname.substr(0, prefix.size()), prefix); };
+	if (!(starts("item_") || starts("weapon_") || starts("ammo_")) || starts("item_flag_"))
+		return false;
+	for (std::string_view word : Words(list))
+		if (Same(word, classname))
+			return true;
+	return false;
+}
+
 bool Core_Entities_Excluded(const EntityKeys &keys, const EntitySpawnMode &mode)
 {
 	for (const auto &[key, value] : keys)
