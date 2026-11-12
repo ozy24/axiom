@@ -59,6 +59,7 @@ jobs:
           name: linux
           path: build/linux-release/game_x64.so
           if-no-files-found: error
+          retention-days: 7 # the draft job takes it straight away
 
   windows:
     needs: check
@@ -78,6 +79,7 @@ jobs:
           name: windows
           path: build/windows-msvc-release/game_x64.dll
           if-no-files-found: error
+          retention-days: 7 # the draft job takes it straight away
 
   draft:
     needs: [check, linux, windows]
