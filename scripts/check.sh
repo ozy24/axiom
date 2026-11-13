@@ -10,4 +10,5 @@ python3 -I scripts/check_name_leak.py
 python3 -I scripts/check_mod_markers.py
 python3 -I scripts/check_core_seam.py
 python3 -I scripts/check_gameplay_cvars.py
+python3 -I scripts/gen_example_rulesets.py --check
 scripts/check_format.sh
