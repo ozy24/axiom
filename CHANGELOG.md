@@ -4,7 +4,7 @@ Every release, newest first. Version numbers follow `mod.json`; until 1.0
 the server settings and the downstream API (docs/downstream.md) may still
 change, and every such change is listed here.
 
-## Unreleased: the first public release
+## 0.1.0 (2026-11-13): the first public release
 
 A Quake II Rerelease game module for competitive and public servers, built
 on id's GPL game source and a drop-in replacement for `baseq2/game_x64.dll`.
