@@ -131,9 +131,18 @@ your `rulesets/ctf.cfg`.
 
 Each switch starts clean: nothing a previous mode set carries over,
 stock's gameplay switches included (`g_instagib`, `g_dm_weapons_stay`,
-`g_no_armor`...). Three settings are the server's, not a mode's, and hold
-across switches: `g_classic_jumps`, `g_teleporter_freeze` and
-`sv_gravity`. Set them in `server.cfg`.
+`g_no_armor`...). Four settings are the server's, not a mode's, and hold
+across switches: `g_classic_jumps`, `g_teleporter_freeze`, `g_no_blood`
+and `sv_gravity`. Set them in `server.cfg`.
+
+## No blood
+
+`set g_no_blood 1` (default 0) makes a game without blood: hits on players
+and monsters show sparks instead of blood, and a gibbed body's pieces and
+head are not drawn (metal pieces stay, without a blood trail). It changes
+only what the server sends, so it works with stock clients, in deathmatch
+and single player alike. Set it before playing, in `server.cfg` or the
+console; it applies to every hit from then on.
 
 ## Joining
 

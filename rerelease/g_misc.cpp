@@ -5,6 +5,7 @@
 #include "g_local.h"
 #include "core/entities_hooks.h" // [mod]
 #include "core/movement_hooks.h" // [mod]
+#include "core/gore_hooks.h" // [mod]
 
 /*QUAKED func_group (0 0 0) ?
 Used to group brushes together just for editor convenience.
@@ -207,6 +208,7 @@ edict_t *ThrowGib(edict_t *self, const char *gibname, int damage, gib_type_t typ
 	else
 		gib->nextthink = level.time + random_time(10_sec, 20_sec);
 
+	Core_Gore_Gib(gib, type); // [mod] g_no_blood: flesh gibs not drawn
 	gi.linkentity(gib);
 
 	gib->watertype = gi.pointcontents(gib->s.origin);
@@ -266,6 +268,7 @@ void ThrowClientHead(edict_t *self, int damage)
 		self->nextthink = 0_ms;
 	}
 
+	Core_Gore_Gib(self, GIB_NONE); // [mod] g_no_blood: the head not drawn
 	gi.linkentity(self);
 }
 

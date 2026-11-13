@@ -3,6 +3,7 @@
 // g_combat.c
 
 #include "g_local.h"
+#include "core/gore_hooks.h" // [mod]
 
 /*
 ============
@@ -118,6 +119,7 @@ SpawnDamage
 */
 void SpawnDamage(int type, const vec3_t &origin, const vec3_t &normal, int damage)
 {
+	type = Core_Gore_HitEffect(type); // [mod] g_no_blood: sparks, not blood
 	if (damage > 255)
 		damage = 255;
 	gi.WriteByte(svc_temp_entity);

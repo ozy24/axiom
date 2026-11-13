@@ -4,6 +4,13 @@ Every release, newest first. Version numbers follow `mod.json`; until 1.0
 the server settings and the downstream API (docs/downstream.md) may still
 change, and every such change is listed here.
 
+## Unreleased
+
+### Settings
+- **`g_no_blood`** (default 0): sparks instead of blood on hits, and no
+  flesh gibs (a gibbed body's pieces and head are not drawn). Server-side,
+  so stock clients need nothing (docs/admin.md, "No blood").
+
 ## 0.1.0 (2026-11-13): the first public release
 
 A Quake II Rerelease game module for competitive and public servers, built
