@@ -1,12 +1,12 @@
 # A release, started by hand: Actions -> release -> Run workflow, on main.
 # mod.json's version must have a `## <version>` section in CHANGELOG.md, and
-# no release for it may exist yet. This builds both modules as CI does
-# (MSVC for Windows; GCC 12 on Ubuntu 22.04 with a static C++ runtime for
-# Linux), packages them with the docs and the example server files, and
+# no release for it may exist yet. This builds the Windows module as CI
+# does (MSVC), packages it with the docs and the example server files, and
 # leaves a DRAFT release, visible only to the repo's maintainers. Publishing
 # it is a person's decision (AGENTS.md, human gates), and creates the tag
 # v<version> on the commit it was built from; until then there is no tag,
-# so a draft can be deleted and made again.
+# so a draft can be deleted and made again. Releases ship the DLL only
+# (Chris, 2026-11-15): a Linux server builds the .so from source (README).
 name: release
 
 on:
@@ -54,30 +54,6 @@ jobs:
             exit 1
           fi
 
-  linux:
-    needs: check
-    runs-on: ubuntu-24.04
-    container: ubuntu:22.04
-    steps:
-      - name: Install toolchain
-        run: |
-          apt-get update -qq
-          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq g++-12 cmake ninja-build git
-      - uses: actions/checkout@v4
-      - name: Let git read the checkout (owned by another user in the container)
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - name: Build
-        run: |
-          cmake --preset linux-release -DCMAKE_CXX_COMPILER=g++-12 -DGAME_STATIC_RUNTIME=ON
-          cmake --build --preset linux-release
-          ctest --test-dir build/linux-release --output-on-failure
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux
-          path: build/linux-release/game_x64.so
-          if-no-files-found: error
-          retention-days: 7 # the draft job takes it straight away
-
   windows:
     needs: check
     runs-on: windows-2022
@@ -99,7 +75,7 @@ jobs:
           retention-days: 7 # the draft job takes it straight away
 
   draft:
-    needs: [check, linux, windows]
+    needs: [check, windows]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -113,13 +89,13 @@ jobs:
         run: |
           dir="$ID-$VERSION"
           mkdir -p "$dir/docs"
-          cp modules/windows/game_x64.dll modules/linux/game_x64.so "$dir/"
+          cp modules/windows/game_x64.dll "$dir/"
           cp README.md CHANGELOG.md LICENSE THIRD_PARTY_NOTICES.md "$dir/"
           cp docs/players.md docs/admin.md "$dir/docs/"
           cp -r examples/server "$dir/examples"
-          (cd "$dir" && sha256sum game_x64.dll game_x64.so > SHA256SUMS)
+          (cd "$dir" && sha256sum game_x64.dll > SHA256SUMS)
           zip -qr "$dir.zip" "$dir"
-          cp "$dir/game_x64.dll" "$dir/game_x64.so" "$dir/SHA256SUMS" .
+          cp "$dir/game_x64.dll" "$dir/SHA256SUMS" .
           # The release notes: this version's section of the changelog.
           awk -v v="$VERSION" '$0 ~ "^## "v"( |$)" {on=1; next} on && /^## / {exit} on' CHANGELOG.md > notes.md
       - name: Draft the release
@@ -131,4 +107,4 @@ jobs:
         run: |
           gh release create "v$VERSION" --draft --target "$GITHUB_SHA" \
             --title "$NAME $VERSION" --notes-file notes.md \
-            "$ID-$VERSION.zip" game_x64.dll game_x64.so SHA256SUMS
+            "$ID-$VERSION.zip" game_x64.dll SHA256SUMS
