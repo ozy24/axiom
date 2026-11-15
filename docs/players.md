@@ -38,8 +38,8 @@ a Duel while it's live is a forfeit.
 When a vote is called in a warmup, the menu opens on Vote Yes / Vote No
 for everyone who can vote (for three seconds a press doesn't count, so a
 key you were already pressing can't answer it). In a live match you get a
-centre message instead, and the vote blinks on the status line: open the
-menu (Tab) or press help (F1; X on a controller) to answer.
+centre message instead: open the menu (Tab) or press help (F1; X on a
+controller) to answer.
 
 | Vote | |
 |---|---|

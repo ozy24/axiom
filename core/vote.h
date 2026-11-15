@@ -275,11 +275,6 @@ class Vote
 	static constexpr int64_t kGuardMs = 3000;
 	int GuardSeconds(int64_t now_ms) const;
 
-	// The status line blinks while a vote is open: dark for the last
-	// kBlinkOffMs of every kBlinkMs, to catch the eye (playtest 2026-11-15).
-	static constexpr int64_t kBlinkMs = 3000, kBlinkOffMs = 500;
-	bool BlinkOff(int64_t now_ms) const;
-
   private:
 	enum class State
 	{

@@ -45,10 +45,6 @@ struct VoteMenuInfo
 };
 VoteMenuInfo Core_Vote_MenuInfo(const edict_t *ent);
 
-// The status line's blink while a vote is open (Vote::BlinkOff): true while
-// it should be dark.
-bool Core_Vote_HudDark();
-
 // `help` (F1; a controller's X) from a voter who hasn't answered the open
 // vote: opens the menu at its Vote Yes / Vote No and returns true; false
 // otherwise, and stock's help (the scoreboard in deathmatch) runs.

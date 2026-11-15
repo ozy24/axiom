@@ -275,7 +275,7 @@ void PublishHud()
 		hud = Core_Match_StockHudText(level.time.milliseconds(), (int64_t)(timelimit->value * 60000));
 	// An open vote takes the status's place; the clock stays (core/vote_register.cpp).
 	if (std::string vote = Core_Vote_HudText(); !vote.empty())
-		hud.status = Core_Vote_HudDark() ? std::string() : std::move(vote); // it blinks
+		hud.status = std::move(vote);
 	// A timeout's, over all: no vote is decided while the world stands still.
 	if (const char *timeout = Core_Timeout_Status(); *timeout)
 		hud.status = timeout;

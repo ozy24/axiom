@@ -554,21 +554,3 @@ TEST_CASE("vote: a menu press is ignored for the first seconds, counted down")
 	CHECK(v.GuardSeconds(4000) == 0);
 	CHECK(v.GuardSeconds(20000) == 0);
 }
-
-TEST_CASE("vote: the status line goes dark half a second in every three")
-{
-	Vote v(AllKinds());
-	const std::vector<int> voters{0, 1};
-	CHECK_FALSE(v.BlinkOff(3700)); // no vote
-	REQUIRE(v.Call(0, Map("q2dm3"), Choices(), false, voters, 1000) == VoteError::None);
-	CHECK_FALSE(v.BlinkOff(1000));
-	CHECK_FALSE(v.BlinkOff(3499));
-	CHECK(v.BlinkOff(3500));
-	CHECK(v.BlinkOff(3999));
-	CHECK_FALSE(v.BlinkOff(4000));
-	CHECK(v.BlinkOff(6600));
-	REQUIRE(v.Update({0, 1}, 6600) == VoteEvent::None);
-	REQUIRE(v.Cast(1, true, voters) == VoteError::None);
-	REQUIRE(v.Update(voters, 6700) == VoteEvent::Passed);
-	CHECK_FALSE(v.BlinkOff(6600)); // passed: steady
-}

@@ -539,11 +539,6 @@ int Vote::GuardSeconds(int64_t now_ms) const
 	return left <= 0 ? 0 : (int)((left + 999) / 1000);
 }
 
-bool Vote::BlinkOff(int64_t now_ms) const
-{
-	return state_ == State::Open && now_ms >= since_ms_ && (now_ms - since_ms_) % kBlinkMs >= kBlinkMs - kBlinkOffMs;
-}
-
 std::string Vote::HudText(int64_t now_ms) const
 {
 	if (state_ == State::Passed)

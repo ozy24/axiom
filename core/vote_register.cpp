@@ -553,11 +553,6 @@ std::string Core_Vote_HudText()
 	return Active() ? vote.HudText(level.time.milliseconds()) : std::string();
 }
 
-bool Core_Vote_HudDark()
-{
-	return Active() && vote.BlinkOff(level.time.milliseconds());
-}
-
 bool Core_Vote_Help(edict_t *ent)
 {
 	if (!Active() || !vote.Open() || !IsVoterOn(ent, vote.Proposal()) || vote.Answer(Slot(ent)))
