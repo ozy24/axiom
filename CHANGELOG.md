@@ -41,7 +41,9 @@ clients need nothing installed.
   %N`) and community `.loc` files, or the nearest item with none.
 
 ### Interface
-- The Tab menu: join, teams, votes, timeouts, match info.
+- The Tab menu: join, teams, votes, timeouts, match info. A vote called in
+  warmup opens it for every voter; in a live match, a centre message shows
+  each player's key for it, and help (F1, a controller's X) opens it.
 - Scoreboards: FFA in columns (frags, deaths, frags per hour, time, ping),
   Duel's duellists and queue, ready marks and captains on team boards.
 - A HUD status line (warmup, ready-up, votes, the countdown), a match

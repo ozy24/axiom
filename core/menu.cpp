@@ -152,8 +152,11 @@ MenuPage Core_Menu_Main(const MenuView &v)
 			what[0] = (char)toupper((unsigned char)what[0]);
 		Add(page, Core_Menu_Clean("Vote: " + what), MenuAction::None, MenuAlign::Left, true);
 		Add(page, "");
-		Choice(page, "Vote Yes", MenuAction::VoteYes, v.vote_answer == 1);
-		Choice(page, "Vote No", MenuAction::VoteNo, v.vote_answer == 0);
+		// Just opened (it may have popped up mid-keypress): the rows count
+		// down and the adapter ignores a press until then.
+		const std::string wait = v.vote_guard > 0 ? " (" + std::to_string(v.vote_guard) + ")" : "";
+		Choice(page, "Vote Yes" + wait, MenuAction::VoteYes, v.vote_answer == 1);
+		Choice(page, "Vote No" + wait, MenuAction::VoteNo, v.vote_answer == 0);
 		Add(page, "");
 	}
 

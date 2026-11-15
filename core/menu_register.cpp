@@ -110,6 +110,7 @@ MenuView View(const edict_t *ent)
 	v.vote_open = vote.open;
 	v.vote_proposal = vote.proposal;
 	v.vote_answer = vote.answer;
+	v.vote_guard = vote.guard;
 	v.vote_can_call = vote.can_call;
 	v.vote_kinds = vote.kinds;
 	v.vote_maps = vote.maps;
@@ -290,6 +291,8 @@ void Select(edict_t *ent, pmenuhnd_t *hnd)
 	case MenuAction::VoteNo:
 	{
 		const bool yes = state->actions[hnd->cur] == MenuAction::VoteYes;
+		if (Core_Vote_MenuInfo(ent).guard > 0)
+			break; // a press in the vote's first seconds isn't an answer
 		PMenu_Close(ent);
 		Core_Vote_Cast(ent, yes);
 		break;

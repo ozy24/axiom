@@ -152,6 +152,7 @@ struct MenuView
 	bool vote_open = false;              // a vote is open
 	std::string vote_proposal;           // "map q2dm3"
 	int vote_answer = -1;                // this player's: -1 none, 0 no, 1 yes
+	int vote_guard = 0;                  // seconds before Vote Yes / Vote No take a press
 	bool vote_can_call = false;          // Call a Vote shows
 	std::vector<std::string> vote_kinds; // allowed: "map", "gametype", "restart"
 	std::vector<std::string> vote_maps;
