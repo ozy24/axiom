@@ -54,6 +54,11 @@ std::string PlayerRow(const ScoreboardPlayer &p, int y, bool viewer)
 void Spectators(std::string &out, std::vector<ScoreboardPlayer> watching, int rows, const ScoreboardInput &in);
 } // namespace
 
+int Core_Scoreboard_LeftX()
+{
+	return kRowX;
+}
+
 int Core_Scoreboard_Fph(int frags, int64_t played_ms)
 {
 	if (played_ms < 1000)

@@ -520,7 +520,7 @@ void DeathmatchScoreboardMessage(edict_t *ent, edict_t *killer)
 	// [Paril-KEX] time & frags
 	if (fraglimit->integer)
 	{
-		fmt::format_to(std::back_inserter(string), FMT_STRING("xv -20 yv -10 loc_string2 1 $g_score_frags \"{}\" "), fraglimit->integer);
+		fmt::format_to(std::back_inserter(string), FMT_STRING("xv {} yv -10 loc_string2 1 $g_score_frags \"{}\" "), Core_Scoreboard_LimitX(), fraglimit->integer); // [mod] x: over the column board's Frg; stock's -20 otherwise
 	}
 	gtime_t clock_end; // [mod]
 	if (Core_Match_ClockEnd(clock_end) && !level.intermissiontime) // [mod] none in warmup

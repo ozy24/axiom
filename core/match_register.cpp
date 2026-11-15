@@ -628,7 +628,10 @@ void Core_Match_Statusbar(statusbar_t &sb)
 void Core_Match_SetStats(edict_t *ent)
 {
 	if (StatusStat())
-		ent->client->ps.stats[StatusStat()] = status_text.empty() ? 0 : kStatusConfigstring;
+		// Not while the scoreboard is up (its limit line sits at the same
+		// height; playtest 2026-11-15), except at the intermission's MATCH END.
+		ent->client->ps.stats[StatusStat()] =
+		    status_text.empty() || (ent->client->showscores && !level.intermissiontime) ? 0 : kStatusConfigstring;
 	if (ClockStat())
 		ent->client->ps.stats[ClockStat()] =
 		    clock_text.empty() || (g_hud_timer && !g_hud_timer->integer) ? 0 : kClockConfigstring;

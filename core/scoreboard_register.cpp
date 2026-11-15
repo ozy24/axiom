@@ -156,6 +156,15 @@ void Core_Scoreboard_TeamReady(std::string &layout, size_t max)
 	layout += Core_Scoreboard_TeamReady(layout, ready, max);
 }
 
+int Core_Scoreboard_LimitX()
+{
+	if (!Active())
+		return -20;
+	RegisterCvars();
+	const GametypeDef *gt = Core_Gametype_Active();
+	return g_scoreboard->integer && !gt->scoreboard ? Core_Scoreboard_LeftX() : -20;
+}
+
 bool Core_Scoreboard_Columns(const edict_t *ent, std::string &layout)
 {
 	if (!Active())

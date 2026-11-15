@@ -18,6 +18,10 @@
 #pragma once
 
 #include <cstddef>
+
+// The board's left edge: the Frg column (layout xv), where the frag limit
+// line above it starts too.
+int Core_Scoreboard_LeftX();
 #include <cstdint>
 #include <set>
 #include <string>

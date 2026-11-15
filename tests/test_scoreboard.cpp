@@ -174,3 +174,11 @@ TEST_CASE("scoreboard: the team board's ready marks, beside each ready player's 
 	// No room: no mark (stock's rows stay).
 	CHECK(Core_Scoreboard_TeamReady(layout, {3}, layout.size() + 10).empty());
 }
+
+TEST_CASE("scoreboard: the frag limit line starts over the Frg column")
+{
+	ScoreboardInput in;
+	in.players = {Player(0, 3)};
+	CHECK(Core_Scoreboard_Layout(in).find("ctf " + std::to_string(Core_Scoreboard_LeftX()) + " 28 ") !=
+	      std::string::npos);
+}

@@ -271,7 +271,7 @@ void Announce(const edict_t *caller)
 				Core_Menu_Inven(ent);
 		}
 		else
-			gi.LocClient_Print(ent, PRINT_CENTER, "%bind:inven:Vote%%bind:cmd help:Vote%Vote: {}", what.c_str());
+			gi.LocClient_Print(ent, PRINT_CENTER, "%bind:inven:Vote%Vote: {}", what.c_str());
 	}
 }
 
