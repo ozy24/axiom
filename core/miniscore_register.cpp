@@ -24,6 +24,16 @@ struct Face
 };
 std::array<Face, MAX_CLIENTS> faces; // per client slot, this level
 
+// 1: the miniscore; 0: none (the layout keeps its rows, with no stats set).
+cvar_t *g_hud_miniscore;
+
+bool Shown()
+{
+	if (!g_hud_miniscore)
+		g_hud_miniscore = gi.cvar("g_hud_miniscore", "1", CVAR_NOFLAGS);
+	return g_hud_miniscore->integer != 0;
+}
+
 // Deathmatch outside team modes, under a registered gametype: team modes
 // have stock's team scores in the same place, and single player, coop and
 // Rogue's stock gamerules modes stay stock.
@@ -91,6 +101,7 @@ void Core_Miniscore_Statusbar(statusbar_t &sb)
 	// Once per level, as it spawns: image indexes belong to the level.
 	icons.Reset();
 	faces = {};
+	Shown(); // registers g_hud_miniscore as the level spawns
 	if (!Active())
 		return;
 	// Bottom right, where team modes show their team scores (yb -110 / -83),
@@ -122,7 +133,7 @@ void Core_Miniscore_SetStats(edict_t *ent)
 	const int small = SmallStat();
 	if (small)
 		stats[small] = stats[small + 1] = 0;
-	if (!Core_Match_InPlay())
+	if (!Core_Match_InPlay() || !Shown())
 		return;
 
 	const std::array<int, 2> rows = Core_Miniscore_Rows(Players());

@@ -131,9 +131,9 @@ your `rulesets/ctf.cfg`.
 
 Each switch starts clean: nothing a previous mode set carries over,
 stock's gameplay switches included (`g_instagib`, `g_dm_weapons_stay`,
-`g_no_armor`...). Three settings are the server's, not a mode's, and hold
-across switches: `g_classic_jumps`, `g_teleporter_freeze` and
-`sv_gravity`. Set them in `server.cfg`.
+`g_no_armor`...). Some settings are the server's, not a mode's, and hold
+across switches: `g_classic_jumps`, `g_teleporter_freeze`, `sv_gravity`,
+`g_hud_timer` and `g_hud_miniscore`. Set them in `server.cfg`.
 
 ## Joining
 
@@ -214,11 +214,13 @@ but the looks (`Alice (admin): kick Bob`).
 
 Details: docs/design/admin.md, decision 0026.
 
-## Scoreboard
+## Scoreboard and HUD
 
 | Cvar | Default | What |
 |---|---|---|
-| `g_scoreboard` | 0 | 1: the mod's boards: FFA's columns (#, Frg, Dth, Player, FPH, Time, Ping), Duel's (the duellists, the queue), and spectators shown with 0 and ping on every board; every built-in ruleset sets 1. 0: stock's boards |
+| `g_hud_timer` | 1 | The match clock on the HUD, bottom left of centre. 0: none (the match still keeps time) |
+| `g_hud_miniscore` | 1 | FFA and Duel: the top two players' faces and scores, bottom right, while the match is in play. 0: none |
+| `g_scoreboard` | 0 | 1: the mod's boards: FFA's columns (Frg, Dth, Player, FPH, Time, Ping), Duel's (the duellists, the queue), and spectators shown with 0 and ping on every board; every built-in ruleset sets 1. 0: stock's boards |
 
 See docs/design/scoreboard.md.
 

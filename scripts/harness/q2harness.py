@@ -1188,7 +1188,7 @@ at 40 0 cmd vote yes
         detail.append("Alice was never shown the column scoreboard")
     else:
         board = boards[0]
-        rows = {int(m[0]): (int(m[1]), int(m[2])) for m in re.findall(r"ctf 16 \d+ (\d+) (-?\d+) (\d+) ", board)}
+        rows = {int(m[0]): (int(m[1]), int(m[2])) for m in re.findall(r"ctf 4 \d+ (\d+) (-?\d+) (\d+) ", board)}
         if set(rows) != set(humans.values()):
             detail.append(f"board rows for slots {sorted(rows)}, expected {sorted(humans.values())}")
         elif rows[humans["Bob"]] != (-1, 1):

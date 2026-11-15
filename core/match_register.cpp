@@ -45,6 +45,7 @@ std::array<bool, MAX_CLIENTS> ready{};
 
 cvar_t *match_flow, *match_ready, *match_minplayers, *match_allow_no_humans, *match_warmup_time, *match_countdown,
     *match_overtime, *match_overtime_max;
+cvar_t *g_hud_timer;
 
 void RegisterCvars()
 {
@@ -61,6 +62,9 @@ void RegisterCvars()
 	// Where finished-match records go (relative to the server's working
 	// directory); empty = none.
 	g_matchlog_dir = gi.cvar("g_matchlog_dir", "", CVAR_NOFLAGS);
+	// The HUD's match clock, bottom left of centre; 0 = none (the match
+	// still keeps time).
+	g_hud_timer = gi.cvar("g_hud_timer", "1", CVAR_NOFLAGS);
 }
 
 MatchConfig ReadConfig()
@@ -626,7 +630,8 @@ void Core_Match_SetStats(edict_t *ent)
 	if (StatusStat())
 		ent->client->ps.stats[StatusStat()] = status_text.empty() ? 0 : kStatusConfigstring;
 	if (ClockStat())
-		ent->client->ps.stats[ClockStat()] = clock_text.empty() ? 0 : kClockConfigstring;
+		ent->client->ps.stats[ClockStat()] =
+		    clock_text.empty() || (g_hud_timer && !g_hud_timer->integer) ? 0 : kClockConfigstring;
 	if (CountdownStat())
 		ent->client->ps.stats[CountdownStat()] = Core_Timeout_CountdownSeconds() ? Core_Timeout_CountdownSeconds()
 		                                         : Core_Match_OwnsRules()

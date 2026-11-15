@@ -33,3 +33,6 @@ score and the ping. Chris wanted an OpenFFA-style board with columns
 **Reopen if:** the KEX client gets a way to draw a name token inside text,
 which would let the name come first and bring back the chase target; or
 Duel wants the column board.
+
+**Later (playtest, 2026-11-15):** the position column is gone; Chris
+found it unneeded, the order says it.

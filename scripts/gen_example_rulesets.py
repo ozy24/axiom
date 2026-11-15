@@ -28,6 +28,21 @@ MAP_LISTS = {
     "ctf": "q2ctf1 q2ctf2 q2ctf3 q2ctf4 q2ctf5",
 }
 
+# The example's own choices, beyond the built-in ruleset (which never
+# changes gameplay): written as active lines, a built-in one in its place.
+# FFA: Chris, 2026-11-15.
+CHOICES = {
+    "ffa": [
+        ("fraglimit", "30"),
+        ("g_dm_weapons_stay", "1"),
+        ("g_no_items", "1"),
+    ],
+}
+EXTRA_MEANING = {
+    "g_dm_weapons_stay": "weapons stay when taken (none you already have); 0 = they respawn",
+    "g_no_items": "no powerups (quad, invulnerability...); 0 = the map's",
+}
+
 # These say which gametype the file is for: never an admin's to change.
 GAMETYPE_CVARS = {"g_gametype", "ctf", "teamplay"}
 
@@ -89,13 +104,26 @@ def render(gametype, settings):
         f'set g_map_list "{MAP_LISTS[gametype]}"',
         "",
     ]
-    width = max(len(f"// set {c} {v}") for c, v in settings if c not in GAMETYPE_CVARS)
+    choices = dict(CHOICES.get(gametype, []))
+    builtin = {c for c, _ in settings}
+    width = max(len(f"// set {c} {v}") for c, v in list(settings) + list(choices.items()) if c not in GAMETYPE_CVARS)
+    extra = [(c, v) for c, v in choices.items() if c not in builtin]
+    if extra:
+        out.append("// This example's gameplay (the built-in plays as stock).")
+        for cvar, value in extra:
+            if cvar not in EXTRA_MEANING:
+                sys.exit(f"{cvar} (example {gametype}) has no line in EXTRA_MEANING: add one")
+            out.append(f"set {cvar} {value}".ljust(width + 2) + f"// {EXTRA_MEANING[cvar]}")
+        out.append("")
     for cvar, value in settings:
         if cvar in GAMETYPE_CVARS:
             continue
         if cvar not in MEANING:
             sys.exit(f"{cvar} (built-in {gametype}) has no line in MEANING: add one")
-        out.append(f"// set {cvar} {value}".ljust(width + 2) + f"// {MEANING[cvar]}")
+        if cvar in choices:
+            out.append(f"set {cvar} {choices[cvar]}".ljust(width + 2) + f"// {MEANING[cvar]} (built-in: {value})")
+        else:
+            out.append(f"// set {cvar} {value}".ljust(width + 2) + f"// {MEANING[cvar]}")
     return "\n".join(out) + "\n"
 
 

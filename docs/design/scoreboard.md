@@ -14,15 +14,15 @@ they never read as frags and deaths (Chris, 2026-10-30).
 ## FFA
 
 ```
-    Frg Dth Player           FPH Time Ping
- 1   42  15 Xin              379    6   17
- 2   39   7 aid              352    6   15
+   Frg Dth Player           FPH Time Ping
+    42  15 Xin              379    6   17
+    39   7 aid              352    6   15
        (ping) Spectators
      0  18  Pidarassius       0   20  Player
 ```
 
-- **Position**: the place on the board (ties take the next number). Your
-  own row, pulled in on a full server, shows its real position.
+- No position column (playtest 2026-11-15): the order says it. Your own
+  row, pulled in at the bottom on a full server, is green.
 
 - **Frg**: the score. **Dth**: deaths while the match is in play (warmup
   is free play, so neither counts there).

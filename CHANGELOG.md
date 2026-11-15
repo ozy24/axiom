@@ -44,7 +44,9 @@ clients need nothing installed.
 - The Tab menu: join, teams, votes, timeouts, match info.
 - Scoreboards: FFA in columns (frags, deaths, frags per hour, time, ping),
   Duel's duellists and queue, ready marks and captains on team boards.
-- A HUD status line (warmup, ready-up, votes, the countdown), a miniscore,
+- A HUD status line (warmup, ready-up, votes, the countdown), a match
+  clock and a miniscore (each can be turned off: `g_hud_timer`,
+  `g_hud_miniscore`),
   frag messages, and a first-person view when watching someone (`eyecam`).
 
 ### Maps

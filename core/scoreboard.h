@@ -4,15 +4,15 @@
 // core/scoreboard_register.cpp.
 //
 //                    [2026-10-29 19:40]
-//      Frg Dth Player           FPH Time Ping
-//   1   42  15 Xin              379    6   17
+//    Frg Dth Player           FPH Time Ping
+//    42  15 Xin              379    6   17
 //
 // Only the layout's `ctf` row turns a KEX name token (`##P3`) into the name
 // (a test on the KEX client, 2026-10-29), and it draws two numbers then the
-// name: frags, deaths, name. The position (left of it) and the other columns
-// are text of our own. Your own row is green (the `ctf` row's own
+// name: frags, deaths, name. The other columns are text of our own; no
+// position column (the order says it). Your own row is green (the `ctf` row's own
 // highlight). Spectators follow, two to a line. When a full server doesn't
-// fit, it shows the top players and your own row (at its real position),
+// fit, it shows the top players and your own row (last),
 // then the spectators that still fit. In ready-up, a green R right of the
 // Ping column marks each ready player, while the bytes allow (rows come first).
 #pragma once
