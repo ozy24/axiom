@@ -40,7 +40,7 @@ CHOICES = {
 }
 EXTRA_MEANING = {
     "g_dm_weapons_stay": "weapons stay when taken (none you already have); 0 = they respawn",
-    "g_no_items": "no powerups (quad, invulnerability...); 0 = the map's",
+    "g_no_items": "stock's name, but powerups only (quad, invulnerability...): 1 = none",
 }
 
 # These say which gametype the file is for: never an admin's to change.
