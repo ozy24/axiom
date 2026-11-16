@@ -168,8 +168,8 @@ grapple turned on in `ctf.cfg` is gone in FFA.
 | `g_dm_strong_mines` | 0 | 1: prox mines last until they go off |
 | `g_dm_no_fall_damage` | 0 | 1: no falling damage |
 | `g_dm_spawn_farthest` | 1 | 1: respawn at the spawn point farthest from others |
-| `g_dm_force_respawn` | 0 | 1: the dead respawn without pressing fire |
-| `g_dm_force_respawn_time` | 0 | seconds after death that a respawn is forced; 0: none |
+| `g_dm_force_respawn` | 0 | 1: the dead respawn by themselves, as soon as they may; 0: when they press fire |
+| `g_dm_force_respawn_time` | 0 | seconds dead before a respawn (pressed or forced); 0: stock's 1 second |
 | `g_dm_same_level` | 0 | 1: the level's end replays the same map (with no `g_map_list`) |
 | `g_dm_allow_exit` | 0 | 1: a map's exit ends the level; 0: touching it kills you |
 | `g_instant_weapon_switch` | 0 | 1: weapons switch at once |
