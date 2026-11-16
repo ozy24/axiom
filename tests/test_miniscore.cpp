@@ -54,6 +54,15 @@ TEST_CASE("miniscore: the face is the skin's icon")
 	CHECK(Core_Miniscore_IconPath("my-model/skin_2") == "/players/my-model/skin_2_i");
 }
 
+TEST_CASE("miniscore: stock's CTF skins have the small icons")
+{
+	for (const char *skin : {"male/ctf_r", "female/ctf_b", "Cyborg/CTF_R", "custom/ctf_b"})
+		CHECK_MESSAGE(Core_Miniscore_SmallIcon(skin), skin);
+	for (const char *skin :
+	     {"male/grunt", "female/athena", "male/ctf_rx", "male/xctf_r", "ctf_r/grunt", "", "ctf_r", "male/../ctf_r"})
+		CHECK_FALSE_MESSAGE(Core_Miniscore_SmallIcon(skin), skin);
+}
+
 TEST_CASE("miniscore: odd skin names get no face")
 {
 	for (const char *skin : {"", "male", "/grunt", "male/", "male/../../pics/x", "a/b/c", "male/gr unt", "male\\grunt",

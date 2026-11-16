@@ -20,6 +20,11 @@ std::array<int, 2> Core_Miniscore_Rows(const std::vector<MatchPlayer> &players);
 // [a-z0-9_-] (lowercased), so userinfo can't reach outside players/.
 std::string Core_Miniscore_IconPath(std::string_view skin);
 
+// True for a skin whose icon is 24x24, not 32x32: stock's CTF skins
+// (ctf_r, ctf_b on male, female and cyborg; the only small icons in
+// pak0.pak). The miniscore centres those in its 32x32 face slot.
+bool Core_Miniscore_SmallIcon(std::string_view skin);
+
 // Which icons get an image index this level. Each one takes one of the
 // engine's 512 image configstrings until the level ends, and players can
 // change skin at will, so at most `limit` distinct icons; later ones show no

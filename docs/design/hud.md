@@ -57,6 +57,11 @@ the klaxon (`world/klaxon2.wav`) marks overtime and sudden death, the jingle
 - Stock draws a layout picture at its own size; the server can't scale it.
   Skin icons are 32×32, the team pictures 24×24, so the miniscore is spaced
   for faces rather than reusing the team rows' spacing.
+- Stock's CTF skins (`ctf_r`, `ctf_b` on each model) have 24×24 icons, the
+  only small ones in pak0.pak. A layout can't size or centre a picture by
+  itself, so those faces go in two stats of the mod's own
+  (`miniscore_small`), drawn at `xr -30`, 4 down: centred in the 32×32
+  slot instead of in its top-left corner (playtest, 2026-11-15).
 - The miniscore reuses stock's CTF team-score stats (18..21) outside team
   modes rather than taking 4 of the 10 free slots. It writes them after
   `SetCTFStats`, which fills them in every mode.

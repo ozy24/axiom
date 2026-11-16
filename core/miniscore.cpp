@@ -42,6 +42,15 @@ std::string Core_Miniscore_IconPath(std::string_view skin)
 	return "/players/" + s + "_i";
 }
 
+bool Core_Miniscore_SmallIcon(std::string_view skin)
+{
+	const std::string path = Core_Miniscore_IconPath(skin);
+	if (path.empty())
+		return false;
+	const std::string_view name = std::string_view(path).substr(path.rfind('/') + 1);
+	return name == "ctf_r_i" || name == "ctf_b_i";
+}
+
 bool MiniscoreIcons::Admit(const std::string &path)
 {
 	if (std::find(admitted_.begin(), admitted_.end(), path) != admitted_.end())
