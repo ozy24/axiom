@@ -132,7 +132,8 @@ your `rulesets/ctf.cfg`.
 
 Each switch starts clean: nothing a previous mode set carries over,
 stock's gameplay switches included (`g_instagib`, `g_dm_weapons_stay`,
-`g_no_armor`...). Some settings are the server's, not a mode's, and hold
+`g_no_armor`, `g_allow_techs`, `g_damage_scale`, `g_start_items`...).
+Some settings are the server's, not a mode's, and hold
 across switches: `g_classic_jumps`, `g_teleporter_freeze`, `sv_gravity`,
 `g_scoreboard`, `g_frag_messages`, `g_loc`, `g_hud_timer`,
 `g_hud_miniscore` and `match_allow_no_humans`. Set them in `server.cfg`.

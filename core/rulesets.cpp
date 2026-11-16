@@ -133,6 +133,17 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"g_dm_force_respawn", "0"},
     {"g_dm_force_respawn_time", "0"},
     {"g_dm_allow_exit", "0"},
+    {"g_allow_techs", "auto"}, // runes: CTF only
+    {"g_allow_grapple", "auto"},
+    {"g_grapple_damage", "10"},
+    {"g_damage_scale", "1"},
+    {"g_weapon_respawn_time", "30"},
+    {"g_start_items", ""},
+    {"g_instant_weapon_switch", "0"},
+    {"g_quick_weapon_switch", "1"},
+    {"g_teamplay_armor_protect", "0"},
+    {"g_teamplay_force_join", "0"},
+    {"g_disable_player_collision", "0"},
 };
 const size_t core_gameplay_cvar_count = sizeof(core_gameplay_cvars) / sizeof(core_gameplay_cvars[0]);
 
