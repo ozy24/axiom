@@ -15,6 +15,14 @@ Players need nothing: they join with their normal client.
   `+set game axiom`. Maps, `.ent` and `.loc` files are still found in
   `baseq2`.
 
+**Player limits:** the online lobby (the server browser, joining) has a
+limit of its own, set with the engine's `kexmultiplayer maxplayers <n>`.
+Keep it equal to `maxclients` (the example `server.cfg` does): a lower
+lobby limit, or one filled by players who have left the game but not the
+lobby, turns people away while the server has free slots. On a game
+hosted from the menu, type both in the console (`maxclients 32`,
+`kexmultiplayer maxplayers 32`) before the map loads.
+
 The server's console prints the version as the game loads
 (`Axiom 0.1.0 (<build>)`), and `g_version` holds it.
 
