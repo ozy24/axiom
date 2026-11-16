@@ -51,8 +51,9 @@ for the server to fill in the caller's place and status on every engine.
   else the plain path), and logged: `Loc: N places from locs/q2dm1.loc`.
 
 **Settings:**
-- `g_loc`: 0 off (compiled, as stock has no `loc`), 1 the `.loc` file,
-  2 the file or else the nearest item. Every built-in ruleset sets 2.
+- `g_loc`: 0 off, 1 the `.loc` file, 2 the file or else the nearest
+  item. 2 by default, a server setting held across mode switches
+  (decision 0029; it was 0 compiled and 2 in every built-in ruleset).
 - `g_loc_dir`: default `locs`.
 - Two cvars, as MuffMode had (`g_loc`, `g_loc_items`).
 - Deathmatch only: single player and coop never see the command.

@@ -2,8 +2,8 @@
 
 `g_scoreboard 1` gives the mod's boards: FFA gets columns (decision 0018),
 Duel its own board (decision 0019, below), and the team boards labelled
-spectators. Every built-in ruleset turns it on; `g_scoreboard 0` brings
-stock's back.
+spectators. It is on by default and the server's choice, held across
+mode switches (decision 0029); `g_scoreboard 0` brings stock's back.
 
 **Spectators**, on every board: a KEX name shows only in a `ctf` row, which
 always draws two numbers before it (see Limits), so a spectator's row can't

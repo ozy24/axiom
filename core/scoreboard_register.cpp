@@ -45,7 +45,7 @@ void RegisterCvars()
 		return;
 	// 0: stock's boards; 1: the mod's (FFA's columns, Duel's board, the team
 	// boards' spectators).
-	g_scoreboard = gi.cvar("g_scoreboard", "0", CVAR_NOFLAGS);
+	g_scoreboard = gi.cvar("g_scoreboard", "1", CVAR_NOFLAGS);
 }
 
 // Deathmatch outside team modes, under a registered gametype (single player,

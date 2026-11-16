@@ -2,6 +2,7 @@
 // the level's .loc file, what the caller sees and carries, and who hears it.
 #include "g_local.h"
 
+#include "core/gametype.h"
 #include "core/host_files.h"
 #include "core/loc.h"
 #include "core/loc_hooks.h"
@@ -17,7 +18,7 @@ std::vector<LocPlace> places;
 // 0 off; 1 the map's .loc file; 2 that, or with none the nearest item.
 cvar_t *LocCvar()
 {
-	return gi.cvar("g_loc", "0", CVAR_NOFLAGS);
+	return gi.cvar("g_loc", "2", CVAR_NOFLAGS);
 }
 
 LocVec Vec(const vec3_t &v)
@@ -156,7 +157,8 @@ void Core_Loc_LevelStart()
 
 bool Core_Loc_ClientCommand(edict_t *ent, const char *cmd)
 {
-	if (!deathmatch->integer || Q_strcasecmp(cmd, "loc") != 0)
+	// Under a registered gametype: Rogue's stock gamerules modes stay stock.
+	if (!deathmatch->integer || !Core_Gametype_Active() || Q_strcasecmp(cmd, "loc") != 0)
 		return false;
 	if (!LocCvar()->integer)
 	{

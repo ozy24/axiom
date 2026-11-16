@@ -98,7 +98,8 @@ set match_timeout_resume 5   // the countdown back to play
 `match_minplayers` (2) counts bots, so one player and the server's bots
 (`bot_minPlayers`) can start a match; a match always needs a human, so
 bots alone stay in warmup, and a match whose last human leaves goes back
-to warmup. For a bot-only server, `set match_allow_no_humans 1`.
+to warmup. For a bot-only server, `set match_allow_no_humans 1` in
+`server.cfg` (it holds across mode switches).
 
 ## Adding a variant
 
@@ -133,7 +134,8 @@ Each switch starts clean: nothing a previous mode set carries over,
 stock's gameplay switches included (`g_instagib`, `g_dm_weapons_stay`,
 `g_no_armor`...). Some settings are the server's, not a mode's, and hold
 across switches: `g_classic_jumps`, `g_teleporter_freeze`, `sv_gravity`,
-`g_hud_timer` and `g_hud_miniscore`. Set them in `server.cfg`.
+`g_scoreboard`, `g_frag_messages`, `g_loc`, `g_hud_timer`,
+`g_hud_miniscore` and `match_allow_no_humans`. Set them in `server.cfg`.
 
 ## Joining
 
@@ -220,7 +222,8 @@ Details: docs/design/admin.md, decision 0026.
 |---|---|---|
 | `g_hud_timer` | 1 | The match clock on the HUD, bottom left of centre. 0: none (the match still keeps time) |
 | `g_hud_miniscore` | 1 | FFA and Duel: the top two players' faces and scores, bottom right, while the match is in play. 0: none |
-| `g_scoreboard` | 0 | 1: the mod's boards: FFA's columns (Frg, Dth, Player, FPH, Time, Ping), Duel's (the duellists, the queue), and spectators shown with 0 and ping on every board; every built-in ruleset sets 1. 0: stock's boards |
+| `g_scoreboard` | 1 | The mod's boards: FFA's columns (Frg, Dth, Player, FPH, Time, Ping), Duel's (the duellists, the queue), and spectators shown with 0 and ping on every board. 0: stock's boards |
+| `g_frag_messages` | 1 | On each frag, "You fragged ..." to the killer (and your place while live), "Fragged by ..." to the victim. 0: none |
 
 See docs/design/scoreboard.md.
 
@@ -293,7 +296,7 @@ place from a map's `.loc` file: `locs/<map>.loc`, the community format
 
 | | Default | |
 |---|---|---|
-| `g_loc` | 0 (every built-in ruleset sets 2) | 0: off. 1: the map's `.loc` file only. 2: the file, or with none, the nearest weapon, powerup or mega health ("upper RG") |
+| `g_loc` | 2 | 0: off. 1: the map's `.loc` file only. 2: the file, or with none, the nearest weapon, powerup or mega health ("upper RG") |
 | `g_loc_dir` | `locs` | where the files are |
 
 A file is read when its map loads (`Loc: 136 places from locs/q2dm1.loc`

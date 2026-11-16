@@ -15,7 +15,7 @@ cvar_t *g_frag_messages;
 void Core_FragMessage(edict_t *self, edict_t *attacker)
 {
 	if (!g_frag_messages)
-		g_frag_messages = gi.cvar("g_frag_messages", "0", CVAR_NOFLAGS); // 1: the centre prints (built-in rulesets)
+		g_frag_messages = gi.cvar("g_frag_messages", "1", CVAR_NOFLAGS); // 1: the centre prints; 0: none
 	if (!g_frag_messages->integer || !deathmatch->integer || !Core_Gametype_Active() || !attacker || attacker == self ||
 	    !self->client || !attacker->client)
 		return;
