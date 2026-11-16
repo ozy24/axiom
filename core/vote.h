@@ -269,6 +269,12 @@ class Vote
 	// "VOTE PASSED"; empty with no vote.
 	std::string HudText(int64_t now_ms) const;
 
+	// The first seconds of an open vote, when a menu press doesn't answer it
+	// (it may have popped up mid-keypress, as MuffMode's did): seconds left,
+	// rounded up; 0 after, or with no vote open.
+	static constexpr int64_t kGuardMs = 3000;
+	int GuardSeconds(int64_t now_ms) const;
+
   private:
 	enum class State
 	{

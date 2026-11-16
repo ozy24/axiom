@@ -26,6 +26,11 @@ clients need nothing installed.
   match with the map reset, overtime, and intermission. A JSON record of
   each match (`g_matchlog_dir`; schema `q2game-match/0`).
 - **Timeouts:** one per side per match (`time-out` / `time-in`).
+- **Away players** are moved to spectate after 2 minutes without input,
+  with a warning first (`g_inactivity`).
+- **Forced respawn:** fire respawns after a second, and nobody stays dead
+  past 3 seconds (`g_dm_force_respawn`, `g_dm_force_respawn_time`), so a
+  lead can't be kept by hiding in death, as on MuffMode.
 - **Teams:** first-on captains, team locks with a roster (a dropped player
   can rejoin), `teamkick`, `readyteam`, and a random shuffle by vote.
 - **Votes:** map, gametype, restart, time and score limits, powerups,
@@ -41,10 +46,14 @@ clients need nothing installed.
   %N`) and community `.loc` files, or the nearest item with none.
 
 ### Interface
-- The Tab menu: join, teams, votes, timeouts, match info.
+- The Tab menu: join, teams, votes, timeouts, match info. A vote called in
+  warmup opens it for every voter; in a live match, a centre message shows
+  each player's key for it, and help (F1, a controller's X) opens it.
 - Scoreboards: FFA in columns (frags, deaths, frags per hour, time, ping),
   Duel's duellists and queue, ready marks and captains on team boards.
-- A HUD status line (warmup, ready-up, votes, the countdown), a miniscore,
+- A HUD status line (warmup, ready-up, votes, the countdown), a match
+  clock and a miniscore (each can be turned off: `g_hud_timer`,
+  `g_hud_miniscore`),
   frag messages, and a first-person view when watching someone (`eyecam`).
 
 ### Maps

@@ -44,7 +44,8 @@ std::vector<gitem_t *> MapWeapons()
 	for (uint32_t i = game.maxclients + 1; i < globals.num_edicts; ++i)
 	{
 		const edict_t *e = g_edicts + i;
-		if (e->inuse && e->item && (e->item->flags & IF_WEAPON) && !e->spawnflags.has(SPAWNFLAG_ITEM_DROPPED))
+		if (e->inuse && e->item && (e->item->flags & IF_WEAPON) && !e->spawnflags.has(SPAWNFLAG_ITEM_DROPPED) &&
+		    !e->spawnflags.has(SPAWNFLAG_ITEM_DROPPED_PLAYER)) // a dead player's weapon has only this
 			seen[e->item->id] = true;
 	}
 	std::vector<gitem_t *> out;

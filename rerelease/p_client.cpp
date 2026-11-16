@@ -1,6 +1,8 @@
 // Copyright (c) ZeniMax Media Inc.
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
+#include "core/respawn_hooks.h" // [mod]
+#include "core/inactivity_hooks.h" // [mod]
 #include "core/match_hooks.h" // [mod]
 #include "core/eyecam_hooks.h" // [mod]
 #include "core/vote_hooks.h" // [mod]
@@ -570,6 +572,7 @@ DIE(player_die) (edict_t *self, edict_t *inflictor, edict_t *attacker, int damag
 		if ( deathmatch->integer && g_dm_force_respawn_time->integer ) {
 			self->client->respawn_time = ( level.time + gtime_t::from_sec( g_dm_force_respawn_time->value ) );
 		}
+		Core_Respawn_Died(self); // [mod] press after a second, forced at g_dm_force_respawn_time (decision 0030)
 
 		LookAtKiller(self, inflictor, attacker);
 		self->client->ps.pmove.pm_type = PM_DEAD;
@@ -3217,6 +3220,7 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 		return;
 	}
 
+	Core_Inactivity_Think(ent, ucmd); // [mod] g_inactivity: an absent player to spectate
 	if (Core_Timeout_Think(ent, ucmd)) // [mod] a match timeout: nobody moves or fires
 		return; // [mod]
 
@@ -3846,7 +3850,7 @@ void ClientBeginServerFrame(edict_t *ent)
 					buttonMask = -1;
 
 				if ((client->latched_buttons & buttonMask) ||
-					(deathmatch->integer && g_dm_force_respawn->integer))
+					Core_Respawn_Forced(ent)) // [mod] stock's deathmatch && g_dm_force_respawn, timed under our gametypes
 				{
 					respawn(ent);
 					client->latched_buttons = BUTTON_NONE;

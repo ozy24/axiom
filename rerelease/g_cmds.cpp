@@ -1662,6 +1662,8 @@ void ClientCommand(edict_t *ent)
 	}
 	if (Q_strcasecmp(cmd, "help") == 0)
 	{
+		if (Core_Vote_Help(ent)) // [mod] an open vote to answer: the menu, not the scoreboard
+			return; // [mod]
 		Cmd_Help_f(ent);
 		return;
 	}

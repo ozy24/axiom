@@ -44,7 +44,7 @@ uint32_t Seed(const std::vector<std::string> &order)
 }
 } // namespace
 
-std::vector<std::string> Core_Maps_Words(std::string_view text)
+std::vector<std::string> Core_Maps_Words(std::string_view text, std::vector<std::string> *dropped)
 {
 	std::vector<std::string> out;
 	size_t i = 0;
@@ -55,8 +55,17 @@ std::vector<std::string> Core_Maps_Words(std::string_view text)
 		const size_t start = i;
 		while (i < text.size() && !std::isspace((unsigned char)text[i]))
 			++i;
-		const std::string word = Lower(text.substr(start, i - start));
-		if (SafeMapName(word) && !Contains(out, word))
+		if (i == start)
+			break;
+		std::string word = Lower(text.substr(start, i - start));
+		std::replace(word.begin(), word.end(), '\\', '/');
+		if (!SafeMapName(word))
+		{
+			if (dropped)
+				dropped->emplace_back(text.substr(start, i - start));
+			continue;
+		}
+		if (!Contains(out, word))
 			out.push_back(word);
 	}
 	return out;

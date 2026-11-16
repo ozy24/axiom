@@ -13,7 +13,6 @@ const RulesetDef core_rulesets[] = {
      "set match_flow 1\n"
      "set match_ready 1\n"
      "set match_minplayers 2\n"
-     "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime -1\n"
@@ -25,9 +24,8 @@ const RulesetDef core_rulesets[] = {
      "set timelimit 10\n"
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
-     "set g_scoreboard 1\n"
-     "set g_frag_messages 1\n"
-     "set g_loc 2\n"},
+     "set g_dm_force_respawn 1\n"
+     "set g_dm_force_respawn_time 3\n"},
     {"duel", "duel", "one on one: warmup and ready-up, 10 minutes, 2-minute overtimes on a tie, winner stays on",
      "set g_gametype duel\n"
      "set ctf 0\n"
@@ -35,7 +33,6 @@ const RulesetDef core_rulesets[] = {
      "set match_flow 1\n"
      "set match_ready 1\n"
      "set match_minplayers 2\n"
-     "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime 2\n"
@@ -47,9 +44,8 @@ const RulesetDef core_rulesets[] = {
      "set timelimit 10\n"
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
-     "set g_scoreboard 1\n"
-     "set g_frag_messages 1\n"
-     "set g_loc 2\n"},
+     "set g_dm_force_respawn 1\n"
+     "set g_dm_force_respawn_time 3\n"},
     {"tdm", "tdm", "team deathmatch: warmup and ready-up, 20 minutes, 2-minute overtimes on a tie",
      "set g_gametype tdm\n"
      "set ctf 0\n"
@@ -57,7 +53,6 @@ const RulesetDef core_rulesets[] = {
      "set match_flow 1\n"
      "set match_ready 1\n"
      "set match_minplayers 2\n"
-     "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime 2\n"
@@ -69,9 +64,8 @@ const RulesetDef core_rulesets[] = {
      "set timelimit 20\n"
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
-     "set g_scoreboard 1\n"
-     "set g_frag_messages 1\n"
-     "set g_loc 2\n"},
+     "set g_dm_force_respawn 1\n"
+     "set g_dm_force_respawn_time 3\n"},
     {"ctf", "ctf", "capture the flag: warmup and ready-up, 20 minutes or 8 captures, 2-minute overtimes on a tie",
      "set g_gametype ctf\n"
      "set ctf 1\n"
@@ -79,7 +73,6 @@ const RulesetDef core_rulesets[] = {
      "set match_flow 1\n"
      "set match_ready 1\n"
      "set match_minplayers 2\n"
-     "set match_allow_no_humans 0\n"
      "set match_warmup_time 0\n"
      "set match_countdown 10\n"
      "set match_overtime 2\n"
@@ -91,10 +84,9 @@ const RulesetDef core_rulesets[] = {
      "set timelimit 20\n"
      "set fraglimit 0\n"
      "set g_map_list_shuffle 1\n"
-     "set capturelimit 8\n"
-     "set g_scoreboard 1\n"
-     "set g_frag_messages 1\n"
-     "set g_loc 2\n"},
+     "set g_dm_force_respawn 1\n"
+     "set g_dm_force_respawn_time 3\n"
+     "set capturelimit 8\n"},
     // The four core gametypes only (decision 0022): no built-in variants. An
     // admin lists their own in g_ruleset_variants.
 };
@@ -111,7 +103,6 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"match_flow", "0"},
     {"match_ready", "1"},
     {"match_minplayers", "2"},
-    {"match_allow_no_humans", "0"},
     {"match_warmup_time", "0"},
     {"match_countdown", "10"},
     {"match_overtime", "0"},
@@ -127,9 +118,6 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"g_map_list_shuffle", "0"},
     {"g_no_items", "0"},      // the powerups vote (decision 0015)
     {"g_friendly_fire", "0"}, // the friendly fire vote
-    {"g_scoreboard", "0"},    // the column board (core/scoreboard_register.cpp)
-    {"g_frag_messages", "0"}, // the centre prints on a frag (core/frag_message_register.cpp)
-    {"g_loc", "0"},           // location callouts (core/loc_register.cpp)
     {"g_disable_items", ""},  // items that don't spawn (core/entities_register.cpp)
     // Stock's own gameplay switches (rerelease/g_main.cpp), so a variant's
     // `set g_instagib 1` ends with the variant.
@@ -153,6 +141,17 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"g_dm_force_respawn", "0"},
     {"g_dm_force_respawn_time", "0"},
     {"g_dm_allow_exit", "0"},
+    {"g_allow_techs", "auto"}, // runes: CTF only
+    {"g_allow_grapple", "auto"},
+    {"g_grapple_damage", "10"},
+    {"g_damage_scale", "1"},
+    {"g_weapon_respawn_time", "30"},
+    {"g_start_items", ""},
+    {"g_instant_weapon_switch", "0"},
+    {"g_quick_weapon_switch", "1"},
+    {"g_teamplay_armor_protect", "0"},
+    {"g_teamplay_force_join", "0"},
+    {"g_disable_player_collision", "0"},
 };
 const size_t core_gameplay_cvar_count = sizeof(core_gameplay_cvars) / sizeof(core_gameplay_cvars[0]);
 

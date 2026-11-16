@@ -531,6 +531,14 @@ int Vote::SecondsLeft(int64_t now_ms) const
 	return left <= 0 ? 0 : (int)((left + 999) / 1000);
 }
 
+int Vote::GuardSeconds(int64_t now_ms) const
+{
+	if (state_ != State::Open)
+		return 0;
+	const int64_t left = kGuardMs - (now_ms - since_ms_);
+	return left <= 0 ? 0 : (int)((left + 999) / 1000);
+}
+
 std::string Vote::HudText(int64_t now_ms) const
 {
 	if (state_ == State::Passed)

@@ -20,11 +20,13 @@
 #include <string_view>
 #include <vector>
 
-// The words of g_map_list as map names: lowercased, duplicates dropped, and
+// The words of g_map_list as map names: lowercased, '\\' read as '/'
+// ("q64\\dm1", as a Windows admin may write it), duplicates dropped, and
 // only [a-z0-9_-] with single '/' between parts ("q64/dm1"), up to 32
 // characters; anything else is dropped, so a name can never break a console
-// command or climb out of maps/.
-std::vector<std::string> Core_Maps_Words(std::string_view text);
+// command or climb out of maps/. Dropped words (not duplicates) go in
+// `dropped`, as written, when it is given.
+std::vector<std::string> Core_Maps_Words(std::string_view text, std::vector<std::string> *dropped = nullptr);
 
 // The play order for `list`: without `shuffle`, the written order. With it,
 // `kept` (the order so far) if it holds exactly the same maps, else a random

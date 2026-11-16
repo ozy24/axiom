@@ -15,6 +15,17 @@ Players need nothing: they join with their normal client.
   `+set game axiom`. Maps, `.ent` and `.loc` files are still found in
   `baseq2`.
 
+**Player limits:** the online lobby (the server browser, joining) has a
+limit of its own, set with the engine's `kexmultiplayer maxplayers <n>`:
+8 unless set, on the retail and Q2REX dedicated servers (Q2RED matches it
+to `maxclients` by itself). Keep it equal to `maxclients` (the example
+`server.cfg` does): a lower lobby limit, or one filled by players who
+have left the game but not the lobby, turns people away while the server
+has free slots. Run before the lobby exists, it prints "Lobby not
+active"; the engine keeps the number and uses it when the lobby opens. On a game
+hosted from the menu, type both in the console (`maxclients 32`,
+`kexmultiplayer maxplayers 32`) before the map loads.
+
 The server's console prints the version as the game loads
 (`Axiom 0.1.0 (<build>)`), and `g_version` holds it.
 
@@ -91,14 +102,15 @@ shouldn't freeze a public server. To change them:
 
 ```
 // rulesets/tdm.cfg
-set match_timeout 60         // seconds; 0 turns timeouts off
+set match_timeout 60         // seconds. 0 turns timeouts off
 set match_timeout_resume 5   // the countdown back to play
 ```
 
 `match_minplayers` (2) counts bots, so one player and the server's bots
 (`bot_minPlayers`) can start a match; a match always needs a human, so
 bots alone stay in warmup, and a match whose last human leaves goes back
-to warmup. For a bot-only server, `set match_allow_no_humans 1`.
+to warmup. For a bot-only server, `set match_allow_no_humans 1` in
+`server.cfg` (it holds across mode switches).
 
 ## Adding a variant
 
@@ -131,9 +143,59 @@ your `rulesets/ctf.cfg`.
 
 Each switch starts clean: nothing a previous mode set carries over,
 stock's gameplay switches included (`g_instagib`, `g_dm_weapons_stay`,
-`g_no_armor`...). Three settings are the server's, not a mode's, and hold
-across switches: `g_classic_jumps`, `g_teleporter_freeze` and
-`sv_gravity`. Set them in `server.cfg`.
+`g_no_armor`, `g_allow_techs`, `g_damage_scale`, `g_start_items`...).
+Some settings are the server's, not a mode's, and hold
+across switches: `g_classic_jumps`, `g_teleporter_freeze`, `sv_gravity`,
+`g_scoreboard`, `g_frag_messages`, `g_loc`, `g_hud_timer`,
+`g_hud_miniscore`, `g_dm_crosshair_id`, `g_inactivity` and
+`match_allow_no_humans`. Set them in `server.cfg`.
+
+### Stock's gameplay settings
+
+Stock Quake II's own switches, for a ruleset that wants them. A mode
+switch puts every one back to the default below before the mode's file
+runs, so a setting stays in the file (and the mode) that sets it: a
+grapple turned on in `ctf.cfg` is gone in FFA.
+
+| Setting | Default | What |
+|---|---|---|
+| `g_instagib` | 0 | 1: railguns that kill in one shot, nothing else |
+| `g_infinite_ammo` | 0 | 1: ammo never runs out |
+| `g_damage_scale` | 1 | all damage multiplied by this |
+| `g_start_items` | (empty) | what players spawn with: `;`-separated classnames, each with an optional count (`"weapon_railgun;ammo_slugs 50"`) |
+| `g_no_items` | 0 | 1: no powerups (quad, invulnerability...); despite the name, other items stay. Also the `powerups` vote |
+| `g_no_armor` | 0 | 1: no armour on the map |
+| `g_no_health` | 0 | 1: no health on the map |
+| `g_no_mines` | 0 | 1: no prox mines or tesla (Ground Zero) |
+| `g_no_nukes` | 0 | 1: no nukes (Ground Zero) |
+| `g_no_spheres` | 0 | 1: no spheres (Ground Zero) |
+| `g_disable_items` | (empty) | classnames that don't spawn on any map (`"item_power_shield"`); see "Changing a map's items" |
+| `g_dm_weapons_stay` | 0 | 1: weapons stay when taken; you can't take one you already have |
+| `g_weapon_respawn_time` | 30 | seconds before a taken weapon comes back |
+| `g_dm_instant_items` | 1 | 1: a powerup is used the moment it's picked up; 0: it goes in the inventory |
+| `g_dm_random_items` | 0 | 1: items are swapped for random others each map |
+| `g_dm_no_quad_drop` | 0 | 1: a dying player doesn't drop their quad |
+| `g_dm_no_quadfire_drop` | 0 | 1: nor their DualFire (The Reckoning) |
+| `g_dm_no_stack_double` | 0 | 1: quad and double damage don't multiply together |
+| `g_dm_strong_mines` | 0 | 1: prox mines last until they go off |
+| `g_dm_no_fall_damage` | 0 | 1: no falling damage |
+| `g_dm_spawn_farthest` | 1 | 1: respawn at the spawn point farthest from others |
+| `g_dm_force_respawn` | 0 | 1: the dead respawn by themselves at `g_dm_force_respawn_time`, so nobody can stay dead while the clock runs out; 0: only by pressing fire. Every built-in ruleset sets 1 (decision 0030) |
+| `g_dm_force_respawn_time` | 0 | with forced respawn, seconds dead before it (at least 1). Pressing fire respawns after 1 second either way, as on MuffMode. Every built-in ruleset sets 3 |
+| `g_dm_same_level` | 0 | 1: the level's end replays the same map (with no `g_map_list`) |
+| `g_dm_allow_exit` | 0 | 1: a map's exit ends the level; 0: touching it kills you |
+| `g_instant_weapon_switch` | 0 | 1: weapons switch at once |
+| `g_quick_weapon_switch` | 1 | 1: the rerelease's faster switch animation; 0: the original's |
+| `g_disable_player_collision` | 0 | 1: players pass through each other |
+| `g_allow_techs` | auto | the runes (Resistance, Strength, Haste, AutoDoc): auto = CTF only, 1 = every mode, 0 = none |
+| `g_allow_grapple` | auto | the grappling hook: auto = CTF only (unless the map turns it off), 1 = every mode, 0 = none |
+| `g_grapple_damage` | 10 | the grapple's damage |
+| `g_friendly_fire` | 0 | TDM, CTF: 1 = teammates can hurt each other. Also the `friendlyfire` vote |
+| `g_teamplay_armor_protect` | 0 | TDM, CTF: 1 = a teammate's damage skips armour |
+| `g_teamplay_force_join` | 0 | TDM, CTF: 1 = players don't pick a team; they go on the smaller one |
+
+The match settings (`match_*`), the limits and the map list are reset
+the same way; they are described above.
 
 ## Joining
 
@@ -143,8 +205,9 @@ chooses to play (`join`, or the menu); players stay in from map to map.
 | | Default | |
 |---|---|---|
 | `g_auto_join` | 0 | 1: everyone goes straight into play (the smaller team) |
+| `g_inactivity` | 120 | seconds a playing human may go without input (no button, movement or turn) before they are moved to spectate, warned 10 seconds before; at least 15. 0: never. Bots, spectators, timeouts and the intermission don't count. In a live Duel the move is a forfeit, as `spectate` is: a timeout is the way to take a break |
 
-Set it in `server.cfg`. Details: docs/design/joining.md.
+Set them in `server.cfg`. Details: docs/design/joining.md.
 
 ## Running a match from the console
 
@@ -186,7 +249,7 @@ Give trusted players a password and they can run a match from inside the
 game, with no console access:
 
 ```
-set admin_password "something long"   // in server.cfg; empty (the default): no admins
+set admin_password "something long"   // in server.cfg. Empty (the default): no admins
 ```
 
 A player types `admin <password>` in the console (never in chat: chat goes
@@ -214,11 +277,15 @@ but the looks (`Alice (admin): kick Bob`).
 
 Details: docs/design/admin.md, decision 0026.
 
-## Scoreboard
+## Scoreboard and HUD
 
 | Cvar | Default | What |
 |---|---|---|
-| `g_scoreboard` | 0 | 1: the mod's boards: FFA's columns (#, Frg, Dth, Player, FPH, Time, Ping), Duel's (the duellists, the queue), and spectators shown with 0 and ping on every board; every built-in ruleset sets 1. 0: stock's boards |
+| `g_dm_crosshair_id` | 1 | TDM, CTF: a teammate's name under the crosshair. 0: none (MuffMode's name) |
+| `g_hud_timer` | 1 | The match clock on the HUD, bottom left of centre. 0: none (the match still keeps time) |
+| `g_hud_miniscore` | 1 | FFA and Duel: the top two players' faces and scores, bottom right, while the match is in play. 0: none |
+| `g_scoreboard` | 1 | The mod's boards: FFA's columns (Frg, Dth, Player, FPH, Time, Ping), Duel's (the duellists, the queue), and spectators shown with 0 and ping on every board. 0: stock's boards |
+| `g_frag_messages` | 1 | On each frag, "You fragged ..." to the killer (and your place while live), "Fragged by ..." to the victim. 0: none |
 
 See docs/design/scoreboard.md.
 
@@ -291,7 +358,7 @@ place from a map's `.loc` file: `locs/<map>.loc`, the community format
 
 | | Default | |
 |---|---|---|
-| `g_loc` | 0 (every built-in ruleset sets 2) | 0: off. 1: the map's `.loc` file only. 2: the file, or with none, the nearest weapon, powerup or mega health ("upper RG") |
+| `g_loc` | 2 | 0: off. 1: the map's `.loc` file only. 2: the file, or with none, the nearest weapon, powerup or mega health ("upper RG") |
 | `g_loc_dir` | `locs` | where the files are |
 
 A file is read when its map loads (`Loc: 136 places from locs/q2dm1.loc`
@@ -319,7 +386,7 @@ and what Bloody Blastard ran under MuffMode. Deathmatch only.
 | `g_vote` | 1 | voting on |
 | `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire readyall readyteam shuffle` | what players can call; remove a word to turn that vote off |
 | `g_vote_midgame` | 1 | also during a match; 0 = warmup only |
-| `g_map_list` | (empty) | the map rotation, and the maps a vote may pick |
+| `g_map_list` | (empty) | the map rotation, and the maps a vote may pick: names as in `map`, a pack's maps with a slash (`q64/dm3`; `q64\dm3` works too). A word that isn't a map name is left out, and the console says so |
 | `g_map_list_shuffle` | 1 | play the rotation in a random order; 0 = as written |
 
 `sv callvote <kind> [choice]` puts a vote to the players from the console

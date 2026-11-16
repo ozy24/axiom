@@ -541,3 +541,16 @@ TEST_CASE("vote: an admin cancels the open vote, with no cooldown for its caller
 	CHECK(v.Update(four, 10) == VoteEvent::None);
 	CHECK(v.Call(0, Map("q2dm3"), Choices(), false, four, 20) == VoteError::None);
 }
+
+TEST_CASE("vote: a menu press is ignored for the first seconds, counted down")
+{
+	Vote v(AllKinds());
+	const std::vector<int> voters{0, 1};
+	CHECK(v.GuardSeconds(1000) == 0); // no vote
+	REQUIRE(v.Call(0, Map("q2dm3"), Choices(), false, voters, 1000) == VoteError::None);
+	CHECK(v.GuardSeconds(1000) == 3);
+	CHECK(v.GuardSeconds(2001) == 2);
+	CHECK(v.GuardSeconds(3999) == 1);
+	CHECK(v.GuardSeconds(4000) == 0);
+	CHECK(v.GuardSeconds(20000) == 0);
+}

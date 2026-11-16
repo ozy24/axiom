@@ -16,6 +16,21 @@ cvar_t *g_map_order; // the play order; g_map_list stays as the admin wrote it
 bool announced = false;
 gtime_t last_time;
 bool begun = false;
+std::string checked; // the g_map_list last checked for words it drops
+
+// Says, once per new g_map_list, which words aren't map names and are left
+// out: they were dropped silently (playtest 2026-11-16: "q64\\dm3" before
+// a backslash was read as a slash).
+void CheckList()
+{
+	if (checked == g_map_list->string)
+		return;
+	checked = g_map_list->string;
+	std::vector<std::string> dropped;
+	Core_Maps_Words(checked, &dropped);
+	for (const std::string &word : dropped)
+		gi.Com_PrintFmt("Maps: g_map_list: \"{}\" isn't a map name (letters, digits, _ - /); left out\n", word);
+}
 
 void RegisterCvars()
 {
@@ -86,6 +101,8 @@ void Core_Maps_Frame()
 {
 	if (!deathmatch->integer)
 		return;
+	if (Core_Gametype_Active())
+		CheckList();
 	if (!begun || level.time < last_time)
 	{
 		announced = false;

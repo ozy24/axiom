@@ -23,6 +23,14 @@ bool Active()
 {
 	return deathmatch->integer && Core_Gametype_Active();
 }
+
+// 1: a teammate's name under the crosshair (TDM, CTF); 0: none, as
+// MuffMode's g_dm_crosshair_id 0. The server's, held across mode switches.
+bool CrosshairId()
+{
+	static cvar_t *g_dm_crosshair_id = gi.cvar("g_dm_crosshair_id", "1", CVAR_NOFLAGS);
+	return g_dm_crosshair_id->integer != 0;
+}
 } // namespace
 
 bool Core_IdView_Statusbar(statusbar_t &sb)
@@ -45,7 +53,7 @@ void Core_IdView_SetStats(edict_t *ent)
 		return;
 	// STAT_CTF_ID_VIEW is the target's client number plus one, 0 for none.
 	// Team modes only: stock FFA shows no names under the crosshair.
-	const int target = G_TeamplayEnabled() ? ent->client->ps.stats[STAT_CTF_ID_VIEW] : 0;
+	const int target = CrosshairId() && G_TeamplayEnabled() ? ent->client->ps.stats[STAT_CTF_ID_VIEW] : 0;
 	ent->client->ps.stats[stat] = target ? CONFIG_CTF_PLAYER_NAME + target - 1 : 0;
 }
 

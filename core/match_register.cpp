@@ -45,6 +45,7 @@ std::array<bool, MAX_CLIENTS> ready{};
 
 cvar_t *match_flow, *match_ready, *match_minplayers, *match_allow_no_humans, *match_warmup_time, *match_countdown,
     *match_overtime, *match_overtime_max;
+cvar_t *g_hud_timer;
 
 void RegisterCvars()
 {
@@ -61,6 +62,9 @@ void RegisterCvars()
 	// Where finished-match records go (relative to the server's working
 	// directory); empty = none.
 	g_matchlog_dir = gi.cvar("g_matchlog_dir", "", CVAR_NOFLAGS);
+	// The HUD's match clock, bottom left of centre; 0 = none (the match
+	// still keeps time).
+	g_hud_timer = gi.cvar("g_hud_timer", "1", CVAR_NOFLAGS);
 }
 
 MatchConfig ReadConfig()
@@ -145,14 +149,22 @@ void CenterAll(const std::string &text)
 	}
 }
 
+bool Dropped(const edict_t *ent)
+{
+	return ent->spawnflags.has(SPAWNFLAG_ITEM_DROPPED) || ent->spawnflags.has(SPAWNFLAG_ITEM_DROPPED_PLAYER);
+}
+
 bool Transient(const edict_t *ent)
 {
 	static const char
 	    *const kinds[] = {"rocket",         "grenade",     "hand_grenade", "bolt",       "bfg blast",     "disint ball",
 	                      "tracker",        "prox_mine",   "prox_field",   "tesla_mine", "tesla trigger", "nuke",
 	                      "food_cube_trap", "pain daemon", "DelayedUse"}; // a trigger's delayed firing, still to come
-	if (ent->item && ent->spawnflags.has(SPAWNFLAG_ITEM_DROPPED))
-		return true; // dropped weapons, packs, the dead's items
+	// Dropped weapons and packs; the dead's weapon, quad and DualFire carry
+	// only SPAWNFLAG_ITEM_DROPPED_PLAYER (TossClientWeapon clears the other:
+	// playtest 2026-11-16, a warmup railgun still there once live).
+	if (ent->item && Dropped(ent))
+		return true;
 	if (!ent->classname)
 		return false;
 	for (const char *k : kinds)
@@ -175,16 +187,21 @@ void ResetArena()
 		CTFResetFlag(CTF_TEAM1);
 		CTFResetFlag(CTF_TEAM2);
 	}
+	int dropped = 0;
 	for (uint32_t i = game.maxclients + 1; i < globals.num_edicts; ++i)
 	{
 		edict_t *ent = g_edicts + i;
 		if (ent->inuse && Transient(ent))
+		{
+			dropped += ent->item ? 1 : 0;
 			G_FreeEdict(ent);
+		}
 	}
+	gi.Com_PrintFmt("Items: {} dropped cleared\n", dropped);
 	for (uint32_t i = game.maxclients + 1; i < globals.num_edicts; ++i)
 	{
 		edict_t *ent = g_edicts + i;
-		if (!ent->inuse || !ent->item || ent->spawnflags.has(SPAWNFLAG_ITEM_DROPPED))
+		if (!ent->inuse || !ent->item || Dropped(ent))
 			continue;
 		// Team chains (one of several items spawns) respawn once, via the master.
 		if (ent->team && ent->teammaster != ent)
@@ -624,9 +641,13 @@ void Core_Match_Statusbar(statusbar_t &sb)
 void Core_Match_SetStats(edict_t *ent)
 {
 	if (StatusStat())
-		ent->client->ps.stats[StatusStat()] = status_text.empty() ? 0 : kStatusConfigstring;
+		// Not while the scoreboard is up (its limit line sits at the same
+		// height; playtest 2026-11-15), except at the intermission's MATCH END.
+		ent->client->ps.stats[StatusStat()] =
+		    status_text.empty() || (ent->client->showscores && !level.intermissiontime) ? 0 : kStatusConfigstring;
 	if (ClockStat())
-		ent->client->ps.stats[ClockStat()] = clock_text.empty() ? 0 : kClockConfigstring;
+		ent->client->ps.stats[ClockStat()] =
+		    clock_text.empty() || (g_hud_timer && !g_hud_timer->integer) ? 0 : kClockConfigstring;
 	if (CountdownStat())
 		ent->client->ps.stats[CountdownStat()] = Core_Timeout_CountdownSeconds() ? Core_Timeout_CountdownSeconds()
 		                                         : Core_Match_OwnsRules()

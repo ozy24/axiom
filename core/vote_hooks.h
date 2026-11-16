@@ -34,6 +34,7 @@ struct VoteMenuInfo
 	bool open = false;              // a vote is open
 	std::string proposal;           // "map q2dm3"
 	int answer = -1;                // this client's: -1 none, 0 no, 1 yes
+	int guard = 0;                  // seconds a menu press doesn't answer yet (Vote::GuardSeconds)
 	bool can_call = false;          // voting on, a voter, nothing open, and midgame or not a live match
 	std::vector<std::string> kinds; // allowed: "map", "gametype", "restart"
 	std::vector<std::string> maps;
@@ -43,6 +44,11 @@ struct VoteMenuInfo
 	std::string ruleset;                     // g_ruleset
 };
 VoteMenuInfo Core_Vote_MenuInfo(const edict_t *ent);
+
+// `help` (F1; a controller's X) from a voter who hasn't answered the open
+// vote: opens the menu at its Vote Yes / Vote No and returns true; false
+// otherwise, and stock's help (the scoreboard in deathmatch) runs.
+bool Core_Vote_Help(edict_t *ent);
 
 // What the menu's rows do: `callvote <args>` and `vote yes|no`, through the
 // same checks and messages as the console.

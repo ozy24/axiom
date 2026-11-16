@@ -2,8 +2,8 @@
 
 `g_scoreboard 1` gives the mod's boards: FFA gets columns (decision 0018),
 Duel its own board (decision 0019, below), and the team boards labelled
-spectators. Every built-in ruleset turns it on; `g_scoreboard 0` brings
-stock's back.
+spectators. It is on by default and the server's choice, held across
+mode switches (decision 0029); `g_scoreboard 0` brings stock's back.
 
 **Spectators**, on every board: a KEX name shows only in a `ctf` row, which
 always draws two numbers before it (see Limits), so a spectator's row can't
@@ -14,15 +14,15 @@ they never read as frags and deaths (Chris, 2026-10-30).
 ## FFA
 
 ```
-    Frg Dth Player           FPH Time Ping
- 1   42  15 Xin              379    6   17
- 2   39   7 aid              352    6   15
+   Frg Dth Player           FPH Time Ping
+    42  15 Xin              379    6   17
+    39   7 aid              352    6   15
        (ping) Spectators
      0  18  Pidarassius       0   20  Player
 ```
 
-- **Position**: the place on the board (ties take the next number). Your
-  own row, pulled in on a full server, shows its real position.
+- No position column (playtest 2026-11-15): the order says it. Your own
+  row, pulled in at the bottom on a full server, is green.
 
 - **Frg**: the score. **Dth**: deaths while the match is in play (warmup
   is free play, so neither counts there).

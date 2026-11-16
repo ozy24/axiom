@@ -11,4 +11,5 @@ python3 -I scripts/check_mod_markers.py
 python3 -I scripts/check_core_seam.py
 python3 -I scripts/check_gameplay_cvars.py
 python3 -I scripts/gen_example_rulesets.py --check
+python3 -I scripts/check_cfg_semicolons.py
 scripts/check_format.sh

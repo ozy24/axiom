@@ -45,7 +45,7 @@ void RegisterCvars()
 		return;
 	// 0: stock's boards; 1: the mod's (FFA's columns, Duel's board, the team
 	// boards' spectators).
-	g_scoreboard = gi.cvar("g_scoreboard", "0", CVAR_NOFLAGS);
+	g_scoreboard = gi.cvar("g_scoreboard", "1", CVAR_NOFLAGS);
 }
 
 // Deathmatch outside team modes, under a registered gametype (single player,
@@ -154,6 +154,15 @@ void Core_Scoreboard_TeamReady(std::string &layout, size_t max)
 			ready.insert((int)i);
 	}
 	layout += Core_Scoreboard_TeamReady(layout, ready, max);
+}
+
+int Core_Scoreboard_LimitX()
+{
+	if (!Active())
+		return -20;
+	RegisterCvars();
+	const GametypeDef *gt = Core_Gametype_Active();
+	return g_scoreboard->integer && !gt->scoreboard ? Core_Scoreboard_LeftX() : -20;
 }
 
 bool Core_Scoreboard_Columns(const edict_t *ent, std::string &layout)

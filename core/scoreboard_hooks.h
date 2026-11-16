@@ -12,6 +12,11 @@ struct edict_t;
 // frag limit, clock and intermission line). Else false: stock's board.
 bool Core_Scoreboard_Columns(const edict_t *ent, std::string &layout);
 
+// From DeathmatchScoreboardMessage: the frag limit line's x. Over the
+// column board's Frg (core/scoreboard.h) when that board is drawn (FFA,
+// g_scoreboard 1); stock's -20 for every other board.
+int Core_Scoreboard_LimitX();
+
 // From player_die, once per death: counts it while the match is in play.
 void Core_Scoreboard_Died(const edict_t *self);
 

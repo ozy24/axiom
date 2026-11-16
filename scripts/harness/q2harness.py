@@ -1148,6 +1148,7 @@ def tier_human_settings(args, results):
 client 0 name=Alice social=sim-alice puppet
 client 1 name=Bob social=sim-bob puppet
 client 2 name=Carol social=sim-carol puppet
+at 17 2 cmd kill
 at 26 1 cmd kill
 at 28 0 cmd score
 at 30 0 cmd callvote timelimit 7
@@ -1161,10 +1162,14 @@ at 40 0 cmd vote yes
     rulesets = rig.dir / "baseq2" / "rulesets"
     rulesets.mkdir(parents=True, exist_ok=True)
     (rulesets / "ffa.cfg").write_text("set match_ready 0\nset match_countdown 3\n")
-    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_ruleset", "ffa", "+map", "q2dm1"])
+    # g_inactivity at its floor (15 s): players who play are never moved.
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_inactivity", "15", "+set", "g_ruleset", "ffa",
+                                     "+map", "q2dm1"])
     log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 120)
     tap = read_jsonl(rig.dir / "tap.jsonl")
     detail = []
+    if "Inactivity:" in log:
+        detail.append("a playing player was moved for inactivity: " + next(l for l in log.splitlines() if "Inactivity:" in l))
     humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
     if set(humans) != {"Alice", "Bob", "Carol"}:
         results.append(("16 human-settings", False,
@@ -1188,7 +1193,7 @@ at 40 0 cmd vote yes
         detail.append("Alice was never shown the column scoreboard")
     else:
         board = boards[0]
-        rows = {int(m[0]): (int(m[1]), int(m[2])) for m in re.findall(r"ctf 16 \d+ (\d+) (-?\d+) (\d+) ", board)}
+        rows = {int(m[0]): (int(m[1]), int(m[2])) for m in re.findall(r"ctf 4 \d+ (\d+) (-?\d+) (\d+) ", board)}
         if set(rows) != set(humans.values()):
             detail.append(f"board rows for slots {sorted(rows)}, expected {sorted(humans.values())}")
         elif rows[humans["Bob"]] != (-1, 1):
@@ -1197,6 +1202,12 @@ at 40 0 cmd vote yes
             detail.append(f"the board is {len(board)} bytes, over the client's 1024")
     if "-> live" not in log[:max(at_time, 0)]:
         detail.append("the match wasn't live when the time limit vote ran")
+    # Carol's suicide just before live drops her warmup weapon, which carries
+    # only SPAWNFLAG_ITEM_DROPPED_PLAYER: going live must clear it (playtest
+    # 2026-11-16, a dropped railgun still there once live).
+    cleared = [int(n) for n in re.findall(r"Items: (\d+) dropped cleared", log)]
+    if not cleared or cleared[0] < 1:
+        detail.append(f"going live cleared {cleared[:1] or 'no'} dropped items; Carol's weapon stayed")
     locs = [r for r in tap if r.get("type") == "locprint"]
     to = lambda name: [" ".join([r["base"]] + r.get("args", [])) for r in locs if r["to"] == humans[name]]
     if not any("only for team gametypes" in t for t in to("Bob")):

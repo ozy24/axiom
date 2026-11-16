@@ -5,6 +5,7 @@
 
 #include "core/gametype.h"
 #include "core/match_hooks.h"
+#include "core/menu_hooks.h"
 #include "core/player_name.h"
 #include "core/rulesets.h"
 #include "core/teams_hooks.h"
@@ -243,6 +244,37 @@ void Apply(const VoteProposal &p)
 }
 
 // Open menus redraw now, so their vote rows follow the vote.
+int last_guard = 0; // Vote::GuardSeconds last frame: the menus redraw as it counts
+
+void DirtyMenus();
+
+// A vote was just called: draw each voter's eye to it (playtest
+// 2026-11-15). In a warmup the menu opens with Vote Yes / Vote No, as
+// MuffMode's vote box did, for whoever has no menu open (a press in its
+// first seconds doesn't count). In a live match a menu would cover the
+// fight, so one centre print instead, with the player's own key for the
+// menu (`inven`, Tab) and for `help` (F1, a controller's X), which opens it
+// while they have a vote to answer: the KEX client draws a %bind: as that
+// player's key or button.
+void Announce(const edict_t *caller)
+{
+	const bool popup = Core_Match_OwnsRules() && Core_Match_Warmup();
+	const std::string what = Core_Vote_Describe(vote.Proposal());
+	for (uint32_t i = 1; i <= game.maxclients; ++i)
+	{
+		edict_t *ent = g_edicts + i;
+		if (ent == caller || !IsVoterOn(ent, vote.Proposal()) || vote.Answer(Slot(ent)))
+			continue;
+		if (popup)
+		{
+			if (!ent->client->menu)
+				Core_Menu_Inven(ent);
+		}
+		else
+			gi.LocClient_Print(ent, PRINT_CENTER, "%bind:inven:Vote%Vote: {}", what.c_str());
+	}
+}
+
 void DirtyMenus()
 {
 	for (uint32_t i = 1; i <= game.maxclients; ++i)
@@ -330,6 +362,7 @@ void Call(edict_t *ent, std::string_view kind_name, std::string_view arg)
 	                      ent ? ent->client->pers.netname : "The server", what.c_str());
 	gi.Com_PrintFmt("Vote: {} called {}\n", ent ? Core_PlayerName(ent) : std::string("the server"), what);
 	PlayCallSound();
+	Announce(ent);
 	DirtyMenus();
 }
 
@@ -359,6 +392,11 @@ void Core_Vote_Frame()
 	}
 	last_time = level.time;
 	vote.SetConfig(ReadConfig());
+	if (const int guard = vote.GuardSeconds(level.time.milliseconds()); guard != last_guard)
+	{
+		last_guard = guard;
+		DirtyMenus(); // Vote Yes (3), (2), (1), then Vote Yes
+	}
 
 	const VoteProposal p = vote.Proposal();
 	const std::string what = Core_Vote_Describe(p);
@@ -515,6 +553,13 @@ std::string Core_Vote_HudText()
 	return Active() ? vote.HudText(level.time.milliseconds()) : std::string();
 }
 
+bool Core_Vote_Help(edict_t *ent)
+{
+	if (!Active() || !vote.Open() || !IsVoterOn(ent, vote.Proposal()) || vote.Answer(Slot(ent)))
+		return false;
+	return Core_Menu_Inven(ent);
+}
+
 VoteMenuInfo Core_Vote_MenuInfo(const edict_t *ent)
 {
 	VoteMenuInfo info;
@@ -527,6 +572,7 @@ VoteMenuInfo Core_Vote_MenuInfo(const edict_t *ent)
 	info.proposal = info.open ? Core_Vote_Describe(vote.Proposal()) : "";
 	if (const std::optional<bool> a = vote.Answer(Slot(ent)))
 		info.answer = *a ? 1 : 0;
+	info.guard = info.open ? vote.GuardSeconds(level.time.milliseconds()) : 0;
 	info.can_call = config.enabled && !config.allowed.empty() && info.voter && !vote.Open() && !vote.Passed() &&
 	                !level.intermissiontime && (!Live() || config.midgame);
 	for (VoteKind k : config.allowed)
