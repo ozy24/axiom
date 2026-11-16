@@ -3,6 +3,7 @@
 #include "g_local.h"
 #include "core/match_hooks.h" // [mod]
 #include "core/eyecam_hooks.h" // [mod]
+#include "core/powerup_sound_hooks.h" // [mod]
 #include "bots/bot_includes.h"
 
 bool Pickup_Weapon(edict_t *ent, edict_t *other);
@@ -436,7 +437,7 @@ void Use_Quad(edict_t *ent, gitem_t *item)
 
 	ent->client->quad_time = max(level.time, ent->client->quad_time) + timeout;
 
-	gi.sound(ent, CHAN_ITEM, gi.soundindex("items/damage.wav"), 1, ATTN_NORM, 0);
+	Core_Powerup_Sound(ent, "items/damage.wav"); // [mod] heard map-wide in deathmatch
 }
 // =====================================================================
 
@@ -459,7 +460,7 @@ void Use_QuadFire(edict_t *ent, gitem_t *item)
 
 	ent->client->quadfire_time = max(level.time, ent->client->quadfire_time) + timeout;
 
-	gi.sound(ent, CHAN_ITEM, gi.soundindex("items/quadfire1.wav"), 1, ATTN_NORM, 0);
+	Core_Powerup_Sound(ent, "items/quadfire1.wav"); // [mod] heard map-wide in deathmatch
 }
 // RAFAEL
 
@@ -493,7 +494,7 @@ void Use_Invulnerability(edict_t *ent, gitem_t *item)
 
 	ent->client->invincible_time = max(level.time, ent->client->invincible_time) + 30_sec;
 
-	gi.sound(ent, CHAN_ITEM, gi.soundindex("items/protect.wav"), 1, ATTN_NORM, 0);
+	Core_Powerup_Sound(ent, "items/protect.wav"); // [mod] heard map-wide in deathmatch
 }
 
 void Use_Invisibility(edict_t *ent, gitem_t *item)
@@ -502,7 +503,7 @@ void Use_Invisibility(edict_t *ent, gitem_t *item)
 
 	ent->client->invisible_time = max(level.time, ent->client->invisible_time) + 30_sec;
 
-	gi.sound(ent, CHAN_ITEM, gi.soundindex("items/protect.wav"), 1, ATTN_NORM, 0);
+	Core_Powerup_Sound(ent, "items/protect.wav"); // [mod] heard map-wide in deathmatch
 }
 
 //======================================================================

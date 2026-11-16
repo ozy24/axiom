@@ -2,6 +2,7 @@
 // Licensed under the GNU General Public License 2.0.
 
 #include "../g_local.h"
+#include "core/powerup_sound_hooks.h" // [mod]
 
 // ================
 // PMM
@@ -45,7 +46,7 @@ void Use_Double(edict_t *ent, gitem_t *item)
 
 	ent->client->double_time = max(level.time, ent->client->double_time) + 30_sec;
 
-	gi.sound(ent, CHAN_ITEM, gi.soundindex("misc/ddamage1.wav"), 1, ATTN_NORM, 0);
+	Core_Powerup_Sound(ent, "misc/ddamage1.wav"); // [mod] heard map-wide in deathmatch
 }
 
 void Use_Nuke(edict_t *ent, gitem_t *item)

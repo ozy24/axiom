@@ -56,6 +56,11 @@ clients need nothing installed.
   `g_hud_miniscore`),
   frag messages, and a first-person view when watching someone (`eyecam`).
 
+### Sound
+- Picking up or using Quad Damage, Invulnerability, Invisibility, DualFire
+  or Double Damage is heard by everyone on the map, as on MuffMode (stock:
+  only nearby).
+
 ### Maps
 - `.ent` override files (MuffMode's keys: per-gametype items, jump pads,
   small ammo); `sv saveents` writes a map's list to start from.
