@@ -65,6 +65,8 @@ MEANING = {
     "fraglimit": "0 = none",
     "capturelimit": "0 = none",
     "g_map_list_shuffle": "play g_map_list in a random order; 0 = as written",
+    "g_dm_force_respawn": "the dead respawn by themselves (nobody stays dead to run the clock out); 0 = only by pressing fire",
+    "g_dm_force_respawn_time": "seconds dead before that; fire respawns after 1 anyway",
     "g_scoreboard": "the mod's scoreboards; 0 = stock's",
     "g_frag_messages": "\"You fragged ...\" and your place, on each frag",
     "g_loc": "location callouts: 2 = .loc file, else the nearest item; 0 = off",
