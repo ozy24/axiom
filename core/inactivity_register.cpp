@@ -57,7 +57,7 @@ void Core_Inactivity_Think(edict_t *ent, const usercmd_t *ucmd)
 	case InactivityEvent::None:
 		break;
 	case InactivityEvent::Warn:
-		gi.LocCenter_Print(ent, "You seem to be away.\nMove, or in 10 seconds you'll be moved to spectate.");
+		gi.LocCenter_Print(ent, "Inactivity: you'll be moved to spectate in 10 seconds.");
 		break;
 	case InactivityEvent::Move:
 	{
@@ -65,9 +65,8 @@ void Core_Inactivity_Think(edict_t *ent, const usercmd_t *ucmd)
 		Core_Join_Run(ent, false); // as their own `spectate`
 		if (Core_Match_Playing(ent))
 			break; // refused (the spectator limit): left playing, tried again later
-		gi.LocCenter_Print(ent, "Moved to spectate: no input for {} seconds.\nTab opens the menu.",
-		                   Inactivity::Seconds(g_inactivity->integer));
-		gi.LocBroadcast_Print(PRINT_HIGH, "{} was moved to spectate (away).\n", ent->client->pers.netname);
+		gi.LocCenter_Print(ent, "You've been moved to spectate for inactivity.");
+		gi.LocBroadcast_Print(PRINT_HIGH, "{} was moved to spectate for inactivity.\n", ent->client->pers.netname);
 		gi.Com_PrintFmt("Inactivity: {} moved to spectate\n", name.c_str());
 		break;
 	}
