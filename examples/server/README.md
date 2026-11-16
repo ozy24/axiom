@@ -6,7 +6,7 @@ built-in settings. These are starting points for a dedicated server.
 | File | Copy to | |
 |---|---|---|
 | `server.cfg` | your game folder | the server: name, slots, the mode it starts in, admins, voting |
-| `rulesets/ffa.cfg` (`duel`, `tdm`, `ctf`) | `rulesets/` in your game folder | every built-in setting of that gametype, commented out, and a map rotation of stock maps; uncomment what you change |
+| `rulesets/ffa.cfg` (`duel`, `tdm`, `ctf`) | `rulesets/` in your game folder | every built-in setting of that gametype, in force at its built-in value, and a map rotation of stock maps; change the values you want different |
 | `rulesets/ctf_instagib.cfg` | `rulesets/` | a variant: Instagib CTF, voted beside the four |
 | `public-server.cfg` | nowhere: copy lines from it | settings public servers often change |
 

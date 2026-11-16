@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Writes examples/server/rulesets/<gametype>.cfg from the built-in rulesets
-in core/rulesets.cpp: every built-in setting, commented out at its built-in
-value, so an admin sees what they get with no file and uncomments what they
-change. The release zip ships them (docs/admin.md).
+in core/rulesets.cpp: every built-in setting, in force at its built-in
+value (Chris, 2026-11-16: no hidden settings), so an admin sees what runs
+and changes values in place. The release zip ships them (docs/admin.md).
 
     python3 -I scripts/gen_example_rulesets.py           # rewrite the files
     python3 -I scripts/gen_example_rulesets.py --check   # fail if they differ
@@ -88,13 +88,13 @@ def builtins():
 
 def render(gametype, settings):
     out = [
-        f"// rulesets/{gametype}.cfg: your changes to {TITLES[gametype]}.",
+        f"// rulesets/{gametype}.cfg: how {TITLES[gametype]} plays on this server.",
         "//",
-        "// Without this file the server plays the built-in settings below. Each",
-        "// line is commented out at its built-in value: uncomment one and change",
-        "// it to use your own, and delete the rest if you like. Settings here",
-        "// apply whenever this gametype starts (by vote, `sv ruleset`, or",
-        "// `set g_ruleset` in server.cfg); nothing carries over from another.",
+        "// Every line is in force: change a value to use your own. Without this",
+        "// file (or a line of it) the server plays the built-in values, which",
+        "// the lines below start at. Settings here apply whenever this gametype",
+        "// starts (by vote, `sv ruleset`, or `set g_ruleset` in server.cfg);",
+        "// nothing carries over from another.",
         "// Every setting: docs/admin.md.",
         "//",
         "// Generated from the module's built-in rulesets",
@@ -106,7 +106,7 @@ def render(gametype, settings):
     ]
     choices = dict(CHOICES.get(gametype, []))
     builtin = {c for c, _ in settings}
-    width = max(len(f"// set {c} {v}") for c, v in list(settings) + list(choices.items()) if c not in GAMETYPE_CVARS)
+    width = max(len(f"set {c} {v}") for c, v in list(settings) + list(choices.items()) if c not in GAMETYPE_CVARS)
     extra = [(c, v) for c, v in choices.items() if c not in builtin]
     if extra:
         out.append("// This example's gameplay (the built-in plays as stock).")
@@ -123,7 +123,7 @@ def render(gametype, settings):
         if cvar in choices:
             out.append(f"set {cvar} {choices[cvar]}".ljust(width + 2) + f"// {MEANING[cvar]} (built-in: {value})")
         else:
-            out.append(f"// set {cvar} {value}".ljust(width + 2) + f"// {MEANING[cvar]}")
+            out.append(f"set {cvar} {value}".ljust(width + 2) + f"// {MEANING[cvar]}")
     return "\n".join(out) + "\n"
 
 
