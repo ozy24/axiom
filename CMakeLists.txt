@@ -112,6 +112,7 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_CURRENT_SOURCE_DIR}/core/inactivity.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/core/inactivity_register.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/core/respawn_register.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/powerup_sound_register.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/core/gametype_register.cpp"
     ${GAME_GAMETYPE_SOURCES}
     "${MOD_GENERATED_DIR}/gametype_registry.cpp"
