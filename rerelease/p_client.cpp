@@ -2,6 +2,7 @@
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
 #include "core/respawn_hooks.h" // [mod]
+#include "core/inactivity_hooks.h" // [mod]
 #include "core/match_hooks.h" // [mod]
 #include "core/eyecam_hooks.h" // [mod]
 #include "core/vote_hooks.h" // [mod]
@@ -3219,6 +3220,7 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 		return;
 	}
 
+	Core_Inactivity_Think(ent, ucmd); // [mod] g_inactivity: an absent player to spectate
 	if (Core_Timeout_Think(ent, ucmd)) // [mod] a match timeout: nobody moves or fires
 		return; // [mod]
 

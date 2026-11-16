@@ -26,6 +26,8 @@ clients need nothing installed.
   match with the map reset, overtime, and intermission. A JSON record of
   each match (`g_matchlog_dir`; schema `q2game-match/0`).
 - **Timeouts:** one per side per match (`time-out` / `time-in`).
+- **Away players** are moved to spectate after 2 minutes without input,
+  with a warning first (`g_inactivity`).
 - **Forced respawn:** fire respawns after a second, and nobody stays dead
   past 3 seconds (`g_dm_force_respawn`, `g_dm_force_respawn_time`), so a
   lead can't be kept by hiding in death, as on MuffMode.

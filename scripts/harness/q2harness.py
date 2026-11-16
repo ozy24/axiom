@@ -1162,10 +1162,14 @@ at 40 0 cmd vote yes
     rulesets = rig.dir / "baseq2" / "rulesets"
     rulesets.mkdir(parents=True, exist_ok=True)
     (rulesets / "ffa.cfg").write_text("set match_ready 0\nset match_countdown 3\n")
-    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_ruleset", "ffa", "+map", "q2dm1"])
+    # g_inactivity at its floor (15 s): players who play are never moved.
+    startup = scenario_startup(rig, ["+set", "g_auto_join", "1", "+set", "g_inactivity", "15", "+set", "g_ruleset", "ffa",
+                                     "+map", "q2dm1"])
     log = rig.run(startup, scenario_steps(rig, script), timeout=args.boot_timeout + 120)
     tap = read_jsonl(rig.dir / "tap.jsonl")
     detail = []
+    if "Inactivity:" in log:
+        detail.append("a playing player was moved for inactivity: " + next(l for l in log.splitlines() if "Inactivity:" in l))
     humans = {r["name"]: r["slot"] for r in tap if r.get("type") == "connect" and not r.get("bot")}
     if set(humans) != {"Alice", "Bob", "Carol"}:
         results.append(("16 human-settings", False,

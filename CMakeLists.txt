@@ -109,6 +109,8 @@ add_library(game_x64 SHARED ${GAME_SOURCES}
     "${CMAKE_CURRENT_SOURCE_DIR}/core/frag_message_register.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/core/gametype.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/core/respawn.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/inactivity.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/inactivity_register.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/core/respawn_register.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/core/gametype_register.cpp"
     ${GAME_GAMETYPE_SOURCES}
@@ -248,6 +250,7 @@ if(GAME_BUILD_TESTS)
         tests/test_admin.cpp
         tests/test_loc.cpp
         tests/test_respawn.cpp
+        tests/test_inactivity.cpp
         tests/test_fuzz.cpp
         core/identity.cpp
         core/match_record.cpp
@@ -264,6 +267,7 @@ if(GAME_BUILD_TESTS)
         core/scoreboard.cpp
         core/frag_message.cpp
         core/respawn.cpp
+        core/inactivity.cpp
         core/entities.cpp
         core/movement.cpp
         core/timeout.cpp

@@ -147,7 +147,8 @@ stock's gameplay switches included (`g_instagib`, `g_dm_weapons_stay`,
 Some settings are the server's, not a mode's, and hold
 across switches: `g_classic_jumps`, `g_teleporter_freeze`, `sv_gravity`,
 `g_scoreboard`, `g_frag_messages`, `g_loc`, `g_hud_timer`,
-`g_hud_miniscore` and `match_allow_no_humans`. Set them in `server.cfg`.
+`g_hud_miniscore`, `g_dm_crosshair_id`, `g_inactivity` and
+`match_allow_no_humans`. Set them in `server.cfg`.
 
 ### Stock's gameplay settings
 
@@ -204,8 +205,9 @@ chooses to play (`join`, or the menu); players stay in from map to map.
 | | Default | |
 |---|---|---|
 | `g_auto_join` | 0 | 1: everyone goes straight into play (the smaller team) |
+| `g_inactivity` | 120 | seconds a playing human may go without input (no button, movement or turn) before they are moved to spectate, warned 10 seconds before; at least 15. 0: never. Bots, spectators, timeouts and the intermission don't count. In a live Duel the move is a forfeit, as `spectate` is: a timeout is the way to take a break |
 
-Set it in `server.cfg`. Details: docs/design/joining.md.
+Set them in `server.cfg`. Details: docs/design/joining.md.
 
 ## Running a match from the console
 
@@ -279,6 +281,7 @@ Details: docs/design/admin.md, decision 0026.
 
 | Cvar | Default | What |
 |---|---|---|
+| `g_dm_crosshair_id` | 1 | TDM, CTF: a teammate's name under the crosshair. 0: none (MuffMode's name) |
 | `g_hud_timer` | 1 | The match clock on the HUD, bottom left of centre. 0: none (the match still keeps time) |
 | `g_hud_miniscore` | 1 | FFA and Duel: the top two players' faces and scores, bottom right, while the match is in play. 0: none |
 | `g_scoreboard` | 1 | The mod's boards: FFA's columns (Frg, Dth, Player, FPH, Time, Ping), Duel's (the duellists, the queue), and spectators shown with 0 and ping on every board. 0: stock's boards |
