@@ -39,7 +39,7 @@ CHOICES = {
     ],
 }
 EXTRA_MEANING = {
-    "g_dm_weapons_stay": "weapons stay when taken (none you already have); 0 = they respawn",
+    "g_dm_weapons_stay": "weapons stay when taken (none you already have). 0 = they respawn",
     "g_no_items": "stock's name, but powerups only (quad, invulnerability...): 1 = none",
 }
 
@@ -49,27 +49,27 @@ GAMETYPE_CVARS = {"g_gametype", "ctf", "teamplay"}
 # One line each, as docs/admin.md has them. A built-in setting missing here
 # fails the run, so a new one gets a description.
 MEANING = {
-    "match_flow": "warmup, countdown, live match, intermission; 0 = stock",
-    "match_ready": "everyone types `ready` to start; 0 = start once enough are in",
+    "match_flow": "warmup, countdown, live match, intermission. 0 = stock",
+    "match_ready": "everyone types `ready` to start. 0 = start once enough are in",
     "match_minplayers": "players needed to start, bots counted",
     "match_allow_no_humans": "1 = bots alone may play a match (a bot server)",
-    "match_warmup_time": "seconds of warmup before starting anyway; 0 = wait",
+    "match_warmup_time": "seconds of warmup before starting anyway. 0 = wait",
     "match_countdown": "seconds from all ready to the start",
-    "match_overtime": "on a tie: N-minute overtimes; -1 = sudden death; 0 = it stays tied",
-    "match_overtime_max": "still tied this many minutes into overtime: a draw; 0 = never",
+    "match_overtime": "on a tie: N-minute overtimes. -1 = sudden death. 0 = it stays tied",
+    "match_overtime_max": "still tied this many minutes into overtime: a draw. 0 = never",
     "match_lock": "lock both teams as the match goes live",
     "match_warmup_weapons": "warmup: every weapon the map places, full ammo",
-    "match_timeout": "seconds a timeout lasts (one per side a match); 0 = none",
+    "match_timeout": "seconds a timeout lasts (one per side a match). 0 = none",
     "match_timeout_resume": "seconds of countdown back to play",
     "timelimit": "minutes",
     "fraglimit": "0 = none",
     "capturelimit": "0 = none",
-    "g_map_list_shuffle": "play g_map_list in a random order; 0 = as written",
-    "g_dm_force_respawn": "the dead respawn by themselves (nobody stays dead to run the clock out); 0 = only by pressing fire",
-    "g_dm_force_respawn_time": "seconds dead before that; fire respawns after 1 anyway",
-    "g_scoreboard": "the mod's scoreboards; 0 = stock's",
+    "g_map_list_shuffle": "play g_map_list in a random order. 0 = as written",
+    "g_dm_force_respawn": "the dead respawn by themselves (nobody stays dead to run the clock out). 0 = only by pressing fire",
+    "g_dm_force_respawn_time": "seconds dead before that. fire respawns after 1 anyway",
+    "g_scoreboard": "the mod's scoreboards. 0 = stock's",
     "g_frag_messages": "\"You fragged ...\" and your place, on each frag",
-    "g_loc": "location callouts: 2 = .loc file, else the nearest item; 0 = off",
+    "g_loc": "location callouts: 2 = .loc file, else the nearest item. 0 = off",
 }
 
 
@@ -95,12 +95,12 @@ def render(gametype, settings):
         "// Every line is in force: change a value to use your own. Without this",
         "// file (or a line of it) the server plays the built-in values, which",
         "// the lines below start at. Settings here apply whenever this gametype",
-        "// starts (by vote, `sv ruleset`, or `set g_ruleset` in server.cfg);",
+        "// starts (by vote, `sv ruleset`, or `set g_ruleset` in server.cfg).",
         "// nothing carries over from another.",
         "// Every setting: docs/admin.md.",
         "//",
         "// Generated from the module's built-in rulesets",
-        "// (scripts/gen_example_rulesets.py); the map list is a suggestion.",
+        "// (scripts/gen_example_rulesets.py). the map list is a suggestion.",
         "",
         "// The rotation, and the maps a vote may pick (none built in).",
         f'set g_map_list "{MAP_LISTS[gametype]}"',
