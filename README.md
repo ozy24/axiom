@@ -32,8 +32,8 @@ cmake --preset linux-release && cmake --build --preset linux-release
 ```
 
 Windows: `cmake --preset windows-msvc-release` from a Visual Studio
-developer prompt. Released builds come from CI (MSVC for Windows, GCC 12 on
-Ubuntu 22.04 for Linux).
+developer prompt. Releases ship the Windows DLL, built by CI with MSVC; on
+Linux, build the `.so` as above.
 
 ## Contributing
 

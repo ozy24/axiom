@@ -330,7 +330,8 @@ These come from id's code and the engine; each was verified in source.
   `mod.json`'s version, rename the changelog's Unreleased section to
   `## <version> (<date>)` and merge; then run the `release` workflow on
   main (Actions, Run workflow). It refuses a version without a changelog
-  section or one already released, builds both modules, packs them with
+  section or one already released, builds the Windows DLL (releases ship
+  the DLL only; Linux builds from source), packs it with
   the docs and `examples/server/` (generated rulesets:
   `scripts/gen_example_rulesets.py`) and leaves a draft release. Never push
   a `v*` tag: publishing the draft creates it.

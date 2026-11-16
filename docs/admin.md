@@ -3,6 +3,7 @@
 ## Installing
 
 The mod is one file: `game_x64.dll` (Windows) or `game_x64.so` (Linux).
+Releases ship the DLL; for Linux, build the `.so` from source (README).
 Players need nothing: they join with their normal client.
 
 - **Windows, the retail game or Q2REX:** back up `baseq2/game_x64.dll` and
@@ -12,8 +13,7 @@ Players need nothing: they join with their normal client.
 - **Linux, Q2RED's dedicated server:** give it a folder of its own beside
   `baseq2` (`<basedir>/axiom/game_x64.so`) and start the server with
   `+set game axiom`. Maps, `.ent` and `.loc` files are still found in
-  `baseq2`. The `.so` is built on Ubuntu 22.04 with its C++ runtime
-  linked in, so it loads on any distribution with glibc 2.35 or later.
+  `baseq2`.
 
 The server's console prints the version as the game loads
 (`Axiom 0.1.0 (<build>)`), and `g_version` holds it.
