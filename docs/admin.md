@@ -138,6 +138,53 @@ across switches: `g_classic_jumps`, `g_teleporter_freeze`, `sv_gravity`,
 `g_scoreboard`, `g_frag_messages`, `g_loc`, `g_hud_timer`,
 `g_hud_miniscore` and `match_allow_no_humans`. Set them in `server.cfg`.
 
+### Stock's gameplay settings
+
+Stock Quake II's own switches, for a ruleset that wants them. A mode
+switch puts every one back to the default below before the mode's file
+runs, so a setting stays in the file (and the mode) that sets it: a
+grapple turned on in `ctf.cfg` is gone in FFA.
+
+| Setting | Default | What |
+|---|---|---|
+| `g_instagib` | 0 | 1: railguns that kill in one shot, nothing else |
+| `g_infinite_ammo` | 0 | 1: ammo never runs out |
+| `g_damage_scale` | 1 | all damage multiplied by this |
+| `g_start_items` | (empty) | what players spawn with: `;`-separated classnames, each with an optional count (`"weapon_railgun;ammo_slugs 50"`) |
+| `g_no_items` | 0 | 1: no powerups (quad, invulnerability...); despite the name, other items stay. Also the `powerups` vote |
+| `g_no_armor` | 0 | 1: no armour on the map |
+| `g_no_health` | 0 | 1: no health on the map |
+| `g_no_mines` | 0 | 1: no prox mines or tesla (Ground Zero) |
+| `g_no_nukes` | 0 | 1: no nukes (Ground Zero) |
+| `g_no_spheres` | 0 | 1: no spheres (Ground Zero) |
+| `g_disable_items` | (empty) | classnames that don't spawn on any map (`"item_power_shield"`); see "Changing a map's items" |
+| `g_dm_weapons_stay` | 0 | 1: weapons stay when taken; you can't take one you already have |
+| `g_weapon_respawn_time` | 30 | seconds before a taken weapon comes back |
+| `g_dm_instant_items` | 1 | 1: a powerup is used the moment it's picked up; 0: it goes in the inventory |
+| `g_dm_random_items` | 0 | 1: items are swapped for random others each map |
+| `g_dm_no_quad_drop` | 0 | 1: a dying player doesn't drop their quad |
+| `g_dm_no_quadfire_drop` | 0 | 1: nor their DualFire (The Reckoning) |
+| `g_dm_no_stack_double` | 0 | 1: quad and double damage don't multiply together |
+| `g_dm_strong_mines` | 0 | 1: prox mines last until they go off |
+| `g_dm_no_fall_damage` | 0 | 1: no falling damage |
+| `g_dm_spawn_farthest` | 1 | 1: respawn at the spawn point farthest from others |
+| `g_dm_force_respawn` | 0 | 1: the dead respawn without pressing fire |
+| `g_dm_force_respawn_time` | 0 | seconds after death that a respawn is forced; 0: none |
+| `g_dm_same_level` | 0 | 1: the level's end replays the same map (with no `g_map_list`) |
+| `g_dm_allow_exit` | 0 | 1: a map's exit ends the level; 0: touching it kills you |
+| `g_instant_weapon_switch` | 0 | 1: weapons switch at once |
+| `g_quick_weapon_switch` | 1 | 1: the rerelease's faster switch animation; 0: the original's |
+| `g_disable_player_collision` | 0 | 1: players pass through each other |
+| `g_allow_techs` | auto | the runes (Resistance, Strength, Haste, AutoDoc): auto = CTF only, 1 = every mode, 0 = none |
+| `g_allow_grapple` | auto | the grappling hook: auto = CTF only (unless the map turns it off), 1 = every mode, 0 = none |
+| `g_grapple_damage` | 10 | the grapple's damage |
+| `g_friendly_fire` | 0 | TDM, CTF: 1 = teammates can hurt each other. Also the `friendlyfire` vote |
+| `g_teamplay_armor_protect` | 0 | TDM, CTF: 1 = a teammate's damage skips armour |
+| `g_teamplay_force_join` | 0 | TDM, CTF: 1 = players don't pick a team; they go on the smaller one |
+
+The match settings (`match_*`), the limits and the map list are reset
+the same way; they are described above.
+
 ## Joining
 
 A player new to the server arrives spectating, with the menu open, and
