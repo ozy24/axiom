@@ -324,7 +324,7 @@ and what Bloody Blastard ran under MuffMode. Deathmatch only.
 | `g_vote` | 1 | voting on |
 | `g_vote_allow` | `map gametype restart timelimit scorelimit powerups friendlyfire readyall readyteam shuffle` | what players can call; remove a word to turn that vote off |
 | `g_vote_midgame` | 1 | also during a match; 0 = warmup only |
-| `g_map_list` | (empty) | the map rotation, and the maps a vote may pick |
+| `g_map_list` | (empty) | the map rotation, and the maps a vote may pick: names as in `map`, a pack's maps with a slash (`q64/dm3`; `q64\dm3` works too). A word that isn't a map name is left out, and the console says so |
 | `g_map_list_shuffle` | 1 | play the rotation in a random order; 0 = as written |
 
 `sv callvote <kind> [choice]` puts a vote to the players from the console

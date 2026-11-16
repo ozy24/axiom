@@ -45,6 +45,17 @@ TEST_CASE("maps: list words are lowercased, deduplicated, and unsafe ones droppe
 	CHECK(Core_Maps_Words("").empty());
 }
 
+TEST_CASE("maps: a backslash reads as a slash, and dropped words are reported")
+{
+	std::vector<std::string> dropped;
+	CHECK(Core_Maps_Words("q64\\dm3 Q64\\DM4 q64/dm3 Q2DM9! ..\\up q2dm1 q2dm1", &dropped) ==
+	      std::vector<std::string>{"q64/dm3", "q64/dm4", "q2dm1"});
+	CHECK(dropped == std::vector<std::string>{"Q2DM9!", "..\\up"});
+	dropped.clear();
+	CHECK(Core_Maps_Words("q64\\\\dm3 \\q2dm1 q2dm1\\", &dropped).empty()); // a//b, /x and x/ as before
+	CHECK(dropped.size() == 3);
+}
+
 TEST_CASE("maps: without shuffle the order is the list as written")
 {
 	std::mt19937 rng(1);
