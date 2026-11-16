@@ -1148,6 +1148,7 @@ def tier_human_settings(args, results):
 client 0 name=Alice social=sim-alice puppet
 client 1 name=Bob social=sim-bob puppet
 client 2 name=Carol social=sim-carol puppet
+at 17 2 cmd kill
 at 26 1 cmd kill
 at 28 0 cmd score
 at 30 0 cmd callvote timelimit 7
@@ -1197,6 +1198,12 @@ at 40 0 cmd vote yes
             detail.append(f"the board is {len(board)} bytes, over the client's 1024")
     if "-> live" not in log[:max(at_time, 0)]:
         detail.append("the match wasn't live when the time limit vote ran")
+    # Carol's suicide just before live drops her warmup weapon, which carries
+    # only SPAWNFLAG_ITEM_DROPPED_PLAYER: going live must clear it (playtest
+    # 2026-11-16, a dropped railgun still there once live).
+    cleared = [int(n) for n in re.findall(r"Items: (\d+) dropped cleared", log)]
+    if not cleared or cleared[0] < 1:
+        detail.append(f"going live cleared {cleared[:1] or 'no'} dropped items; Carol's weapon stayed")
     locs = [r for r in tap if r.get("type") == "locprint"]
     to = lambda name: [" ".join([r["base"]] + r.get("args", [])) for r in locs if r["to"] == humans[name]]
     if not any("only for team gametypes" in t for t in to("Bob")):

@@ -149,14 +149,22 @@ void CenterAll(const std::string &text)
 	}
 }
 
+bool Dropped(const edict_t *ent)
+{
+	return ent->spawnflags.has(SPAWNFLAG_ITEM_DROPPED) || ent->spawnflags.has(SPAWNFLAG_ITEM_DROPPED_PLAYER);
+}
+
 bool Transient(const edict_t *ent)
 {
 	static const char
 	    *const kinds[] = {"rocket",         "grenade",     "hand_grenade", "bolt",       "bfg blast",     "disint ball",
 	                      "tracker",        "prox_mine",   "prox_field",   "tesla_mine", "tesla trigger", "nuke",
 	                      "food_cube_trap", "pain daemon", "DelayedUse"}; // a trigger's delayed firing, still to come
-	if (ent->item && ent->spawnflags.has(SPAWNFLAG_ITEM_DROPPED))
-		return true; // dropped weapons, packs, the dead's items
+	// Dropped weapons and packs; the dead's weapon, quad and DualFire carry
+	// only SPAWNFLAG_ITEM_DROPPED_PLAYER (TossClientWeapon clears the other:
+	// playtest 2026-11-16, a warmup railgun still there once live).
+	if (ent->item && Dropped(ent))
+		return true;
 	if (!ent->classname)
 		return false;
 	for (const char *k : kinds)
@@ -179,16 +187,21 @@ void ResetArena()
 		CTFResetFlag(CTF_TEAM1);
 		CTFResetFlag(CTF_TEAM2);
 	}
+	int dropped = 0;
 	for (uint32_t i = game.maxclients + 1; i < globals.num_edicts; ++i)
 	{
 		edict_t *ent = g_edicts + i;
 		if (ent->inuse && Transient(ent))
+		{
+			dropped += ent->item ? 1 : 0;
 			G_FreeEdict(ent);
+		}
 	}
+	gi.Com_PrintFmt("Items: {} dropped cleared\n", dropped);
 	for (uint32_t i = game.maxclients + 1; i < globals.num_edicts; ++i)
 	{
 		edict_t *ent = g_edicts + i;
-		if (!ent->inuse || !ent->item || ent->spawnflags.has(SPAWNFLAG_ITEM_DROPPED))
+		if (!ent->inuse || !ent->item || Dropped(ent))
 			continue;
 		// Team chains (one of several items spawns) respawn once, via the master.
 		if (ent->team && ent->teammaster != ent)
