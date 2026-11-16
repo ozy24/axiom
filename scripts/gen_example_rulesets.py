@@ -20,27 +20,49 @@ OUT = ROOT / "examples" / "server" / "rulesets"
 
 TITLES = {"ffa": "Free For All", "duel": "Duel", "tdm": "Team Deathmatch", "ctf": "Capture The Flag"}
 
-# Stock maps only: every player has them (Chris, 2026-11-12).
+# Maps every player has: the base game's, Quake 64's and Call of the
+# Machine's (mgdm1, Misty Heights). Chris, 2026-11-12 and 2026-11-16 (as
+# he played them on the release-test server).
 MAP_LISTS = {
-    "ffa": "q2dm1 q2dm2 q2dm3 q2dm4 q2dm5 q2dm6 q2dm7 q2dm8",
+    "ffa": "q2dm1 q2dm2 q2dm3 q2dm5 q2dm6 q2dm7 q2dm8 q64/dm3 q64/dm4 q64/dm5 q64/dm6 q64/dm7 q64/dm8 q64/dm9 mgdm1",
     "duel": "q2dm1 q2dm2 q2dm3 q64/dm3 q64/dm4 q64/dm8",  # as the ranked duel server
-    "tdm": "q2dm1 q2dm2 q2dm3 q2dm4 q2dm5 q2dm6 q2dm7 q2dm8",
+    "tdm": "q2dm1 q2dm2 q2dm3 q2dm7 q64/dm5 q64/dm8",
     "ctf": "q2ctf1 q2ctf2 q2ctf3 q2ctf4 q2ctf5",
 }
 
-# The example's own choices, beyond the built-in ruleset (which never
-# changes gameplay): written as active lines, a built-in one in its place.
-# FFA: Chris, 2026-11-15.
+# The example's own choices, beyond the built-in ruleset (which stays
+# stock's gameplay): written as active lines, a built-in one in its place.
+# Chris, 2026-11-15/16, from his playtest of the release-test server.
 CHOICES = {
     "ffa": [
+        ("timelimit", "15"),
         ("fraglimit", "30"),
+        ("match_ready", "0"),
         ("g_dm_weapons_stay", "1"),
         ("g_no_items", "1"),
+    ],
+    "duel": [
+        ("g_weapon_respawn_time", "15"),
+    ],
+    "tdm": [
+        ("timelimit", "10"),
+        ("g_no_items", "1"),
+        ("g_weapon_respawn_time", "15"),
+        ("g_friendly_fire", "0"),
+    ],
+    "ctf": [
+        ("timelimit", "15"),
+        ("match_overtime", "-1"),
+        ("g_dm_weapons_stay", "1"),
+        ("g_instant_weapon_switch", "1"),
     ],
 }
 EXTRA_MEANING = {
     "g_dm_weapons_stay": "weapons stay when taken (none you already have). 0 = they respawn",
     "g_no_items": "stock's name, but powerups only (quad, invulnerability...): 1 = none",
+    "g_weapon_respawn_time": "seconds before a taken weapon comes back (stock: 30)",
+    "g_friendly_fire": "1 = teammates can hurt each other",
+    "g_instant_weapon_switch": "weapons switch at once, no lower and raise (stock: 0)",
 }
 
 # These say which gametype the file is for: never an admin's to change.
