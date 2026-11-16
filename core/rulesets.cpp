@@ -110,7 +110,7 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"g_map_list_shuffle", "0"},
     {"g_no_items", "0"},      // the powerups vote (decision 0015)
     {"g_friendly_fire", "0"}, // the friendly fire vote
-    {"g_disable_items", ""},  // items that don't spawn (core/entities_register.cpp)
+    {"g_disable_items", ""}, // items that don't spawn (core/entities_register.cpp)
     // Stock's own gameplay switches (rerelease/g_main.cpp), so a variant's
     // `set g_instagib 1` ends with the variant.
     {"g_instagib", "0"},
