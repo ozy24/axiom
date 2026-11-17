@@ -21,7 +21,8 @@ const edict_t *keys_owner = nullptr;
 EntityKeys keys; // the mode keys of the entity being parsed
 bool no_spawnpads = false;
 int left_out = 0;
-int disabled = 0; // left out by g_disable_items
+int disabled = 0;    // left out by g_disable_items
+int no_powerups = 0; // left out by g_no_powerups
 
 cvar_t *OverrideDir()
 {
@@ -49,13 +50,20 @@ bool ReadOverride(std::string &text, std::string &where)
 	return Core_ReadGameFile(OverrideDir()->string, FileName(), text, where);
 }
 
+// g_no_powerups: MuffMode's switch (Core_Entities_IsPowerup), a gameplay
+// setting a mode switch resets (core/rulesets.cpp). The powerups vote's.
+bool NoPowerups()
+{
+	return gi.cvar("g_no_powerups", "0", CVAR_NOFLAGS)->integer != 0;
+}
+
 EntitySpawnMode Mode()
 {
 	EntitySpawnMode mode;
 	const GametypeDef *gametype = Core_Gametype_Active();
 	mode.gametype = gametype ? gametype->id : ctf->integer ? "ctf" : teamplay->integer ? "tdm" : "ffa";
 	mode.teams = ctf->integer || teamplay->integer;
-	mode.powerups = !g_no_items->integer;
+	mode.powerups = !g_no_items->integer && !NoPowerups();
 	return mode;
 }
 
@@ -84,6 +92,7 @@ const char *Core_Entities_Override(const char *mapname, const char *entities)
 	no_spawnpads = false;
 	left_out = 0;
 	disabled = 0;
+	no_powerups = 0;
 	level_entities.assign(entities ? entities : "");
 	if (!deathmatch->integer || !gi.cvar("g_entity_override_load", "1", CVAR_NOFLAGS)->integer)
 		return entities;
@@ -132,6 +141,11 @@ bool Core_Entities_Inhibit(edict_t *ent)
 	    Core_Entities_Disabled(gi.cvar("g_disable_items", "", CVAR_NOFLAGS)->string, ent->classname))
 	{
 		++disabled;
+		return true;
+	}
+	if (deathmatch->integer && ent->classname && NoPowerups() && Core_Entities_IsPowerup(ent->classname))
+	{
+		++no_powerups;
 		return true;
 	}
 	if (!deathmatch->integer || mine.empty() || !Core_Entities_Excluded(mine, Mode()))
@@ -217,6 +231,8 @@ void Core_Entities_Spawned()
 		gi.Com_PrintFmt("Entities: {} left out of {} by their keys\n", left_out, Mode().gametype.c_str());
 	if (disabled)
 		gi.Com_PrintFmt("Entities: {} disabled by g_disable_items\n", disabled);
+	if (no_powerups)
+		gi.Com_PrintFmt("Entities: {} powerups left out by g_no_powerups\n", no_powerups);
 }
 
 bool Core_Entities_NoSpawnPads()

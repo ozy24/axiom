@@ -163,7 +163,8 @@ grapple turned on in `ctf.cfg` is gone in FFA.
 | `g_infinite_ammo` | 0 | 1: ammo never runs out |
 | `g_damage_scale` | 1 | all damage multiplied by this |
 | `g_start_items` | (empty) | what players spawn with: `;`-separated classnames, each with an optional count (`"weapon_railgun;ammo_slugs 50"`) |
-| `g_no_items` | 0 | 1: no powerups (quad, invulnerability...); despite the name, other items stay. Also the `powerups` vote |
+| `g_no_powerups` | 0 | 1: no Quad, DualFire, Double Damage, Invulnerability, Invisibility or Ground Zero spheres; adrenaline, the Rebreather, Environment Suit and the rest stay (MuffMode's setting). The `powerups` vote |
+| `g_no_items` | 0 | stock's, wider: 1 also takes adrenaline, the Silencer, Rebreather, Environment Suit, IR goggles and the Doppelganger (every item stock calls a powerup). Health, armour, weapons and ammo stay |
 | `g_no_armor` | 0 | 1: no armour on the map |
 | `g_no_health` | 0 | 1: no health on the map |
 | `g_no_mines` | 0 | 1: no prox mines or tesla (Ground Zero) |

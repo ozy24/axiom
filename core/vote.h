@@ -59,7 +59,7 @@ struct VoteSettingsNow
 {
 	int timelimit_min = 0; // timelimit, whole minutes
 	int scorelimit = 0;    // fraglimit, or capturelimit in CTF
-	bool powerups = true;  // !g_no_items
+	bool powerups = true;  // !g_no_powerups && !g_no_items
 	bool friendly_fire = false;
 	bool teams = false; // TDM, CTF
 	bool ctf = false;

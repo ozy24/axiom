@@ -152,3 +152,14 @@ TEST_CASE("entities: g_disable_items leaves everything but pickups alone")
 	CHECK_FALSE(Core_Entities_Disabled("item_flag_team1", "item_flag_team1"));
 	CHECK_FALSE(Core_Entities_Disabled("item_", "item_"));
 }
+
+TEST_CASE("entities: g_no_powerups takes MuffMode's powerups, not adrenaline or the utility items")
+{
+	for (const char *c : {"item_quad", "ITEM_QUAD", "item_quadfire", "item_double", "item_invulnerability",
+	                      "item_invisibility", "item_sphere_vengeance", "item_sphere_hunter", "item_sphere_defender"})
+		CHECK_MESSAGE(Core_Entities_IsPowerup(c), c);
+	for (const char *c :
+	     {"item_adrenaline", "item_breather", "item_enviro", "item_silencer", "item_ir_goggles", "item_doppleganger",
+	      "item_bandolier", "item_pack", "item_power_shield", "item_quads", "", "weapon_railgun", "item_health_mega"})
+		CHECK_FALSE_MESSAGE(Core_Entities_IsPowerup(c), c);
+}
