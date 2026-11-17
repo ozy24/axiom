@@ -168,6 +168,18 @@ bool Core_Entities_Disabled(std::string_view list, std::string_view classname)
 	return false;
 }
 
+bool Core_Entities_IsPowerup(std::string_view classname)
+{
+	static constexpr std::string_view kPowerups[] = {
+	    "item_quad",         "item_quadfire",         "item_double",        "item_invulnerability",
+	    "item_invisibility", "item_sphere_vengeance", "item_sphere_hunter", "item_sphere_defender",
+	};
+	for (std::string_view p : kPowerups)
+		if (Same(p, classname))
+			return true;
+	return false;
+}
+
 bool Core_Entities_Excluded(const EntityKeys &keys, const EntitySpawnMode &mode)
 {
 	for (const auto &[key, value] : keys)

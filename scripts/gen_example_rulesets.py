@@ -32,21 +32,22 @@ MAP_LISTS = {
 
 # The example's own choices, beyond the built-in ruleset (which stays
 # stock's gameplay): written as active lines, a built-in one in its place.
-# Chris, 2026-11-15/16, from his playtest of the release-test server.
+# Chris, 2026-11-15/16, from his playtest of the release-test server;
+# 2026-11-17: FFA keeps its powerups, Duel and TDM use g_no_powerups.
 CHOICES = {
     "ffa": [
         ("timelimit", "15"),
         ("fraglimit", "30"),
         ("match_ready", "0"),
         ("g_dm_weapons_stay", "1"),
-        ("g_no_items", "1"),
     ],
     "duel": [
         ("g_weapon_respawn_time", "15"),
+        ("g_no_powerups", "1"),
     ],
     "tdm": [
         ("timelimit", "10"),
-        ("g_no_items", "1"),
+        ("g_no_powerups", "1"),
         ("g_weapon_respawn_time", "15"),
         ("g_friendly_fire", "0"),
     ],
@@ -59,7 +60,7 @@ CHOICES = {
 }
 EXTRA_MEANING = {
     "g_dm_weapons_stay": "weapons stay when taken (none you already have). 0 = they respawn",
-    "g_no_items": "stock's name, but powerups only (quad, invulnerability...): 1 = none",
+    "g_no_powerups": "no Quad, Invulnerability and the like (adrenaline stays). 0 = the map's",
     "g_weapon_respawn_time": "seconds before a taken weapon comes back (stock: 30)",
     "g_friendly_fire": "1 = teammates can hurt each other",
     "g_instant_weapon_switch": "weapons switch at once, no lower and raise (stock: 0)",

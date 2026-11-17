@@ -18,7 +18,7 @@ struct EntitySpawnMode
 {
 	std::string gametype = "ffa"; // the gametype id: ffa, duel, tdm, ctf
 	bool teams = false;           // TDM, CTF
-	bool powerups = true;         // g_no_items 0
+	bool powerups = true;         // g_no_powerups 0 and g_no_items 0
 };
 
 using EntityKeys = std::vector<std::pair<std::string, std::string>>;
@@ -44,6 +44,13 @@ bool Core_Entities_Excluded(const EntityKeys &keys, const EntitySpawnMode &mode)
 // switches as one setting. Only pickups can be disabled (item_, weapon_,
 // ammo_), never a CTF flag: anything else in the list is ignored.
 bool Core_Entities_Disabled(std::string_view list, std::string_view classname);
+
+// Whether `classname` is a powerup g_no_powerups takes off the map, as
+// MuffMode's g_no_powerups did: Quad Damage, DualFire, Double Damage,
+// Invulnerability, Invisibility and Ground Zero's spheres. Adrenaline, the
+// Rebreather, Environment Suit, Silencer, IR goggles and the Doppelganger
+// stay (stock's g_no_items takes those too).
+bool Core_Entities_IsPowerup(std::string_view classname);
 
 // MuffMode's small and large ammo: stock's ammo with its own amount and
 // model, which retail's pak0 carries.

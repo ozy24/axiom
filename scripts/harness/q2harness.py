@@ -1757,18 +1757,22 @@ def tier_startup_ruleset(args, results):
     what's queued while a map loads until a player arrives, and runs no
     frames before then, so Bloody Blastard came up after every restart with
     its first map spawned without them (2026-10-30). A spawn-time setting
-    shows it: the file points the .ent overrides at a folder with q2dm1's."""
+    shows it: the file points the .ent overrides at a folder with q2dm1's.
+    Then g_no_powerups (the file's) on q2dm5: its Quad is left out and its
+    adrenaline stays (exactly one powerup; stock's g_no_items takes both)."""
     rig = RIGS[args.engine_kind](args, args.candidate, "t23-startup")
     game_dir = rig.dir / "baseq2" if args.engine_kind == "q2red" else rig.base / "baseq2"
     (game_dir / "rulesets").mkdir(parents=True, exist_ok=True)
     (game_dir / "rulesets" / "ffa.cfg").write_text(
-        'set fraglimit 17 // a; comment\nset g_entity_override_dir "t23ents"\nexec rulesets/t23more.cfg\n')
+        'set fraglimit 17 // a; comment\nset g_entity_override_dir "t23ents"\nset g_no_powerups 1\n'
+        'exec rulesets/t23more.cfg\n')
     (game_dir / "rulesets" / "t23more.cfg").write_text('set g_map_list "q2dm3 q2dm8"\n')
     (game_dir / "t23ents").mkdir(parents=True, exist_ok=True)
     (game_dir / "t23ents" / "q2dm1.ent").write_text(bsp_entities(args.retail, "q2dm1"), encoding="latin1")
     startup = ["+set", "deathmatch", "1", "+set", "maxclients", "8", "+set", "g_ruleset", "ffa", "+map", "q2dm1"]
     log = rig.run(startup, [rig.wait_ready(), ("sleep", 4), ("cmd", "fraglimit"), ("cmd", "g_map_list"),
-                            ("sleep", 1), ("cmd", "quit")], timeout=args.boot_timeout + 60)
+                            ("sleep", 1), ("cmd", "map q2dm5"), ("sleep", 8), ("cmd", "quit")],
+                  timeout=args.boot_timeout + 75)
     detail = []
     if "Ruleset: starting ffa" not in log:
         detail.append("no 'Ruleset: starting ffa' line")
@@ -1778,6 +1782,10 @@ def tier_startup_ruleset(args, results):
         detail.append(f"fraglimit isn't the file's 17: {re.findall(r'.fraglimit. is .*', log)}")
     if not re.search(r'"g_map_list" is "q2dm3 q2dm8"', log):
         detail.append("g_map_list isn't the exec'd file's")
+    left = re.findall(r"Entities: (\d+) powerups left out by g_no_powerups", log)
+    if left != ["1"]:
+        detail.append(f"q2dm5 with g_no_powerups 1 left out {left or 'no'} powerups, expected its Quad alone "
+                      "(its adrenaline stays)")
     if rig.returncode != 0:
         detail.append(f"server exited with code {rig.returncode}")
     detail += error_lines(log, rig)[:20]

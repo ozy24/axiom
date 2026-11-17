@@ -95,7 +95,8 @@ const size_t core_ruleset_count = sizeof(core_rulesets) / sizeof(core_rulesets[0
 // The defaults their modules register: g_gametype (core/gametype_register.cpp),
 // match_* (core/match_register.cpp, core/timeout_register.cpp), the limits (rerelease/g_main.cpp),
 // g_map_list, g_map_list_shuffle, g_no_items and g_friendly_fire
-// (rerelease/g_main.cpp), g_disable_items (core/entities_register.cpp).
+// (rerelease/g_main.cpp), g_disable_items and g_no_powerups
+// (core/entities_register.cpp).
 const GameplayCvar core_gameplay_cvars[] = {
     {"g_gametype", "ffa"},
     {"ctf", "0"},
@@ -116,7 +117,8 @@ const GameplayCvar core_gameplay_cvars[] = {
     {"capturelimit", "0"},
     {"g_map_list", ""},
     {"g_map_list_shuffle", "0"},
-    {"g_no_items", "0"},      // the powerups vote (decision 0015)
+    {"g_no_items", "0"},      // stock's: every Pickup_Powerup item, adrenaline too
+    {"g_no_powerups", "0"},   // the powerups vote (decision 0015): MuffMode's list
     {"g_friendly_fire", "0"}, // the friendly fire vote
     {"g_disable_items", ""},  // items that don't spawn (core/entities_register.cpp)
     // Stock's own gameplay switches (rerelease/g_main.cpp), so a variant's

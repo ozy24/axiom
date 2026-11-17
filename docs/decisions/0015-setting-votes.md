@@ -9,7 +9,7 @@ restart:
 |---|---|---|---|---|
 | `callvote timelimit <n>` | `timelimit` | 1-60 minutes | every gametype | at once, no restart |
 | `callvote scorelimit <n>` (`fraglimit`, `capturelimit`) | `fraglimit`, or `capturelimit` in CTF | 0-100 frags, 0-20 captures; 0 = none | every gametype | at once, no restart |
-| `callvote powerups on\|off` | stock's `g_no_items` | on / off | every gametype | reloads the map (items spawn as it loads) |
+| `callvote powerups on\|off` | `g_no_powerups` (stock's `g_no_items` until 2026-11-17; on clears both) | on / off | every gametype | reloads the map (items spawn as it loads) |
 | `callvote friendlyfire on\|off` | stock's `g_friendly_fire` | on / off | team gametypes | at once |
 
 1. **One table, compiled in** (`Core_Vote_Setting`, `core/vote.cpp`): each

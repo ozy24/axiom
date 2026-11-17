@@ -65,6 +65,9 @@ clients need nothing installed.
 - `.ent` override files (MuffMode's keys: per-gametype items, jump pads,
   small ammo); `sv saveents` writes a map's list to start from.
 - Original Quake II's jump heights below height 0 (`g_classic_jumps`).
+- `g_no_powerups`: MuffMode's powerups switch (Quad, Invulnerability and the
+  like; adrenaline stays), and the `powerups` vote's. Stock's `g_no_items`
+  takes adrenaline and the utility items too.
 - `g_disable_items`: items, weapons or ammo that don't spawn on any map
   (MuffMode's `disable_<item>`), e.g. `"item_power_shield"`. Empty by
   default.

@@ -118,7 +118,7 @@ VoteSettingsNow SettingsNow()
 	now.teams = G_TeamplayEnabled();
 	now.timelimit_min = (int)timelimit->value;
 	now.scorelimit = now.ctf ? capturelimit->integer : fraglimit->integer;
-	now.powerups = !g_no_items->integer;
+	now.powerups = !g_no_items->integer && !gi.cvar("g_no_powerups", "0", CVAR_NOFLAGS)->integer;
 	now.friendly_fire = g_friendly_fire->integer != 0;
 	now.ready_up = Core_Match_ReadyUp();
 	now.warmup = Core_Match_OwnsRules() && !Core_Match_InPlay();
@@ -227,7 +227,11 @@ void Apply(const VoteProposal &p)
 		Core_Match_LimitsChanged();
 		break;
 	case VoteKind::Powerups:
-		gi.cvar_set("g_no_items", *value ? "0" : "1");
+		// MuffMode's g_no_powerups: adrenaline and the like stay. On also
+		// clears stock's g_no_items, so the vote does what it says.
+		gi.cvar_set("g_no_powerups", *value ? "0" : "1");
+		if (*value)
+			gi.cvar_set("g_no_items", "0");
 		gi.AddCommandString(fmt::format("map {}\n", level.mapname).c_str());
 		break;
 	case VoteKind::FriendlyFire:
